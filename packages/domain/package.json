@@ -1,0 +1,22 @@
+{
+  "name": "@barbearia/domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "devDependencies": {
+    "@barbearia/eslint-config": "workspace:*",
+    "@barbearia/tsconfig": "workspace:*",
+    "eslint": "^9.15.0",
+    "typescript": "^5.6.3"
+  }
+}

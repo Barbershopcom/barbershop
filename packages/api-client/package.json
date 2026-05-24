@@ -1,0 +1,26 @@
+{
+  "name": "@barbearia/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "openapi-typescript $API_OPENAPI_URL -o ./src/types.gen.ts",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@barbearia/schemas": "workspace:*"
+  },
+  "devDependencies": {
+    "@barbearia/eslint-config": "workspace:*",
+    "@barbearia/tsconfig": "workspace:*",
+    "eslint": "^9.15.0",
+    "openapi-typescript": "^7.4.4",
+    "typescript": "^5.6.3"
+  }
+}

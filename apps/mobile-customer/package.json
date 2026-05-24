@@ -1,0 +1,47 @@
+{
+  "name": "@barbearia/mobile-customer",
+  "version": "0.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "ios": "expo start --ios",
+    "android": "expo start --android",
+    "web": "expo start --web",
+    "lint": "eslint app src",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"no tests yet\" && exit 0",
+    "build": "echo \"use EAS Build for native builds\" && exit 0"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@supabase/supabase-js": "^2.46.1",
+    "expo": "~52.0.0",
+    "expo-constants": "~17.0.0",
+    "expo-linking": "~7.0.0",
+    "expo-router": "~4.0.0",
+    "expo-status-bar": "~2.0.0",
+    "nativewind": "^4.1.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-native": "0.76.0",
+    "react-native-gesture-handler": "~2.20.0",
+    "react-native-reanimated": "~3.16.0",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.0.0",
+    "react-native-url-polyfill": "^2.0.0",
+    "react-native-web": "~0.19.13",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@barbearia/eslint-config": "workspace:*",
+    "@barbearia/tsconfig": "workspace:*",
+    "@types/react": "~18.3.12",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.15.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Barbearia Business",
+    "slug": "barbearia-business",
+    "version": "0.0.0",
+    "scheme": "barbeariabusiness",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.barbearia.business"
+    },
+    "android": {
+      "package": "com.barbearia.business",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

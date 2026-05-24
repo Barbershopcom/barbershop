@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Barbearia",
+    "slug": "barbearia-customer",
+    "version": "0.0.0",
+    "scheme": "barbeariacustomer",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.barbearia.customer"
+    },
+    "android": {
+      "package": "com.barbearia.customer",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

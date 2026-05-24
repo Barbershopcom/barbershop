@@ -36,7 +36,7 @@ export default function LoginPage() {
         setError(authError.message);
         return;
       }
-      router.push('/');
+      router.replace('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro inesperado');
     } finally {

@@ -1,11 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "display": "Expo",
-  "extends": "./base.json",
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "lib": ["ES2022"],
-    "jsx": "react-native",
-    "allowJs": true,
-    "noEmit": true
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "incremental": true
   }
 }

@@ -1,0 +1,40 @@
+// Schema mínimo do Sprint 0 — só identidade e tenant raiz.
+// Multi-tenancy completa (organizations, locations, barbershops, memberships)
+// entra no Sprint 1 conforme ADR-002.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Espelho do auth.users do Supabase. ID é o mesmo (sub do JWT).
+/// Populado via webhook do Supabase Auth no signup (a configurar no Sprint 1).
+model AppUser {
+  id          String   @id @db.Uuid
+  email       String?  @unique
+  phoneE164   String?  @unique @map("phone_e164")
+  displayName String?  @map("display_name")
+  cpf         String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("app_users")
+}
+
+/// Tenant raiz. Modelagem completa (Organization → Location → Barbershop)
+/// fica pro Sprint 1 — aqui só o suficiente pra provar o JWT/RLS pipeline.
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  name      String
+  timezone  String   @default("America/Sao_Paulo")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("tenants")
+}

@@ -1,0 +1,63 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build outputs
+dist/
+build/
+out/
+.next/
+.turbo/
+.expo/
+.expo-shared/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# editors
+.vscode/*
+!.vscode/settings.json.example
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# Claude Code local state
+.claude/settings.local.json
+.claude/cache/
+.claude/logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# coverage
+coverage/
+.nyc_output/
+
+# misc
+*.tgz
+.cache/
+
+# expo / EAS
+ios/
+android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# prisma
+prisma/migrations/dev/

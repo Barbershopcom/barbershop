@@ -2,7 +2,7 @@
 
 import { type CreateServiceInput, createServiceSchema, type ServiceDto } from '@barbearia/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -115,12 +115,21 @@ export default function ServicesPage() {
   }
 
   async function deactivate(id: string) {
-    if (!confirm('Desativar este serviço? Pode reativar depois editando.')) return;
+    if (!confirm('Desativar este serviço? Pode reativar depois.')) return;
     try {
       await api.delete(`/services/${id}`, { tenantId: tenant.id });
       await refresh();
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Erro ao desativar');
+    }
+  }
+
+  async function reactivate(id: string) {
+    try {
+      await api.patch(`/services/${id}`, { isActive: true }, { tenantId: tenant.id });
+      await refresh();
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : 'Erro ao reativar');
     }
   }
 
@@ -211,6 +220,25 @@ export default function ServicesPage() {
                     )}
                   />
                 </div>
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value ?? true}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          className="h-4 w-4 rounded border-input"
+                        />
+                      </FormControl>
+                      <FormLabel className="!mt-0 font-normal">
+                        Ativo (aparece no catálogo público)
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
                 {submitError ? (
                   <p className="text-sm text-destructive" role="alert">
                     {submitError}
@@ -281,6 +309,7 @@ export default function ServicesPage() {
                         variant="ghost"
                         onClick={() => startEdit(s)}
                         aria-label="Editar"
+                        title="Editar este serviço"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -290,10 +319,21 @@ export default function ServicesPage() {
                           variant="ghost"
                           onClick={() => deactivate(s.id)}
                           aria-label="Desativar"
+                          title="Desativar"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      ) : null}
+                      ) : (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => reactivate(s.id)}
+                          aria-label="Reativar"
+                          title="Reativar"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>

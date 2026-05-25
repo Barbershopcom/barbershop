@@ -11,7 +11,6 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Prisma } from '@prisma/client';
 
 import { type AuthenticatedUser, CurrentUser } from '../auth/auth.decorators';
 import { type TenantContextValue } from '../tenancy/tenant-context';
@@ -176,7 +175,18 @@ export class MeController {
       this.logger.log(`[link] employee.update OK`);
 
       // 4) Cria membership usando employee.tenantId direto.
-      try {
+      //    IMPORTANTE: NÃO usar try/catch em volta do create — qualquer erro
+      //    Postgres aborta a tx inteira (25P02 'current transaction is aborted').
+      //    Checa explicitamente antes pra evitar conflitos.
+      const existingMembership = await ctx.tx.tenantMembership.findUnique({
+        where: {
+          userId_tenantId: { userId: ctx.userId, tenantId: employee.tenantId },
+        },
+        select: { userId: true },
+      });
+      if (existingMembership) {
+        this.logger.log(`[link] membership já existia, pulando create`);
+      } else {
         await ctx.tx.tenantMembership.create({
           data: {
             userId: ctx.userId,
@@ -185,11 +195,6 @@ export class MeController {
           },
         });
         this.logger.log(`[link] membership.create OK`);
-      } catch (err) {
-        if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') {
-          throw err;
-        }
-        this.logger.log(`[link] membership já existia (P2002), ignorando`);
       }
 
       // 5) Retorna o employee + tenant (this.employee seta app.tenant_id internamente)

@@ -1,6 +1,18 @@
-// Schema mínimo do Sprint 0 — só identidade e tenant raiz.
-// Multi-tenancy completa (organizations, locations, barbershops, memberships)
-// entra no Sprint 1 conforme ADR-002.
+// Schema Sprint 1 — multi-tenancy completa.
+// Hierarquia: Tenant → Organization → Location → Barbershop
+//                                                  ├─ BarbershopHours
+//                                                  ├─ Service
+//                                                  └─ Employee
+//
+// Tabelas tenant-scoped (com tenant_id desnormalizado e RLS):
+//   organizations, locations, barbershops, barbershop_hours, services, employees
+//
+// Tabelas user-scoped (RLS por app.user_id):
+//   app_users, tenant_memberships
+//
+// Tabela tenants: visível só se user tem membership (RLS via subquery).
+//
+// Policies em raw SQL migration separada (ver migrations/*_rls_policies/).
 
 generator client {
   provider = "prisma-client-js"
@@ -13,7 +25,7 @@ datasource db {
 }
 
 /// Espelho do auth.users do Supabase. ID é o mesmo (sub do JWT).
-/// Populado via webhook do Supabase Auth no signup (a configurar no Sprint 1).
+/// Populado via lazy sync no TenantInterceptor (ON CONFLICT DO NOTHING).
 model AppUser {
   id          String   @id @db.Uuid
   email       String?  @unique
@@ -23,11 +35,14 @@ model AppUser {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  memberships TenantMembership[]
+  employees   Employee[]
+
   @@map("app_users")
 }
 
-/// Tenant raiz. Modelagem completa (Organization → Location → Barbershop)
-/// fica pro Sprint 1 — aqui só o suficiente pra provar o JWT/RLS pipeline.
+/// Tenant raiz = unidade de cobrança. 1:1 com Organization no caso comum;
+/// estrutura separada deixa porta aberta pra multi-org no futuro.
 model Tenant {
   id        String   @id @default(uuid()) @db.Uuid
   slug      String   @unique
@@ -36,5 +51,150 @@ model Tenant {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  organizations Organization[]
+  memberships   TenantMembership[]
+
   @@map("tenants")
+}
+
+/// Membership: quem tem acesso ao tenant e em que papéis.
+/// roles é array para suportar dono-que-também-é-barbeiro (ADR-001).
+model TenantMembership {
+  userId    String   @map("user_id") @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  roles     String[]
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user   AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([userId, tenantId])
+  @@index([tenantId])
+  @@map("tenant_memberships")
+}
+
+/// Organization = marca/CNPJ. Maioria dos tenants tem 1 só.
+/// Hierarquia preserva possibilidade de chain (Sprint 7+).
+model Organization {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  name        String
+  description String?
+  logoUrl     String?  @map("logo_url")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  locations Location[]
+
+  @@index([tenantId])
+  @@map("organizations")
+}
+
+/// Location = endereço físico (uma unidade pode ter várias barbearias dentro,
+/// mas no MVP é 1:1).
+model Location {
+  id             String  @id @default(uuid()) @db.Uuid
+  tenantId       String  @map("tenant_id") @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  name           String
+  addressLine1   String  @map("address_line_1")
+  addressLine2   String? @map("address_line_2")
+  city           String
+  state          String  @db.VarChar(2)
+  postalCode     String  @map("postal_code")
+  country        String  @default("BR") @db.VarChar(2)
+  lat            Decimal? @db.Decimal(10, 7)
+  lng            Decimal? @db.Decimal(10, 7)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  barbershops  Barbershop[]
+
+  @@index([tenantId])
+  @@index([organizationId])
+  @@map("locations")
+}
+
+/// Barbershop = unidade operacional. Tem horários, serviços, funcionários.
+model Barbershop {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  locationId  String   @map("location_id") @db.Uuid
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  location  Location          @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  hours     BarbershopHours[]
+  services  Service[]
+  employees Employee[]
+
+  @@index([tenantId])
+  @@index([locationId])
+  @@map("barbershops")
+}
+
+/// Janelas de funcionamento. Múltiplas linhas por weekday permitem
+/// horário com intervalo (ex: 9-12 e 14-19).
+model BarbershopHours {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  barbershopId String   @map("barbershop_id") @db.Uuid
+  weekday      Int      // 0=domingo, 1=segunda, ..., 6=sábado
+  opensAt      String   @map("opens_at") // HH:MM
+  closesAt     String   @map("closes_at") // HH:MM
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([barbershopId, weekday])
+  @@map("barbershop_hours")
+}
+
+/// Catálogo de serviços por barbershop. Preços em centavos (BRL).
+model Service {
+  id             String  @id @default(uuid()) @db.Uuid
+  tenantId       String  @map("tenant_id") @db.Uuid
+  barbershopId   String  @map("barbershop_id") @db.Uuid
+  name           String
+  description    String?
+  durationMin    Int     @map("duration_min")
+  basePriceCents Int     @map("base_price_cents")
+  isActive       Boolean @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([barbershopId])
+  @@map("services")
+}
+
+/// Funcionário (barbeiro ou admin). appUserId nulável: linhas existem
+/// antes do convite ser aceito (vincula no aceite).
+/// role: 'barber' | 'admin' | 'admin_barber'.
+model Employee {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  barbershopId String   @map("barbershop_id") @db.Uuid
+  appUserId    String?  @map("app_user_id") @db.Uuid
+  displayName  String   @map("display_name")
+  email        String?
+  role         String
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  appUser    AppUser?   @relation(fields: [appUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([barbershopId])
+  @@index([appUserId])
+  @@map("employees")
 }

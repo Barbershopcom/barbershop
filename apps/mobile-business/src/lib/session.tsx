@@ -64,6 +64,8 @@ interface SessionContextValue {
   signIn: (email: string, password: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
   retryLink: () => Promise<void>;
+  /** Re-busca employee+tenant+roles. Útil após mutação no perfil. */
+  refresh: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -152,8 +154,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function refresh(): Promise<void> {
+    if (state.status === 'linked' || state.status === 'linking' || state.status === 'link-failed') {
+      await attemptLink(state.session);
+    }
+  }
+
   return (
-    <SessionContext.Provider value={{ state, signIn, signOut, retryLink }}>
+    <SessionContext.Provider value={{ state, signIn, signOut, retryLink, refresh }}>
       {children}
     </SessionContext.Provider>
   );

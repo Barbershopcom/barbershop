@@ -1,4 +1,5 @@
-import { Redirect } from 'expo-router';
+import { Link, Redirect } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -64,10 +65,17 @@ export default function InicioScreen() {
           </Text>
         </View>
 
-        <View className="rounded-lg border border-border bg-background p-5 opacity-50">
-          <Text className="text-sm font-semibold text-foreground-secondary">Meu perfil</Text>
-          <Text className="mt-1 text-xs text-foreground-muted">Phase 2</Text>
-        </View>
+        <Link href="/perfil" asChild>
+          <Pressable className="flex-row items-center justify-between rounded-lg border border-border bg-background p-5 active:opacity-70">
+            <View>
+              <Text className="text-sm font-semibold text-foreground-secondary">Meu perfil</Text>
+              <Text className="mt-1 text-xs text-foreground-muted">
+                Editar nome de exibição
+              </Text>
+            </View>
+            <ChevronRight size={20} color="#727B8E" />
+          </Pressable>
+        </Link>
 
         <View className="rounded-lg border border-border bg-background p-5 opacity-50">
           <Text className="text-sm font-semibold text-foreground-secondary">Meus serviços</Text>

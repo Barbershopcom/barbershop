@@ -2,46 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Tokens semânticos do shadcn convertidos pra HSL (canal H S L sem hsl(...)).
+ * Fonte: @barbearia/design-tokens (paleta Figma do app barbeiro).
+ *
+ *   #FFFFFF → 0 0% 100%
+ *   #F7F8FD → 230 56% 98%
+ *   #202026 → 240 9% 14%
+ *   #434A57 → 218 13% 30%
+ *   #727B8E → 220 12% 50%
+ *   #ECEDF0 → 220 10% 93%
+ *   #357BE4 → 215 76% 55%
+ *   #F27508 →  28 94% 49%
+ *   #DC2626 →   0 71% 51%
+ */
+
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 240 9% 14%;
+
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --card-foreground: 240 9% 14%;
+
+    --primary: 215 76% 55%; /* brand blue #357BE4 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 230 56% 98%; /* muted bg #F7F8FD */
+    --secondary-foreground: 218 13% 30%; /* labels #434A57 */
+
+    --muted: 230 56% 98%;
+    --muted-foreground: 220 12% 50%; /* #727B8E */
+
+    --accent: 230 56% 98%; /* hover bg (shadcn convention) */
+    --accent-foreground: 218 13% 30%;
+
+    --destructive: 0 71% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 10% 93%; /* #ECEDF0 */
+    --input: 220 10% 93%;
+    --ring: 215 76% 55%; /* matches primary */
+
+    --radius: 0.5rem; /* 8px — radius padrão do Figma (botões, cards) */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Dark mode: aproximações; refinar quando entrar em escopo. */
+    --background: 240 9% 14%;
+    --foreground: 0 0% 100%;
+    --card: 240 9% 14%;
+    --card-foreground: 0 0% 100%;
+    --primary: 215 76% 65%;
+    --primary-foreground: 240 9% 14%;
+    --secondary: 218 13% 20%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 218 13% 20%;
+    --muted-foreground: 220 12% 65%;
+    --accent: 218 13% 20%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 71% 41%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 218 13% 20%;
+    --input: 218 13% 20%;
+    --ring: 215 76% 55%;
   }
 }
 

@@ -1,6 +1,7 @@
-// Metro config workspace-aware (Expo official recipe pra monorepo pnpm).
-// Sem isso, pnpm pode resolver expo/react-native em 2 locais (peer deps com hash
-// diferente), e o app crasha com 'getDevServer is not a function'.
+// Metro config workspace-aware (Expo official recipe pra monorepo).
+// Com .npmrc node-linker=hoisted, pnpm já cria flat node_modules — não
+// precisa de disableHierarchicalLookup. Mantemos watchFolders pra HMR de
+// packages/* (schemas, design-tokens) funcionar quando edita lá.
 
 const path = require('node:path');
 
@@ -18,7 +19,5 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(workspaceRoot, 'node_modules'),
 ];
-
-config.resolver.disableHierarchicalLookup = true;
 
 module.exports = withNativeWind(config, { input: './global.css' });

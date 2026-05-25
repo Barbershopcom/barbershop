@@ -2,3 +2,4 @@
 // conforme entidades forem modeladas no Sprint 1+.
 
 export * from './common';
+export * from './onboarding';

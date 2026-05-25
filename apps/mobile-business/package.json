@@ -5,6 +5,7 @@
   "main": "expo-router/entry",
   "scripts": {
     "dev": "cross-env EXPO_OFFLINE=1 expo start --port 8082",
+    "dev:clear": "cross-env EXPO_OFFLINE=1 expo start --port 8082 --clear",
     "ios": "cross-env EXPO_OFFLINE=1 expo start --ios --port 8082",
     "android": "cross-env EXPO_OFFLINE=1 expo start --android --port 8082",
     "web": "cross-env EXPO_OFFLINE=1 expo start --web --port 8082",

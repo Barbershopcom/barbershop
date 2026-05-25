@@ -1,6 +1,24 @@
+// Metro config workspace-aware (Expo official recipe pra monorepo pnpm).
+// Sem isso, pnpm pode resolver expo/react-native em 2 locais (peer deps com hash
+// diferente), e o app crasha com 'getDevServer is not a function'.
+
+const path = require('node:path');
+
 const { getDefaultConfig } = require('expo/metro-config');
 const { withNativeWind } = require('nativewind/metro');
 
-const config = getDefaultConfig(__dirname);
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, '../..');
+
+const config = getDefaultConfig(projectRoot);
+
+config.watchFolders = [workspaceRoot];
+
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
+
+config.resolver.disableHierarchicalLookup = true;
 
 module.exports = withNativeWind(config, { input: './global.css' });

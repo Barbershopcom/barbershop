@@ -10,6 +10,8 @@ import { useActiveTenant } from '@/lib/active-tenant';
 const navItems = [
   { href: '/admin', label: 'Início' },
   { href: '/admin/services', label: 'Serviços' },
+  { href: '/admin/team', label: 'Equipe' },
+  { href: '/admin/hours', label: 'Horários' },
 ] as const;
 
 export function AdminShell({ children }: { children: ReactNode }) {

@@ -22,7 +22,7 @@ export default function AdminHome() {
           /b/{tenant.slug} · {tenant.timezone} · papéis: {roles.join(', ') || '—'}
         </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Serviços</CardTitle>
@@ -37,11 +37,22 @@ export default function AdminHome() {
         <Card>
           <CardHeader>
             <CardTitle>Equipe</CardTitle>
-            <CardDescription>Em breve (Sprint 1 Phase 5)</CardDescription>
+            <CardDescription>Barbeiros e admins</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" disabled>
-              Em breve
+            <Button asChild>
+              <Link href="/admin/team">Gerenciar</Link>
+            </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Horários</CardTitle>
+            <CardDescription>Funcionamento da loja</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/admin/hours">Gerenciar</Link>
             </Button>
           </CardContent>
         </Card>

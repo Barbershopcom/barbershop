@@ -22,8 +22,18 @@ export const updateEmployeeSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+/**
+ * Schema restrito pra self-edit no mobile (PATCH /me/employee).
+ * Barbeiro só pode mudar campos do próprio perfil — role/isActive são
+ * gerenciados pelo admin via web. Email é tied to auth (Supabase).
+ */
+export const updateMyEmployeeSchema = z.object({
+  displayName: z.string().trim().min(2).max(100).optional(),
+});
+
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
+export type UpdateMyEmployeeInput = z.infer<typeof updateMyEmployeeSchema>;
 
 export interface EmployeeDto {
   id: string;

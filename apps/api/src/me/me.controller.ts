@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Body,
   ConflictException,
   Controller,
   ForbiddenException,
@@ -8,11 +9,14 @@ import {
   HttpStatus,
   Logger,
   NotFoundException,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { type UpdateMyEmployeeInput, updateMyEmployeeSchema } from '@barbearia/schemas';
 
 import { type AuthenticatedUser, CurrentUser } from '../auth/auth.decorators';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -69,6 +73,35 @@ export class MeController {
       roles: m.roles,
       joinedAt: m.createdAt,
     }));
+  }
+
+  @Patch('employee')
+  @ApiOkResponse({
+    description:
+      'Edita campos do próprio perfil (displayName). Não muda role/isActive — admin via web.',
+  })
+  async updateEmployee(
+    @Tx() ctx: TenantContextValue,
+    @Body(new ZodValidationPipe(updateMyEmployeeSchema)) body: UpdateMyEmployeeInput,
+  ) {
+    // RLS policy employees_self_update_linked permite UPDATE filtrado por
+    // app_user_id = sub. WITH CHECK garante que app_user_id não muda.
+    const existing = await ctx.tx.employee.findFirst({
+      where: { appUserId: ctx.userId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException(
+        'Usuário não vinculado a nenhum funcionário. Use POST /me/employee/link.',
+      );
+    }
+    await ctx.tx.employee.update({
+      where: { id: existing.id },
+      data: {
+        ...(body.displayName !== undefined && { displayName: body.displayName }),
+      },
+    });
+    return this.employee(ctx);
   }
 
   @Get('employee')

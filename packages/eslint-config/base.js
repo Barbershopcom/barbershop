@@ -4,7 +4,16 @@ import tseslint from 'typescript-eslint';
 /** @type {import('eslint').Linter.Config[]} */
 export default [
   {
-    ignores: ['**/dist/**', '**/build/**', '**/.next/**', '**/.expo/**', '**/node_modules/**'],
+    ignores: [
+      '**/dist/**',
+      '**/build/**',
+      '**/.next/**',
+      '**/.expo/**',
+      '**/node_modules/**',
+      '**/next-env.d.ts',
+      '**/nativewind-env.d.ts',
+      '**/expo-env.d.ts',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

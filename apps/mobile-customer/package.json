@@ -37,6 +37,7 @@
     "@babel/core": "^7.25.0",
     "@barbearia/eslint-config": "workspace:*",
     "@barbearia/tsconfig": "workspace:*",
+    "@types/node": "^22.10.0",
     "@types/react": "~19.1.17",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.15.0",

@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,86 +10,97 @@ import {
   View,
 } from 'react-native';
 
-import { getSupabase } from '@/lib/supabase';
+import { useSession } from '@/lib/session';
 
 export default function LoginScreen() {
+  const { state, signIn } = useSession();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Se já está autenticado, redireciona — evita ficar preso no login.
+  if (state.status === 'linked' || state.status === 'linking') {
+    return <Redirect href="/inicio" />;
+  }
+  if (state.status === 'link-failed') {
+    return <Redirect href="/sem-vinculo" />;
+  }
 
   async function handleSubmit() {
     setError(null);
-    setLoading(true);
-    try {
-      const supabase = getSupabase();
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-      if (authError) {
-        setError(authError.message);
-        return;
-      }
-      router.replace('/');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro inesperado');
-    } finally {
-      setLoading(false);
+    setSubmitting(true);
+    const result = await signIn(email.trim(), password);
+    setSubmitting(false);
+    if (!result.ok) {
+      setError(result.error ?? 'Falha no login');
+      return;
     }
+    // signIn dispara onAuthStateChange → state vira linking → /inicio renderiza
+    router.replace('/');
   }
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      className="flex-1 bg-white"
+      className="flex-1 bg-background"
     >
-      <View className="flex-1 justify-center gap-4 px-6">
-        <View className="gap-1">
-          <Text className="text-2xl font-bold text-slate-900">Entrar</Text>
-          <Text className="text-sm text-slate-500">Acesse com seu email e senha.</Text>
+      <View className="flex-1 justify-center gap-8 px-6">
+        <View className="items-center gap-2">
+          <View className="h-10 w-10 rounded-md bg-brand-orange" />
+          <Text className="text-lg font-medium text-foreground">Acesse sua conta</Text>
+          <Text className="text-xs text-foreground-muted">App do barbeiro / admin</Text>
         </View>
 
-        <View className="gap-2">
-          <Text className="text-sm font-medium text-slate-700">Email</Text>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            editable={!loading}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900"
-          />
+        <View className="gap-5">
+          <View className="gap-2">
+            <Text className="text-sm font-semibold text-foreground-secondary">Email</Text>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              editable={!submitting}
+              placeholder="exemple@gmail.com"
+              placeholderTextColor="#727B8E"
+              className="rounded-md border border-border bg-background px-4 py-3 text-base text-foreground"
+            />
+          </View>
+
+          <View className="gap-2">
+            <Text className="text-sm font-semibold text-foreground-secondary">Senha</Text>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="current-password"
+              editable={!submitting}
+              placeholder="••••••••"
+              placeholderTextColor="#727B8E"
+              className="rounded-md border border-border bg-background px-4 py-3 text-base text-foreground"
+            />
+          </View>
+
+          {error ? (
+            <Text className="text-sm text-destructive" accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : null}
+
+          <Pressable
+            onPress={handleSubmit}
+            disabled={submitting}
+            className="mt-2 items-center justify-center rounded-md bg-primary px-4 py-3 disabled:opacity-60"
+          >
+            {submitting ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text className="text-base font-bold text-white">Entrar</Text>
+            )}
+          </Pressable>
         </View>
-
-        <View className="gap-2">
-          <Text className="text-sm font-medium text-slate-700">Senha</Text>
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="current-password"
-            editable={!loading}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900"
-          />
-        </View>
-
-        {error ? (
-          <Text className="text-sm text-red-600" accessibilityRole="alert">
-            {error}
-          </Text>
-        ) : null}
-
-        <Pressable
-          onPress={handleSubmit}
-          disabled={loading}
-          className="mt-2 items-center justify-center rounded-md bg-slate-900 px-4 py-3 disabled:opacity-60"
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="text-base font-semibold text-white">Entrar</Text>
-          )}
-        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );

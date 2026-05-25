@@ -18,22 +18,35 @@ export class ApiError extends Error {
   }
 }
 
-async function authHeader(): Promise<HeadersInit> {
+async function authHeader(): Promise<Record<string, string>> {
   const supabase = createClient();
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   return token ? { authorization: `Bearer ${token}` } : {};
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+export interface RequestOptions {
+  /** Tenant alvo — vira X-Tenant-Id no header. Necessário em rotas tenant-scoped. */
+  tenantId?: string;
+}
+
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  opts?: RequestOptions,
+): Promise<T> {
   const auth = await authHeader();
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+    accept: 'application/json',
+    ...auth,
+  };
+  if (opts?.tenantId) headers['x-tenant-id'] = opts.tenantId;
+
   const res = await fetch(`${API_URL}${path.startsWith('/') ? path : `/${path}`}`, {
     method,
-    headers: {
-      'content-type': 'application/json',
-      accept: 'application/json',
-      ...auth,
-    },
+    headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
@@ -50,9 +63,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 export const api = {
-  get: <T = unknown>(path: string) => request<T>('GET', path),
-  post: <T = unknown>(path: string, body?: unknown) => request<T>('POST', path, body),
-  put: <T = unknown>(path: string, body?: unknown) => request<T>('PUT', path, body),
-  patch: <T = unknown>(path: string, body?: unknown) => request<T>('PATCH', path, body),
-  delete: <T = unknown>(path: string) => request<T>('DELETE', path),
+  get: <T = unknown>(path: string, opts?: RequestOptions) =>
+    request<T>('GET', path, undefined, opts),
+  post: <T = unknown>(path: string, body?: unknown, opts?: RequestOptions) =>
+    request<T>('POST', path, body, opts),
+  put: <T = unknown>(path: string, body?: unknown, opts?: RequestOptions) =>
+    request<T>('PUT', path, body, opts),
+  patch: <T = unknown>(path: string, body?: unknown, opts?: RequestOptions) =>
+    request<T>('PATCH', path, body, opts),
+  delete: <T = unknown>(path: string, opts?: RequestOptions) =>
+    request<T>('DELETE', path, undefined, opts),
 };

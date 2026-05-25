@@ -83,7 +83,7 @@ export default function OnboardingPage() {
         },
       };
       await api.post('/onboarding/tenant', payload);
-      router.replace('/dashboard');
+      router.replace('/admin');
     } catch (err) {
       if (err instanceof ApiError) {
         setSubmitError(err.message);

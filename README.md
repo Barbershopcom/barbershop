@@ -151,9 +151,53 @@ Workflow em `.github/workflows/ci.yml` roda em todo push/PR pra `main`:
 - `pnpm typecheck`
 - `pnpm lint`
 
+## Edição de schemas
+
+`packages/schemas` é compilado pra `dist/` via `tsc` — apps consomem o
+`.js` resultante, não o `.ts` direto. Quando você edita um schema:
+
+```sh
+# uma vez:
+pnpm --filter @barbearia/schemas build
+
+# ou, em dev contínuo (terminal separado, recomendado):
+pnpm --filter @barbearia/schemas dev
+```
+
+O modo `dev` (`tsc --watch`) recompila a cada save. API (`nest start --watch`)
+e Next dev/Expo Metro pegam a versão nova automaticamente.
+
+Em CI, `turbo run typecheck` resolve a ordem via `dependsOn: ['^build']`.
+
+## Edição de migrations Prisma
+
+```sh
+# Criar migration nova (modificou schema.prisma)
+pnpm --filter @barbearia/api prisma migrate dev --name nome_descritivo
+
+# Criar migration vazia pra editar SQL manualmente (RLS policies, roles)
+pnpm --filter @barbearia/api prisma migrate dev --name nome --create-only
+
+# Aplicar migrations pendentes
+pnpm --filter @barbearia/api prisma migrate dev
+```
+
+**Nunca edita uma migration já aplicada** — cria uma nova. ADR-001 #4.
+
 ## Troubleshooting
 
-- **`Cannot find module '@barbearia/...'`** — rodar `pnpm install` na raiz.
-- **API retorna 401 mesmo com JWT** — `SUPABASE_JWKS_URL`/`SUPABASE_JWT_ISSUER` desconfigurados; veja logs de boot.
-- **Expo não encontra IP do backend** — em vez de `localhost`, use o IP da máquina (`ipconfig` no Windows) em `EXPO_PUBLIC_API_URL`.
-- **NativeWind classes sem efeito** — confirme que `global.css` foi importado em `app/_layout.tsx`.
+- **`Cannot find module '@barbearia/...'`** — rodar `pnpm install` na raiz +
+  `pnpm --filter @barbearia/schemas build` (schemas compilam pra `dist/`).
+- **API retorna 401 mesmo com JWT** — `SUPABASE_JWKS_URL`/`SUPABASE_JWT_ISSUER`
+  desconfigurados; veja logs de boot. Ou JWT assinado com algoritmo diferente
+  (Supabase moderno usa ES256, antigo RS256 — `jwt.strategy.ts` aceita ambos).
+- **Expo não encontra IP do backend** — em vez de `localhost`, use o IP da
+  máquina (`ipconfig` no Windows) em `EXPO_PUBLIC_API_URL`.
+- **NativeWind classes sem efeito** — confirme que `global.css` foi importado
+  em `app/_layout.tsx`.
+- **`Expo CLI fetch failed` ao subir mobile** — Expo tenta validar versões
+  contra expo.dev no startup. Se firewall/VPN bloqueia, defina
+  `$env:EXPO_OFFLINE="1"` antes de `pnpm dev`.
+- **Prisma `P2028 Transaction not found`** — timeout do `$transaction` do
+  TenantInterceptor (default 5s, bumped pra 30s). Se persistir, considere
+  trocar `DATABASE_URL` pelo endpoint direct (sem pgbouncer).

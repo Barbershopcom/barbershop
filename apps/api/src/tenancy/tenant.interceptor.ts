@@ -51,36 +51,45 @@ export class TenantInterceptor implements NestInterceptor {
     req: Request,
     next: CallHandler,
   ): Promise<unknown> {
-    return this.prisma.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe('SET LOCAL ROLE app_user');
-      await tx.$executeRaw`SELECT set_config('app.user_id', ${user.id}, true)`;
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe('SET LOCAL ROLE app_user');
+        await tx.$executeRaw`SELECT set_config('app.user_id', ${user.id}, true)`;
 
-      // Lazy sync: garante que app_users tem linha pra esse user.
-      // Policy app_users_self_insert exige id = current_setting('app.user_id'),
-      // o que já foi setado acima.
-      await tx.$executeRaw`
-        INSERT INTO app_users (id, email, phone_e164, updated_at)
-        VALUES (${user.id}::uuid, ${user.email ?? null}, ${user.phone ?? null}, now())
-        ON CONFLICT (id) DO NOTHING
-      `;
+        // Lazy sync: garante que app_users tem linha pra esse user.
+        // Policy app_users_self_insert exige id = current_setting('app.user_id'),
+        // o que já foi setado acima.
+        await tx.$executeRaw`
+          INSERT INTO app_users (id, email, phone_e164, updated_at)
+          VALUES (${user.id}::uuid, ${user.email ?? null}, ${user.phone ?? null}, now())
+          ON CONFLICT (id) DO NOTHING
+        `;
 
-      const tenantId = this.extractTenantId(req);
-      if (tenantId) {
-        const ok = await this.userHasMembership(tx, user.id, tenantId);
-        if (!ok) {
-          TenantInterceptor.logger.warn(
-            `user=${user.id} tentou acessar tenant=${tenantId} sem membership`,
-          );
-          throw new ForbiddenException('Sem acesso a esse tenant');
+        const tenantId = this.extractTenantId(req);
+        if (tenantId) {
+          const ok = await this.userHasMembership(tx, user.id, tenantId);
+          if (!ok) {
+            TenantInterceptor.logger.warn(
+              `user=${user.id} tentou acessar tenant=${tenantId} sem membership`,
+            );
+            throw new ForbiddenException('Sem acesso a esse tenant');
+          }
+          await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
         }
-        await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
-      }
 
-      return TenantContext.run(
-        { userId: user.id, tenantId: tenantId ?? null, tx },
-        () => firstValueFrom(next.handle()),
-      );
-    });
+        return TenantContext.run(
+          { userId: user.id, tenantId: tenantId ?? null, tx },
+          () => firstValueFrom(next.handle()),
+        );
+      },
+      {
+        // Default Prisma é 5s; com Neon + pgbouncer pooler em transaction mode,
+        // múltiplas queries sequenciais dentro do tx às vezes excedem.
+        // 30s dá folga em cold start sem mascarar bug real.
+        maxWait: 10_000,
+        timeout: 30_000,
+      },
+    );
   }
 
   /**

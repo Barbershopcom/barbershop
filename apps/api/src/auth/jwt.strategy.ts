@@ -37,7 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'supabase-jwt') {
       ignoreExpiration: false,
       audience,
       issuer,
-      algorithms: ['RS256'],
+      algorithms: ['ES256', 'RS256'],
       secretOrKeyProvider: configured
         ? passportJwtSecret({
             cache: true,

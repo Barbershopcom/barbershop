@@ -4,8 +4,8 @@ import animate from 'tailwindcss-animate';
 // Preset compartilhado: adiciona brand-blue, brand-orange, brand-orange-soft
 // e mantém Inter/Manrope no fontFamily. As cores semânticas do shadcn
 // (background, primary, etc) são sobrescritas abaixo via CSS vars HSL.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const designTokensPreset = require('@barbearia/design-tokens/tailwind-preset');
+// Import (não require) — Next 15 carrega tailwind.config.ts em modo ESM.
+import designTokensPreset from '@barbearia/design-tokens/tailwind-preset';
 
 const config: Config = {
   presets: [designTokensPreset],

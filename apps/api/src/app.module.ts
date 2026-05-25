@@ -6,6 +6,7 @@ import { loadEnv } from './config/env';
 import { HealthModule } from './health/health.module';
 import { MeModule } from './me/me.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { TenancyModule } from './tenancy/tenancy.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { PrismaModule } from './prisma/prisma.module';
     }),
     PrismaModule,
     AuthModule,
+    TenancyModule,
     HealthModule,
     MeModule,
   ],

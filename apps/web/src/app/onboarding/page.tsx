@@ -105,7 +105,17 @@ export default function OnboardingPage() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            // Surface silent validation failures que poderiam acontecer em
+            // campos sem input visível (ex: default '' em field com .url()).
+            const flat = Object.entries(errors)
+              .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+              .join(' · ');
+            setSubmitError(`Validação falhou — ${flat}`);
+          })}
+          className="space-y-6"
+        >
           <Card>
             <CardContent className="pt-6">
               <Accordion

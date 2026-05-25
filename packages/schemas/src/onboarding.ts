@@ -4,6 +4,15 @@ import { slugSchema, timezoneSchema } from './common';
 
 const nonEmpty = (max: number) => z.string().trim().min(2).max(max);
 
+// Pre-processor: empty string ⇒ undefined antes da validação.
+// Previne falsos negativos quando form tem default '' em campos opcionais
+// com format validators (.url(), .email(), .regex(), etc).
+const emptyToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    schema,
+  );
+
 const tenantBlock = z.object({
   slug: slugSchema,
   name: nonEmpty(100),
@@ -12,8 +21,8 @@ const tenantBlock = z.object({
 
 const organizationBlock = z.object({
   name: nonEmpty(100),
-  description: z.string().trim().max(500).optional(),
-  logoUrl: z.string().url().optional(),
+  description: emptyToUndefined(z.string().trim().max(500).optional()),
+  logoUrl: emptyToUndefined(z.string().url().optional()),
 });
 
 const brazilianStates = [
@@ -24,7 +33,7 @@ const brazilianStates = [
 const locationBlock = z.object({
   name: nonEmpty(100),
   addressLine1: nonEmpty(200),
-  addressLine2: z.string().trim().max(200).optional(),
+  addressLine2: emptyToUndefined(z.string().trim().max(200).optional()),
   city: nonEmpty(100),
   state: z.enum(brazilianStates),
   postalCode: z
@@ -36,7 +45,7 @@ const locationBlock = z.object({
 
 const barbershopBlock = z.object({
   name: nonEmpty(100),
-  description: z.string().trim().max(500).optional(),
+  description: emptyToUndefined(z.string().trim().max(500).optional()),
 });
 
 export const createTenantOnboardingSchema = z.object({

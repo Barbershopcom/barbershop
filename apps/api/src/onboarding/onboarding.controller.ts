@@ -9,6 +9,7 @@ import {
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { type CreateTenantOnboardingInput, createTenantOnboardingSchema } from '@barbearia/schemas';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { type TenantContextValue } from '../tenancy/tenant-context';
@@ -37,28 +38,34 @@ export class OnboardingController {
       throw new ConflictException('Usuário já está vinculado a um tenant.');
     }
 
+    // Gera UUID no app para evitar RETURNING no tenant INSERT.
+    // RETURNING aplica a SELECT policy na linha recém-criada, e
+    // tenants_member_select exige membership — que ainda não existe.
+    // ID pré-gerado + raw INSERT sem RETURNING evita esse galho.
+    const tenantId = randomUUID();
+    const timezone = body.tenant.timezone;
+
     try {
-      // 1) tenant — RLS exige só app.user_id setado (interceptor já fez)
-      const tenant = await ctx.tx.tenant.create({
-        data: {
-          slug: body.tenant.slug,
-          name: body.tenant.name,
-          timezone: body.tenant.timezone,
-        },
-      });
+      // 1) tenant — INSERT raw, sem RETURNING
+      await ctx.tx.$executeRaw`
+        INSERT INTO tenants (id, slug, name, timezone, updated_at)
+        VALUES (${tenantId}::uuid, ${body.tenant.slug}, ${body.tenant.name}, ${timezone}, now())
+      `;
 
-      // 2) membership pro criador como admin — WITH CHECK passa porque user_id = app.user_id
+      // 2) membership pro criador como admin
+      //    SELECT policy de tenant_memberships (FOR SELECT) usa user_id = app.user_id,
+      //    que bate com o INSERT — RETURNING funciona via Prisma normal.
       await ctx.tx.tenantMembership.create({
-        data: { userId: ctx.userId, tenantId: tenant.id, roles: ['admin'] },
+        data: { userId: ctx.userId, tenantId, roles: ['admin'] },
       });
 
-      // 3) seta tenant context — daqui pra frente, RLS tenant-scoped libera inserts
-      await ctx.tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenant.id}, true)`;
+      // 3) tenant context setado — daqui pra frente, RLS tenant-scoped libera tudo
+      await ctx.tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
 
-      // 4) organization
+      // 4) organization (tenant-scoped SELECT policy: tenant_id = app.tenant_id ✓)
       const organization = await ctx.tx.organization.create({
         data: {
-          tenantId: tenant.id,
+          tenantId,
           name: body.organization.name,
           description: body.organization.description ?? null,
           logoUrl: body.organization.logoUrl ?? null,
@@ -68,7 +75,7 @@ export class OnboardingController {
       // 5) location
       const location = await ctx.tx.location.create({
         data: {
-          tenantId: tenant.id,
+          tenantId,
           organizationId: organization.id,
           name: body.location.name,
           addressLine1: body.location.addressLine1,
@@ -83,7 +90,7 @@ export class OnboardingController {
       // 6) barbershop
       const barbershop = await ctx.tx.barbershop.create({
         data: {
-          tenantId: tenant.id,
+          tenantId,
           locationId: location.id,
           name: body.barbershop.name,
           description: body.barbershop.description ?? null,
@@ -92,10 +99,10 @@ export class OnboardingController {
 
       return {
         tenant: {
-          id: tenant.id,
-          slug: tenant.slug,
-          name: tenant.name,
-          timezone: tenant.timezone,
+          id: tenantId,
+          slug: body.tenant.slug,
+          name: body.tenant.name,
+          timezone,
         },
         organizationId: organization.id,
         locationId: location.id,

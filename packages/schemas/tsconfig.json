@@ -1,5 +1,15 @@
 {
   "extends": "@barbearia/tsconfig/base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noEmit": false
+  },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

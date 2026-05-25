@@ -174,27 +174,39 @@ export class MeController {
       });
       this.logger.log(`[link] employee.update OK`);
 
-      // 4) Cria membership usando employee.tenantId direto.
-      //    IMPORTANTE: NÃO usar try/catch em volta do create — qualquer erro
-      //    Postgres aborta a tx inteira (25P02 'current transaction is aborted').
-      //    Checa explicitamente antes pra evitar conflitos.
+      // 4) Sincroniza membership.roles com employee.role (ADR-003 §5:
+      //    employee.role = source of truth, membership.roles = derived).
+      //    NÃO usa try/catch (erro Postgres aborta tx inteira). Check explicit.
+      const derivedRoles = rolesFor(employee.role);
       const existingMembership = await ctx.tx.tenantMembership.findUnique({
         where: {
           userId_tenantId: { userId: ctx.userId, tenantId: employee.tenantId },
         },
-        select: { userId: true },
+        select: { roles: true },
       });
       if (existingMembership) {
-        this.logger.log(`[link] membership já existia, pulando create`);
+        // UPDATE policy tenant_memberships_self_update permite (USING + WITH CHECK
+        // = user_id is mine). Sync roles to match employee.role.
+        await ctx.tx.tenantMembership.update({
+          where: {
+            userId_tenantId: { userId: ctx.userId, tenantId: employee.tenantId },
+          },
+          data: { roles: derivedRoles },
+        });
+        this.logger.log(
+          `[link] membership já existia, roles atualizados de [${existingMembership.roles.join(
+            ',',
+          )}] pra [${derivedRoles.join(',')}]`,
+        );
       } else {
         await ctx.tx.tenantMembership.create({
           data: {
             userId: ctx.userId,
             tenantId: employee.tenantId,
-            roles: rolesFor(employee.role),
+            roles: derivedRoles,
           },
         });
-        this.logger.log(`[link] membership.create OK`);
+        this.logger.log(`[link] membership.create OK roles=[${derivedRoles.join(',')}]`);
       }
 
       // 5) Retorna o employee + tenant (this.employee seta app.tenant_id internamente)

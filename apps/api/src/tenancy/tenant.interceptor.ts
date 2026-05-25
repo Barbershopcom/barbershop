@@ -55,6 +55,9 @@ export class TenantInterceptor implements NestInterceptor {
       async (tx) => {
         await tx.$executeRawUnsafe('SET LOCAL ROLE app_user');
         await tx.$executeRaw`SELECT set_config('app.user_id', ${user.id}, true)`;
+        // app.user_email habilita as policies de auto-link de Employee.
+        // Ver migration 20260525172531_employee_self_link_rls.
+        await tx.$executeRaw`SELECT set_config('app.user_email', ${user.email ?? ''}, true)`;
 
         // Lazy sync: garante que app_users tem linha pra esse user.
         // Policy app_users_self_insert exige id = current_setting('app.user_id'),

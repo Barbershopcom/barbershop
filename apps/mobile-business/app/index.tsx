@@ -5,15 +5,16 @@ import { useSession } from '@/lib/session';
 
 /**
  * Roteador inicial. Não renderiza UI própria — só decide pra onde mandar.
- *   loading                → spinner
+ *   loading | linking      → spinner (linking não pode ir pra /inicio: (app) layout
+ *                            exige status='linked' e devolveria pra cá → loop infinito)
  *   anonymous              → /login
- *   linking | linked       → /inicio (linked mostra tela real, linking mostra spinner)
  *   link-failed            → /sem-vinculo
+ *   linked                 → /inicio
  */
 export default function Index() {
   const { state } = useSession();
 
-  if (state.status === 'loading') {
+  if (state.status === 'loading' || state.status === 'linking') {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color="#357BE4" />
@@ -29,6 +30,5 @@ export default function Index() {
     return <Redirect href="/sem-vinculo" />;
   }
 
-  // linking | linked → vai pra inicio (tela trata os 2 sub-estados)
   return <Redirect href="/inicio" />;
 }

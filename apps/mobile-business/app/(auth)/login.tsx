@@ -20,12 +20,14 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (state.status === 'linked' || state.status === 'linking') {
+  if (state.status === 'linked') {
     return <Redirect href="/inicio" />;
   }
   if (state.status === 'link-failed') {
     return <Redirect href="/sem-vinculo" />;
   }
+  // 'linking' permanece aqui mostrando o form desabilitado/spinner via submitting;
+  // mandar pra /inicio durante linking causa loop com (app)/_layout que exige 'linked'.
 
   async function handleSubmit() {
     setError(null);

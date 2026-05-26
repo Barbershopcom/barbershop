@@ -20,7 +20,6 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Se já está autenticado, redireciona — evita ficar preso no login.
   if (state.status === 'linked' || state.status === 'linking') {
     return <Redirect href="/inicio" />;
   }
@@ -37,7 +36,6 @@ export default function LoginScreen() {
       setError(result.error ?? 'Falha no login');
       return;
     }
-    // signIn dispara onAuthStateChange → state vira linking → /inicio renderiza
     router.replace('/');
   }
 
@@ -46,13 +44,19 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       className="flex-1 bg-background"
     >
-      <View className="flex-1 justify-center gap-8 px-6">
-        <View className="items-center gap-2">
-          <View className="h-10 w-10 rounded-md bg-brand-orange" />
-          <Text className="text-lg font-medium text-foreground">Acesse sua conta</Text>
-          <Text className="text-xs text-foreground-muted">App do barbeiro / admin</Text>
+      <View className="flex-1 justify-center gap-10 px-6">
+        {/* Logo + headline */}
+        <View className="items-center gap-5">
+          <View className="h-12 w-12 items-center justify-center rounded-md bg-brand-orange">
+            <View className="h-5 w-5 rounded-sm bg-white opacity-90" />
+          </View>
+          <View className="items-center gap-1">
+            <Text className="text-lg font-medium text-foreground">Acesse sua conta</Text>
+            <Text className="text-xs text-foreground-muted">App do barbeiro / admin</Text>
+          </View>
         </View>
 
+        {/* Form */}
         <View className="gap-5">
           <View className="gap-2">
             <Text className="text-sm font-semibold text-foreground-secondary">Email</Text>
@@ -92,12 +96,12 @@ export default function LoginScreen() {
           <Pressable
             onPress={handleSubmit}
             disabled={submitting}
-            className="mt-2 items-center justify-center rounded-md bg-primary px-4 py-3 disabled:opacity-60"
+            className="mt-2 items-center justify-center rounded-lg bg-primary px-4 py-4 disabled:opacity-60"
           >
             {submitting ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-base font-bold text-white">Entrar</Text>
+              <Text className="text-base font-bold text-white">Login</Text>
             )}
           </Pressable>
         </View>

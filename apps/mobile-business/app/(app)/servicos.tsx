@@ -1,15 +1,9 @@
 import type { MyServiceItem } from '@barbearia/schemas';
-import { Redirect, useRouter } from 'expo-router';
-import { Check, ChevronLeft } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
+import { Header, initialsOf } from '@/components/Header';
 import { api, ApiError } from '@/lib/api';
 import { useSession } from '@/lib/session';
 
@@ -26,13 +20,11 @@ function duration(min: number): string {
 
 export default function ServicosScreen() {
   const { state } = useSession();
-  const router = useRouter();
   const [items, setItems] = useState<MyServiceItem[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
-  /** Set local de IDs marcados — espelha items mas é o source of truth pro form. */
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   async function refresh() {
@@ -50,9 +42,7 @@ export default function ServicosScreen() {
     void refresh();
   }, []);
 
-  if (state.status !== 'linked') {
-    return <Redirect href="/" />;
-  }
+  if (state.status !== 'linked') return null;
 
   function toggle(serviceId: string) {
     setSelected((prev) => {
@@ -64,7 +54,6 @@ export default function ServicosScreen() {
     setSaveError(null);
   }
 
-  // Detecta alterações vs estado servidor
   const originalSet = new Set(items?.filter((i) => i.mine).map((i) => i.service.id) ?? []);
   const dirty =
     selected.size !== originalSet.size ||
@@ -91,25 +80,21 @@ export default function ServicosScreen() {
 
   return (
     <View className="flex-1 bg-background-muted">
-      <View className="bg-background px-6 pb-6 pt-12">
-        <Pressable
-          onPress={() => router.back()}
-          className="mb-3 flex-row items-center gap-1 self-start"
-        >
-          <ChevronLeft size={18} color="#727B8E" />
-          <Text className="text-sm text-foreground-muted">Voltar</Text>
-        </Pressable>
-        <Text className="text-xl font-medium text-foreground">Meus serviços</Text>
-        <Text className="mt-1 text-xs text-foreground-muted">
+      <Header
+        caption="Serviços"
+        title="Meus serviços"
+        avatarInitial={initialsOf(state.employee.displayName)}
+      />
+
+      <ScrollView
+        className="flex-1 rounded-t-3xl bg-background"
+        contentContainerClassName="px-6 py-6 pb-32 gap-3"
+      >
+        <Text className="text-xs text-foreground-muted">
           Marque os serviços do catálogo da barbearia que você atende. Clientes só te veem como
           opção pra serviços marcados.
         </Text>
-      </View>
 
-      <ScrollView
-        className="mt-3 flex-1 rounded-t-3xl bg-background"
-        contentContainerClassName="px-6 py-6 pb-32"
-      >
         {loadError ? (
           <Text className="text-sm text-destructive">{loadError}</Text>
         ) : items === null ? (
@@ -160,22 +145,21 @@ export default function ServicosScreen() {
         )}
 
         {saveError ? (
-          <Text className="mt-3 text-sm text-destructive" accessibilityRole="alert">
+          <Text className="mt-2 text-sm text-destructive" accessibilityRole="alert">
             {saveError}
           </Text>
         ) : null}
-        {savedFlash ? <Text className="mt-3 text-sm text-success">Salvo!</Text> : null}
+        {savedFlash ? <Text className="mt-2 text-sm text-success">Salvo!</Text> : null}
       </ScrollView>
 
-      {/* Save fixo no rodapé */}
-      <View className="border-t border-border bg-background px-6 pb-8 pt-4">
+      <View className="border-t border-border bg-background px-6 pb-6 pt-4">
         <Text className="mb-2 text-xs text-foreground-muted">
           {selected.size} de {items?.length ?? 0} marcados
         </Text>
         <Pressable
           onPress={save}
           disabled={!dirty || saving}
-          className="items-center justify-center rounded-md bg-primary px-4 py-3 disabled:opacity-40"
+          className="items-center justify-center rounded-lg bg-primary px-4 py-4 disabled:opacity-40"
         >
           {saving ? (
             <ActivityIndicator color="white" />

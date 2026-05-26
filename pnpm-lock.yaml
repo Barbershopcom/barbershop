@@ -123,6 +123,9 @@ importers:
       '@barbearia/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
+      '@barbearia/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
         version: 2.2.0(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))
@@ -223,6 +226,9 @@ importers:
       '@barbearia/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
+      '@barbearia/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
         version: 2.2.0(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))

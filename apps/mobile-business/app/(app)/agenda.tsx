@@ -5,8 +5,7 @@ import {
   weekdayLabels,
   weekdays,
 } from '@barbearia/schemas';
-import { Redirect, useRouter } from 'expo-router';
-import { ChevronLeft, Plus, Trash2 } from 'lucide-react-native';
+import { Plus, Trash2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,6 +17,7 @@ import {
   View,
 } from 'react-native';
 
+import { Header, initialsOf } from '@/components/Header';
 import { api, ApiError } from '@/lib/api';
 import { useSession } from '@/lib/session';
 
@@ -43,7 +43,6 @@ function groupByDay(rows: MyScheduleItem[]): DayState[] {
   }));
 }
 
-// Simple time input que aceita HH:MM. Mobile não tem input type=time confiável.
 function TimeInput({
   value,
   onChange,
@@ -57,7 +56,6 @@ function TimeInput({
     <TextInput
       value={value}
       onChangeText={(v) => {
-        // Auto-formata: 0830 → 08:30. Aceita apenas dígitos e :.
         const cleaned = v.replace(/[^0-9:]/g, '');
         if (cleaned.length === 4 && !cleaned.includes(':')) {
           onChange(`${cleaned.slice(0, 2)}:${cleaned.slice(2)}`);
@@ -77,7 +75,6 @@ function TimeInput({
 
 export default function AgendaScreen() {
   const { state } = useSession();
-  const router = useRouter();
   const [week, setWeek] = useState<DayState[]>(emptyWeek());
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -100,7 +97,7 @@ export default function AgendaScreen() {
     void refresh();
   }, []);
 
-  if (state.status !== 'linked') return <Redirect href="/" />;
+  if (state.status !== 'linked') return null;
 
   function addRange(weekday: Weekday) {
     setWeek((prev) =>
@@ -152,7 +149,6 @@ export default function AgendaScreen() {
           closesAt: r.closesAt,
         })),
       );
-      // Validação client-side: HH:MM válido + closes > opens
       for (const r of ranges) {
         if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(r.opensAt) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(r.closesAt)) {
           throw new Error(
@@ -178,25 +174,21 @@ export default function AgendaScreen() {
 
   return (
     <View className="flex-1 bg-background-muted">
-      <View className="bg-background px-6 pb-6 pt-12">
-        <Pressable
-          onPress={() => router.back()}
-          className="mb-3 flex-row items-center gap-1 self-start"
-        >
-          <ChevronLeft size={18} color="#727B8E" />
-          <Text className="text-sm text-foreground-muted">Voltar</Text>
-        </Pressable>
-        <Text className="text-xl font-medium text-foreground">Minha agenda</Text>
-        <Text className="mt-1 text-xs text-foreground-muted">
+      <Header
+        caption="Agenda"
+        title="Minha semana"
+        avatarInitial={initialsOf(state.employee.displayName)}
+      />
+
+      <ScrollView
+        className="flex-1 rounded-t-3xl bg-background"
+        contentContainerClassName="px-6 py-6 pb-32 gap-3"
+      >
+        <Text className="text-xs text-foreground-muted">
           Defina quando você atende em cada dia. Dias sem faixa = não trabalha. Múltiplas faixas
           por dia (ex: manhã 9-12, tarde 14-19).
         </Text>
-      </View>
 
-      <ScrollView
-        className="mt-3 flex-1 rounded-t-3xl bg-background"
-        contentContainerClassName="px-6 py-6 pb-32"
-      >
         {loadError ? (
           <Text className="text-sm text-destructive">{loadError}</Text>
         ) : !loaded ? (
@@ -256,18 +248,18 @@ export default function AgendaScreen() {
         )}
 
         {saveError ? (
-          <Text className="mt-3 text-sm text-destructive" accessibilityRole="alert">
+          <Text className="mt-2 text-sm text-destructive" accessibilityRole="alert">
             {saveError}
           </Text>
         ) : null}
-        {savedFlash ? <Text className="mt-3 text-sm text-success">Salvo!</Text> : null}
+        {savedFlash ? <Text className="mt-2 text-sm text-success">Salvo!</Text> : null}
       </ScrollView>
 
-      <View className="border-t border-border bg-background px-6 pb-8 pt-4">
+      <View className="border-t border-border bg-background px-6 pb-6 pt-4">
         <Pressable
           onPress={save}
           disabled={saving || !loaded}
-          className="items-center justify-center rounded-md bg-primary px-4 py-3 disabled:opacity-40"
+          className="items-center justify-center rounded-lg bg-primary px-4 py-4 disabled:opacity-40"
         >
           {saving ? (
             <ActivityIndicator color="white" />

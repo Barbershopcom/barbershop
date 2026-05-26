@@ -8,7 +8,6 @@ export default function SemVinculoScreen() {
   const [busy, setBusy] = useState(false);
 
   if (state.status !== 'link-failed') {
-    // Estado mudou (linked ou anonymous) — index.tsx redireciona.
     return null;
   }
 
@@ -37,7 +36,7 @@ export default function SemVinculoScreen() {
         </Text>
       </View>
 
-      <View className="gap-2 rounded-md border border-border bg-background-muted p-4">
+      <View className="gap-2 rounded-lg border border-border bg-background-muted p-4">
         <Text className="text-sm font-semibold text-foreground-secondary">Próximos passos</Text>
         <Text className="text-sm text-foreground-muted">
           1. Confira com o admin da barbearia se ele te cadastrou com o email exato:{' '}
@@ -54,7 +53,7 @@ export default function SemVinculoScreen() {
         <Pressable
           onPress={handleRetry}
           disabled={busy}
-          className="items-center justify-center rounded-md bg-primary px-4 py-3 disabled:opacity-60"
+          className="items-center justify-center rounded-lg bg-primary px-4 py-4 disabled:opacity-60"
         >
           {busy ? (
             <ActivityIndicator color="white" />
@@ -66,7 +65,7 @@ export default function SemVinculoScreen() {
         <Pressable
           onPress={handleSignOut}
           disabled={busy}
-          className="items-center justify-center rounded-md border border-border px-4 py-3 disabled:opacity-60"
+          className="items-center justify-center rounded-lg border border-border px-4 py-4 disabled:opacity-60"
         >
           <Text className="text-base font-medium text-foreground-secondary">Sair</Text>
         </Pressable>

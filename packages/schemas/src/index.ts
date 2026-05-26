@@ -2,6 +2,7 @@
 // conforme entidades forem modeladas no Sprint 1+.
 
 export * from './barbershop-hours';
+export * from './capabilities';
 export * from './common';
 export * from './employees';
 export * from './onboarding';

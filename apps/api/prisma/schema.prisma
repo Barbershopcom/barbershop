@@ -168,7 +168,8 @@ model Service {
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  barbershop   Barbershop                @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  capabilities BarberServiceCapability[]
 
   @@index([tenantId])
   @@index([barbershopId])
@@ -190,11 +191,29 @@ model Employee {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  appUser    AppUser?   @relation(fields: [appUserId], references: [id], onDelete: SetNull)
+  barbershop   Barbershop                @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  appUser      AppUser?                  @relation(fields: [appUserId], references: [id], onDelete: SetNull)
+  capabilities BarberServiceCapability[]
 
   @@index([tenantId])
   @@index([barbershopId])
   @@index([appUserId])
   @@map("employees")
+}
+
+/// Capability M:N — quais services um barbeiro atende.
+/// Per-barber price/duration override fica deferido (ADR-003 §3).
+model BarberServiceCapability {
+  tenantId  String   @map("tenant_id") @db.Uuid
+  barberId  String   @map("barber_id") @db.Uuid
+  serviceId String   @map("service_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  barber  Employee @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  service Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([barberId, serviceId])
+  @@index([tenantId])
+  @@index([serviceId])
+  @@map("barber_service_capabilities")
 }

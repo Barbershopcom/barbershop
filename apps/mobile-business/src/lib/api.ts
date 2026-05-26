@@ -28,6 +28,26 @@ async function authHeader(): Promise<Record<string, string>> {
   return token ? { authorization: `Bearer ${token}` } : {};
 }
 
+/**
+ * Quando uma chamada autenticada volta 401, o token Supabase
+ * provavelmente expirou ou foi revogado. Forçamos signOut local —
+ * o onAuthStateChange em session.tsx leva o usuário pro /login.
+ *
+ * Exceção: rotas onde o 401 é legítimo de domínio (não auth). Hoje
+ * /me/employee/link é a única que poderia retornar 401 por motivo
+ * de negócio, mas no design atual ela retorna 404 ("não vinculado"),
+ * então tratar 401 como "token inválido" é seguro.
+ */
+async function handleUnauthorized(): Promise<void> {
+  try {
+    const supabase = getSupabase();
+    await supabase.auth.signOut();
+  } catch {
+    // signOut falhando aqui não tem o que fazer — onAuthStateChange
+    // não vai disparar mas o erro 401 já vai borbulhar pra UI.
+  }
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -55,6 +75,9 @@ async function request<T>(
       : await res.text();
 
   if (!res.ok) {
+    if (res.status === 401) {
+      void handleUnauthorized();
+    }
     throw new ApiError(res.status, parsed);
   }
   return parsed as T;

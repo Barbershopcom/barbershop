@@ -16,6 +16,18 @@ const schema = z.object({
     .string()
     .default('')
     .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean)),
+
+  // Email (Sprint 5). Sem RESEND_API_KEY o EmailService loga warning e
+  // funciona como no-op — booking continua mesmo sem email configurado.
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().email().default('onboarding@resend.dev'),
+  /** URL pública usada nos magic links do email (sem trailing slash). */
+  PUBLIC_WEB_URL: z.string().url().default('http://localhost:3000'),
+  /** Secret HMAC pros tokens de cancel (mínimo 32 chars em prod). */
+  APPOINTMENT_CANCEL_SECRET: z
+    .string()
+    .min(16, 'APPOINTMENT_CANCEL_SECRET deve ter pelo menos 16 chars')
+    .default('dev-only-cancel-secret-CHANGE-IN-PROD-please'),
 });
 
 export type Env = z.infer<typeof schema>;

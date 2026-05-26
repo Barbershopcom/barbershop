@@ -45,12 +45,12 @@ async function bootstrap(): Promise<void> {
   const port = config.get<number>('PORT') ?? 3333;
   await app.listen(port, '0.0.0.0');
 
-  // eslint-disable-next-line no-console
+   
   console.log(`API on http://localhost:${port} (docs: /docs)`);
 }
 
 bootstrap().catch((err) => {
-  // eslint-disable-next-line no-console
+   
   console.error('Failed to bootstrap API', err);
   process.exit(1);
 });

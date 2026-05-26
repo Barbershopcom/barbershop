@@ -1,9 +1,27 @@
+import type { MyAppointmentItem } from '@barbearia/schemas';
 import { Link } from 'expo-router';
-import { CalendarDays, ChevronRight, LogOut, Scissors, Sparkles, UserRound } from 'lucide-react-native';
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  CalendarDays,
+  ChevronRight,
+  LogOut,
+  Phone,
+  Scissors,
+  Sparkles,
+  UserRound,
+} from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 
 import { Header, initialsOf } from '@/components/Header';
+import { api, ApiError } from '@/lib/api';
 import { useSession } from '@/lib/session';
 
 function roleLabel(role: 'admin' | 'barber' | 'admin_barber'): string {
@@ -17,18 +35,59 @@ function roleLabel(role: 'admin' | 'barber' | 'admin_barber'): string {
   }
 }
 
+/** YYYY-MM-DD de hoje no timezone do device. */
+function todayDateString(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function InicioScreen() {
   const { state, signOut } = useSession();
   const [signingOut, setSigningOut] = useState(false);
+  const [appointments, setAppointments] = useState<MyAppointmentItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setError(null);
+    try {
+      const today = todayDateString();
+      const data = await api.get<MyAppointmentItem[]>(
+        `/me/appointments?from=${today}&to=${today}`,
+      );
+      setAppointments(data);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Erro ao carregar agendamentos');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (state.status === 'linked') void refresh();
+  }, [state.status, refresh]);
 
   if (state.status !== 'linked') return null;
 
   const { employee, barbershop, tenant } = state;
   const firstName = employee.displayName.split(' ')[0] ?? employee.displayName;
+  const count = appointments?.length ?? 0;
 
   async function handleSignOut() {
     setSigningOut(true);
     await signOut();
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
   }
 
   return (
@@ -42,29 +101,66 @@ export default function InicioScreen() {
       <ScrollView
         className="flex-1 rounded-t-3xl bg-background"
         contentContainerClassName="p-6 pb-12 gap-5"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#357BE4" />
+        }
       >
-        {/* Banner laranja-soft (placeholder até Sprint 4 ter appointments) */}
-        <View className="flex-row items-center gap-4 rounded-lg border border-border bg-brand-orange-soft p-5">
+        {/* Banner contagem do dia — laranja se >0, neutro se 0 */}
+        <View
+          className={`flex-row items-center gap-4 rounded-lg border p-5 ${
+            count > 0
+              ? 'border-border bg-brand-orange-soft'
+              : 'border-border bg-background-muted'
+          }`}
+        >
           <View className="flex-1 gap-1">
             <View className="flex-row items-center gap-2">
-              <View className="rounded-full bg-brand-orange px-2.5 py-0.5">
-                <Text className="text-xs font-semibold text-white">0 pendentes</Text>
+              <View
+                className={`rounded-full px-2.5 py-0.5 ${
+                  count > 0 ? 'bg-brand-orange' : 'bg-foreground-muted'
+                }`}
+              >
+                <Text className="text-xs font-semibold text-white">
+                  {count} {count === 1 ? 'hoje' : 'hoje'}
+                </Text>
               </View>
             </View>
-            <Text className="text-base font-medium text-foreground">Veja seus agendamentos</Text>
+            <Text className="text-base font-medium text-foreground">
+              {count === 0
+                ? 'Sem agendamentos hoje'
+                : count === 1
+                  ? '1 agendamento hoje'
+                  : `${count} agendamentos hoje`}
+            </Text>
             <Text className="text-xs text-foreground-muted">
-              Em breve (Sprint 4) — push notification quando cliente agendar.
+              Puxe pra baixo pra atualizar.
             </Text>
           </View>
-          <Sparkles size={32} color="#F27508" strokeWidth={1.5} />
+          <Sparkles size={32} color={count > 0 ? '#F27508' : '#727B8E'} strokeWidth={1.5} />
         </View>
+
+        {/* Lista do dia */}
+        {error ? (
+          <Text className="text-sm text-destructive">{error}</Text>
+        ) : appointments === null ? (
+          <View className="items-center py-6">
+            <ActivityIndicator color="#357BE4" />
+          </View>
+        ) : appointments.length > 0 ? (
+          <View className="gap-2">
+            <Text className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+              Hoje
+            </Text>
+            {appointments.map((a) => (
+              <AppointmentRow key={a.id} item={a} />
+            ))}
+          </View>
+        ) : null}
 
         {/* Info da barbearia */}
         <View className="gap-1 rounded-lg border border-border bg-background-muted p-4">
           <Text className="text-xs text-foreground-muted">Você trabalha em</Text>
-          <Text className="text-sm font-semibold text-foreground">
-            {tenant?.name ?? '—'}
-          </Text>
+          <Text className="text-sm font-semibold text-foreground">{tenant?.name ?? '—'}</Text>
           <Text className="text-xs text-foreground-muted">
             {barbershop?.name ?? '—'} · {roleLabel(employee.role)}
           </Text>
@@ -75,7 +171,6 @@ export default function InicioScreen() {
           <Text className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">
             Configurações
           </Text>
-
           <MenuRow
             href="/perfil"
             icon={<UserRound size={20} color="#357BE4" />}
@@ -112,6 +207,35 @@ export default function InicioScreen() {
           )}
         </Pressable>
       </ScrollView>
+    </View>
+  );
+}
+
+function AppointmentRow({ item }: { item: MyAppointmentItem }) {
+  function callCustomer() {
+    if (!item.customerPhone) return;
+    void Linking.openURL(`tel:${item.customerPhone}`);
+  }
+
+  return (
+    <View className="flex-row items-center gap-3 rounded-lg border border-border bg-background p-4">
+      <View className="w-16 items-center">
+        <Text className="text-base font-bold text-foreground">{formatTime(item.startAt)}</Text>
+        <Text className="text-xs text-foreground-muted">{item.service.durationMin}min</Text>
+      </View>
+      <View className="flex-1">
+        <Text className="text-sm font-semibold text-foreground">{item.customerName}</Text>
+        <Text className="text-xs text-foreground-muted">{item.service.name}</Text>
+      </View>
+      {item.customerPhone ? (
+        <Pressable
+          onPress={callCustomer}
+          className="h-10 w-10 items-center justify-center rounded-full bg-primary/10 active:opacity-60"
+          accessibilityLabel={`Ligar para ${item.customerName}`}
+        >
+          <Phone size={18} color="#357BE4" />
+        </Pressable>
+      ) : null}
     </View>
   );
 }

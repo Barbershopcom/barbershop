@@ -9,6 +9,7 @@ import { useActiveTenant } from '@/lib/active-tenant';
 
 const navItems = [
   { href: '/admin', label: 'Início' },
+  { href: '/admin/agenda', label: 'Agenda' },
   { href: '/admin/services', label: 'Serviços' },
   { href: '/admin/team', label: 'Equipe' },
   { href: '/admin/hours', label: 'Horários' },

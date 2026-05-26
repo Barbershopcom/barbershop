@@ -127,10 +127,11 @@ model Barbershop {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  location  Location          @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  hours     BarbershopHours[]
-  services  Service[]
-  employees Employee[]
+  location     Location          @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  hours        BarbershopHours[]
+  services     Service[]
+  employees    Employee[]
+  appointments Appointment[]
 
   @@index([tenantId])
   @@index([locationId])
@@ -156,6 +157,11 @@ model BarbershopHours {
 }
 
 /// Catálogo de serviços por barbershop. Preços em centavos (BRL).
+///
+/// bufferMin: tempo após o serviço durante o qual o barbeiro fica
+/// indisponível (limpeza, pausa). Default 0 — barbershops simples não
+/// precisam disso. SlotsService.compute() considera no overlap check
+/// (ADR-005 §8).
 model Service {
   id             String  @id @default(uuid()) @db.Uuid
   tenantId       String  @map("tenant_id") @db.Uuid
@@ -163,6 +169,7 @@ model Service {
   name           String
   description    String?
   durationMin    Int     @map("duration_min")
+  bufferMin      Int     @default(0) @map("buffer_min")
   basePriceCents Int     @map("base_price_cents")
   isActive       Boolean @default(true) @map("is_active")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -170,6 +177,7 @@ model Service {
 
   barbershop   Barbershop                @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   capabilities BarberServiceCapability[]
+  appointments Appointment[]
 
   @@index([tenantId])
   @@index([barbershopId])
@@ -195,6 +203,7 @@ model Employee {
   appUser      AppUser?                  @relation(fields: [appUserId], references: [id], onDelete: SetNull)
   capabilities BarberServiceCapability[]
   schedules    BarberSchedule[]
+  appointments Appointment[]
 
   @@index([tenantId])
   @@index([barbershopId])
@@ -237,4 +246,65 @@ model BarberServiceCapability {
   @@index([tenantId])
   @@index([serviceId])
   @@map("barber_service_capabilities")
+}
+
+/// Idempotency key — pra POSTs públicos retentáveis.
+///
+/// Cliente gera UUID antes de mandar booking. Backend cacheia
+/// (request_hash, response_status, response_body). Mesma key + mesmo
+/// hash retorna response cacheado; mesma key + hash diferente → 422.
+///
+/// RLS bypass: endpoint público (mesmo padrão do slots — ADR-004 §5).
+/// App-level garante scoping por tenant_id no SELECT.
+model IdempotencyKey {
+  key             String   @id @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  requestHash     String   @map("request_hash")
+  responseStatus  Int      @map("response_status")
+  responseBody    Json     @map("response_body")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("idempotency_keys")
+}
+
+/// Appointment = horário reservado por um cliente com um barbeiro.
+/// Sprint 3 introduz o modelo; endpoint de criação (POST) entra
+/// no Sprint 4 — por enquanto, populado via seed pra testar slots.
+///
+/// end_at é armazenado (não derivado) pra blindar contra mudança de
+/// service.duration_min depois do appointment ser criado (ADR-004 §3).
+///
+/// status: 'booked' | 'cancelled' | 'completed' | 'no_show'.
+/// Slots subtraem só os com status='booked'.
+model Appointment {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  barbershopId   String    @map("barbershop_id") @db.Uuid
+  barberId       String    @map("barber_id") @db.Uuid
+  serviceId      String    @map("service_id") @db.Uuid
+  customerName   String    @map("customer_name")
+  customerPhone  String?   @map("customer_phone")
+  customerEmail  String?   @map("customer_email")
+  startAt        DateTime  @map("start_at") @db.Timestamptz(6)
+  endAt          DateTime  @map("end_at") @db.Timestamptz(6)
+  status         String    @default("booked")
+  /** 'customer' | 'admin' | 'system'. Null se não cancelado. */
+  cancelledBy    String?   @map("cancelled_by")
+  cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason   String?   @map("cancel_reason")
+  /** Quando o reminder email foi disparado (idempotência do worker). */
+  reminderSentAt DateTime? @map("reminder_sent_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  barber     Employee   @relation(fields: [barberId], references: [id], onDelete: Restrict)
+  service    Service    @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([barberId, startAt])
+  @@index([barbershopId, startAt])
+  @@index([status])
+  @@map("appointments")
 }

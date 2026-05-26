@@ -1,10 +1,18 @@
+import reactHooks from 'eslint-plugin-react-hooks';
+
 import base from './base.js';
 
-/** @type {import('eslint').Linter.Config[]} */
+/** Só rules-of-hooks + exhaustive-deps (idem nextjs.js). */
 export default [
   ...base,
   {
     files: ['**/*.tsx', '**/*.ts'],
-    rules: {},
+    plugins: {
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
   },
 ];

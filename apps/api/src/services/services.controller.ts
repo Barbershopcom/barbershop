@@ -116,6 +116,7 @@ export class ServicesController {
         name: body.name,
         description: body.description ?? null,
         durationMin: body.durationMin,
+        bufferMin: body.bufferMin,
         basePriceCents: body.basePriceCents,
         isActive: body.isActive,
       },
@@ -146,6 +147,7 @@ export class ServicesController {
             description: body.description ?? null,
           }),
           ...(body.durationMin !== undefined && { durationMin: body.durationMin }),
+          ...(body.bufferMin !== undefined && { bufferMin: body.bufferMin }),
           ...(body.basePriceCents !== undefined && {
             basePriceCents: body.basePriceCents,
           }),

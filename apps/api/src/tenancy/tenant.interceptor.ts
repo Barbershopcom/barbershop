@@ -62,9 +62,14 @@ export class TenantInterceptor implements NestInterceptor {
         // Lazy sync: garante que app_users tem linha pra esse user.
         // Policy app_users_self_insert exige id = current_setting('app.user_id'),
         // o que já foi setado acima.
+        // ?? não trata string vazia — Supabase JWT manda phone='' pra users
+        // sem telefone. Usar || ou check explícito pra mandar NULL real,
+        // senão UNIQUE constraint em phone_e164 conflita entre vários users.
+        const safeEmail = user.email && user.email.trim() !== '' ? user.email : null;
+        const safePhone = user.phone && user.phone.trim() !== '' ? user.phone : null;
         await tx.$executeRaw`
           INSERT INTO app_users (id, email, phone_e164, updated_at)
-          VALUES (${user.id}::uuid, ${user.email ?? null}, ${user.phone ?? null}, now())
+          VALUES (${user.id}::uuid, ${safeEmail}, ${safePhone}, now())
           ON CONFLICT (id) DO NOTHING
         `;
 

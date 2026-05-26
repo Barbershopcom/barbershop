@@ -89,10 +89,17 @@ export default function InicioScreen() {
           </Pressable>
         </Link>
 
-        <View className="rounded-lg border border-border bg-background p-5 opacity-50">
-          <Text className="text-sm font-semibold text-foreground-secondary">Minha agenda</Text>
-          <Text className="mt-1 text-xs text-foreground-muted">Phase 4</Text>
-        </View>
+        <Link href="/agenda" asChild>
+          <Pressable className="flex-row items-center justify-between rounded-lg border border-border bg-background p-5 active:opacity-70">
+            <View>
+              <Text className="text-sm font-semibold text-foreground-secondary">Minha agenda</Text>
+              <Text className="mt-1 text-xs text-foreground-muted">
+                Defina seus horários de trabalho semanais
+              </Text>
+            </View>
+            <ChevronRight size={20} color="#727B8E" />
+          </Pressable>
+        </Link>
 
         <Pressable
           onPress={handleSignOut}

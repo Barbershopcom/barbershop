@@ -6,4 +6,5 @@ export * from './capabilities';
 export * from './common';
 export * from './employees';
 export * from './onboarding';
+export * from './schedule';
 export * from './services';

@@ -194,11 +194,32 @@ model Employee {
   barbershop   Barbershop                @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   appUser      AppUser?                  @relation(fields: [appUserId], references: [id], onDelete: SetNull)
   capabilities BarberServiceCapability[]
+  schedules    BarberSchedule[]
 
   @@index([tenantId])
   @@index([barbershopId])
   @@index([appUserId])
   @@map("employees")
+}
+
+/// Agenda semanal do barbeiro. Múltiplas linhas/weekday cobrem intervalo
+/// (ex: manhã 9-12 e tarde 14-19). Sprint 3 (slots) intercepta com
+/// BarbershopHours pra calcular disponibilidade real.
+/// BarberTimeOff (férias/folgas) deferido pra Sprint 5+ (ADR-003 §2).
+model BarberSchedule {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  barberId  String   @map("barber_id") @db.Uuid
+  weekday   Int      // 0=domingo, 1=segunda, ..., 6=sábado
+  opensAt   String   @map("opens_at") // HH:MM
+  closesAt  String   @map("closes_at") // HH:MM
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  barber Employee @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([barberId, weekday])
+  @@map("barber_schedules")
 }
 
 /// Capability M:N — quais services um barbeiro atende.

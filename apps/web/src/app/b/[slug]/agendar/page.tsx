@@ -10,6 +10,7 @@ import {
   PublicApiError,
 } from '@/lib/public-api';
 
+import { BookingForm } from './_booking-form';
 import { BookingPicker } from './_booking-picker';
 
 interface PageProps {
@@ -71,21 +72,24 @@ export default async function AgendarPage({ params, searchParams }: PageProps) {
           ) : null}
         </header>
 
-        {t ? (
-          <section className="rounded-lg border border-dashed border-border bg-muted/30 p-6 text-center">
-            <p className="text-sm font-medium">
-              Horário escolhido: {formatSelectedSlot(t, tenant.timezone)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Etapa 2 (seus dados) em construção — disponível em instantes.
-            </p>
+        {t && barberId ? (
+          <>
+            <BookingForm
+              slug={tenant.slug}
+              timezone={tenant.timezone}
+              serviceId={service.id}
+              serviceName={service.name}
+              serviceDurationMin={service.durationMin}
+              startAtIso={t}
+              barberId={barberId}
+            />
             <Link
               href={`/b/${tenant.slug}/agendar?s=${service.id}`}
-              className="mt-4 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+              className="mt-4 inline-block text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
-              Trocar horário
+              ← Trocar horário
             </Link>
-          </section>
+          </>
         ) : (
           <BookingPicker
             slug={tenant.slug}
@@ -105,15 +109,3 @@ export default async function AgendarPage({ params, searchParams }: PageProps) {
   }
 }
 
-function formatSelectedSlot(iso: string, tz: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: tz,
-    weekday: 'long',
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d);
-}

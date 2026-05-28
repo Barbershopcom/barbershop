@@ -16,7 +16,8 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "seed:appointments": "tsx scripts/seed-appointments.ts"
+    "seed:appointments": "tsx scripts/seed-appointments.ts",
+    "trigger:reminder": "tsx scripts/trigger-reminder.ts"
   },
   "dependencies": {
     "@barbearia/schemas": "workspace:*",

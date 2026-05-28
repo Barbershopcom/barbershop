@@ -48,7 +48,8 @@ export default function AdminAgendaPage() {
 
   // Form "Novo agendamento"
   const [showForm, setShowForm] = useState(false);
-  const [formStartAt, setFormStartAt] = useState<Date | null>(null);
+  const [formDate, setFormDate] = useState<string>(''); // YYYY-MM-DD (hora local do browser)
+  const [formTime, setFormTime] = useState<string>(''); // HH:MM (24h)
   const [formService, setFormService] = useState<string>('');
   const [formBarber, setFormBarber] = useState<string>('');
   const [formName, setFormName] = useState<string>('');
@@ -59,7 +60,7 @@ export default function AdminAgendaPage() {
   useEffect(() => {
     void Promise.all([
       api
-        .get<EmployeeDto[]>('/employees?includeInactive=false')
+        .get<EmployeeDto[]>('/employees?includeInactive=false', { tenantId: tenant.id })
         .then((data) => setEmployees(data.filter((e) => e.role !== 'admin'))),
       api
         .get<ServiceDto[]>('/services', { tenantId: tenant.id })
@@ -172,7 +173,14 @@ export default function AdminAgendaPage() {
   }
 
   function openNewForm(startAt?: Date) {
-    setFormStartAt(startAt ?? null);
+    if (startAt) {
+      const { date, time } = splitLocalDateTime(startAt);
+      setFormDate(date);
+      setFormTime(time);
+    } else {
+      setFormDate('');
+      setFormTime('');
+    }
     setFormError(null);
     setShowForm(true);
   }
@@ -184,7 +192,8 @@ export default function AdminAgendaPage() {
 
   function closeForm() {
     setShowForm(false);
-    setFormStartAt(null);
+    setFormDate('');
+    setFormTime('');
     setFormService('');
     setFormBarber('');
     setFormName('');
@@ -196,7 +205,7 @@ export default function AdminAgendaPage() {
   async function submitNewAppointment(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
-    if (!formStartAt) {
+    if (!formDate || !formTime) {
       setFormError('Selecione data e hora.');
       return;
     }
@@ -204,12 +213,17 @@ export default function AdminAgendaPage() {
       setFormError('Nome do cliente é obrigatório (mín 2 chars).');
       return;
     }
+    const startAt = new Date(`${formDate}T${formTime}:00`);
+    if (Number.isNaN(startAt.getTime())) {
+      setFormError('Data ou hora inválida.');
+      return;
+    }
     setBusy(true);
     try {
       await api.post('/admin/appointments', {
         serviceId: formService,
         barberId: formBarber,
-        startAt: formStartAt.toISOString(),
+        startAt: startAt.toISOString(),
         customerName: formName.trim(),
         customerPhone: formPhone.trim() ? formPhone.trim() : null,
         customerEmail: formEmail.trim() ? formEmail.trim() : null,
@@ -326,14 +340,31 @@ export default function AdminAgendaPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="form-start">Data e hora</Label>
+                <Label htmlFor="form-date">Data</Label>
                 <Input
-                  id="form-start"
-                  type="datetime-local"
+                  id="form-date"
+                  type="date"
                   required
-                  value={formStartAt ? toDatetimeLocal(formStartAt) : ''}
-                  onChange={(e) => setFormStartAt(e.target.value ? new Date(e.target.value) : null)}
+                  value={formDate}
+                  onChange={(e) => setFormDate(e.target.value)}
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="form-time">Hora ({tenant.timezone})</Label>
+                <select
+                  id="form-time"
+                  required
+                  value={formTime}
+                  onChange={(e) => setFormTime(e.target.value)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {TIME_OPTIONS.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="form-name">Nome do cliente</Label>
@@ -462,12 +493,22 @@ function formatYMD(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-/** YYYY-MM-DDTHH:MM no fuso local do browser (formato esperado por <input datetime-local>). */
-function toDatetimeLocal(date: Date): string {
+/** Quebra Date em {date: YYYY-MM-DD, time: HH:MM} no fuso local do browser. */
+function splitLocalDateTime(date: Date): { date: string; time: string } {
   const y = date.getFullYear();
   const mo = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   const h = String(date.getHours()).padStart(2, '0');
   const mi = String(date.getMinutes()).padStart(2, '0');
-  return `${y}-${mo}-${d}T${h}:${mi}`;
+  return { date: `${y}-${mo}-${d}`, time: `${h}:${mi}` };
 }
+
+/** Horários disponíveis no select — alinhados com slotDuration=30min do FullCalendar. */
+const TIME_OPTIONS: string[] = (() => {
+  const out: string[] = [];
+  for (let h = 7; h <= 21; h++) {
+    out.push(`${String(h).padStart(2, '0')}:00`);
+    out.push(`${String(h).padStart(2, '0')}:30`);
+  }
+  return out;
+})();

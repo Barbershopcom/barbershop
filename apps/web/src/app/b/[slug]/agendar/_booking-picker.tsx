@@ -110,7 +110,6 @@ export function BookingPicker({
           disabled={{ before: today }}
           locale={ptBR}
           weekStartsOn={0}
-          className="rdp-public"
         />
       </div>
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
@@ -19,6 +20,11 @@ interface PageProps {
 }
 
 export const revalidate = 30;
+
+export const metadata: Metadata = {
+  title: 'Agendar horário',
+  robots: { index: false, follow: false },
+};
 
 /**
  * `/b/[slug]/agendar?s=<serviceId>&b=<barberId?>` — fluxo de agendamento.

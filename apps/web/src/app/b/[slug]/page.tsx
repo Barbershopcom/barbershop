@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
@@ -14,6 +15,24 @@ interface PageProps {
 }
 
 export const revalidate = 30;
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  try {
+    const tenant = await getPublicTenant(slug);
+    const title = `${tenant.name} — Agende online`;
+    const description = `Agendamento online para ${tenant.name}. Escolha um horário em segundos.`;
+    return {
+      title,
+      description,
+      openGraph: { title, description, type: 'website' },
+      twitter: { card: 'summary', title, description },
+      robots: { index: true, follow: true },
+    };
+  } catch {
+    return { title: 'Barbearia não encontrada', robots: { index: false } };
+  }
+}
 
 /**
  * Landing pública da barbearia (`/b/[slug]`). ADR-009 Fase 1.

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { getPublicTenant, PublicApiError } from '@/lib/public-api';
@@ -8,6 +9,11 @@ interface PageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ id?: string }>;
 }
+
+export const metadata: Metadata = {
+  title: 'Agendamento confirmado',
+  robots: { index: false, follow: false },
+};
 
 /**
  * Tela de confirmação pós-booking. Dados frescos vêm de sessionStorage

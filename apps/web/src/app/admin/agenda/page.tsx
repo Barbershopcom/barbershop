@@ -1,6 +1,10 @@
 'use client';
 
-import type { AdminAppointmentItem, EmployeeDto } from '@barbearia/schemas';
+import type {
+  AdminAppointmentItem,
+  EmployeeDto,
+  ServiceDto,
+} from '@barbearia/schemas';
 import type {
   DateSelectArg,
   DatesSetArg,
@@ -10,40 +14,57 @@ import type {
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
+import { Plus, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api, ApiError } from '@/lib/api';
 import { useActiveTenant } from '@/lib/active-tenant';
 
 /**
- * Calendar view do admin. Substitui a lista MVP (ADR-008 §1).
+ * Calendar view do admin. ADR-008.
  *
- * - Drag-to-reschedule via FullCalendar interaction plugin
- * - Click event → modal de cancel (placeholder simples por enquanto)
- * - Re-fetch quando navega entre semanas (datesSet callback)
+ * - FullCalendar week/day com drag-to-reschedule
+ * - Click event = cancel
+ * - "Novo agendamento" abre form inline (também acionado por seleção no calendar)
  */
 export default function AdminAgendaPage() {
-  useActiveTenant();
+  const { tenant } = useActiveTenant();
   const calendarRef = useRef<FullCalendar | null>(null);
+
   const [employees, setEmployees] = useState<EmployeeDto[]>([]);
-  const [barberId, setBarberId] = useState<string>('');
+  const [services, setServices] = useState<ServiceDto[]>([]);
+  const [barberFilter, setBarberFilter] = useState<string>('');
   const [items, setItems] = useState<AdminAppointmentItem[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // Range visível atual (controlled pelo FullCalendar via datesSet)
   const [visibleRange, setVisibleRange] = useState<{ from: string; to: string } | null>(
     null,
   );
 
+  // Form "Novo agendamento"
+  const [showForm, setShowForm] = useState(false);
+  const [formStartAt, setFormStartAt] = useState<Date | null>(null);
+  const [formService, setFormService] = useState<string>('');
+  const [formBarber, setFormBarber] = useState<string>('');
+  const [formName, setFormName] = useState<string>('');
+  const [formPhone, setFormPhone] = useState<string>('');
+  const [formEmail, setFormEmail] = useState<string>('');
+  const [formError, setFormError] = useState<string | null>(null);
+
   useEffect(() => {
-    void api
-      .get<EmployeeDto[]>('/employees?includeInactive=false')
-      .then((data) => setEmployees(data.filter((e) => e.role !== 'admin')))
-      .catch(() => undefined);
-  }, []);
+    void Promise.all([
+      api
+        .get<EmployeeDto[]>('/employees?includeInactive=false')
+        .then((data) => setEmployees(data.filter((e) => e.role !== 'admin'))),
+      api
+        .get<ServiceDto[]>('/services', { tenantId: tenant.id })
+        .then(setServices),
+    ]).catch(() => undefined);
+  }, [tenant.id]);
 
   const load = useCallback(async () => {
     if (!visibleRange) return;
@@ -53,7 +74,7 @@ export default function AdminAgendaPage() {
         from: visibleRange.from,
         to: visibleRange.to,
       });
-      if (barberId) params.set('barberId', barberId);
+      if (barberFilter) params.set('barberId', barberFilter);
       const data = await api.get<AdminAppointmentItem[]>(
         `/admin/appointments?${params.toString()}`,
       );
@@ -61,16 +82,14 @@ export default function AdminAgendaPage() {
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Erro ao carregar agenda');
     }
-  }, [visibleRange, barberId]);
+  }, [visibleRange, barberFilter]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // FullCalendar invoca quando navega ou troca view
   const handleDatesSet = (arg: DatesSetArg) => {
     const from = formatYMD(arg.start);
-    // end é exclusivo no FullCalendar; backend `to` é inclusivo → subtrai 1 dia
     const endDate = new Date(arg.end.getTime() - 24 * 60 * 60 * 1000);
     const to = formatYMD(endDate);
     setVisibleRange((prev) => (prev?.from === from && prev?.to === to ? prev : { from, to }));
@@ -85,9 +104,7 @@ export default function AdminAgendaPage() {
         end: a.endAt,
         backgroundColor: a.status === 'cancelled' ? '#A1A1AA' : '#357BE4',
         borderColor: a.status === 'cancelled' ? '#A1A1AA' : '#357BE4',
-        extendedProps: {
-          appt: a,
-        },
+        extendedProps: { appt: a },
       })),
     [items],
   );
@@ -106,10 +123,7 @@ export default function AdminAgendaPage() {
       hour: '2-digit',
       minute: '2-digit',
     });
-    const confirmed = window.confirm(
-      `Remarcar agendamento de ${appt.customerName} para ${newStartLabel}?`,
-    );
-    if (!confirmed) {
+    if (!window.confirm(`Remarcar ${appt.customerName} para ${newStartLabel}?`)) {
       arg.revert();
       return;
     }
@@ -129,7 +143,7 @@ export default function AdminAgendaPage() {
 
   async function handleEventClick(arg: EventClickArg) {
     const appt = arg.event.extendedProps.appt as AdminAppointmentItem;
-    if (appt.status !== 'booked') return; // cancelados/concluídos não acionam
+    if (appt.status !== 'booked') return;
     const label = new Date(appt.startAt).toLocaleString('pt-BR', {
       weekday: 'long',
       day: '2-digit',
@@ -137,10 +151,7 @@ export default function AdminAgendaPage() {
       hour: '2-digit',
       minute: '2-digit',
     });
-    const confirmed = window.confirm(
-      `Cancelar agendamento de ${appt.customerName} em ${label}?`,
-    );
-    if (!confirmed) return;
+    if (!window.confirm(`Cancelar ${appt.customerName} em ${label}?`)) return;
     setBusy(true);
     try {
       await api.patch(`/admin/appointments/${appt.id}/cancel`);
@@ -152,17 +163,76 @@ export default function AdminAgendaPage() {
     }
   }
 
-  function handleDateSelect(_arg: DateSelectArg) {
-    // Hook pra Phase 4 (novo agendamento). Por enquanto no-op.
+  function openNewForm(startAt?: Date) {
+    setFormStartAt(startAt ?? null);
+    setFormError(null);
+    setShowForm(true);
   }
+
+  function handleDateSelect(arg: DateSelectArg) {
+    openNewForm(arg.start);
+    calendarRef.current?.getApi().unselect();
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setFormStartAt(null);
+    setFormService('');
+    setFormBarber('');
+    setFormName('');
+    setFormPhone('');
+    setFormEmail('');
+    setFormError(null);
+  }
+
+  async function submitNewAppointment(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    if (!formStartAt) {
+      setFormError('Selecione data e hora.');
+      return;
+    }
+    if (formName.trim().length < 2) {
+      setFormError('Nome do cliente é obrigatório (mín 2 chars).');
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.post('/admin/appointments', {
+        serviceId: formService,
+        barberId: formBarber,
+        startAt: formStartAt.toISOString(),
+        customerName: formName.trim(),
+        customerPhone: formPhone.trim() ? formPhone.trim() : null,
+        customerEmail: formEmail.trim() ? formEmail.trim() : null,
+      });
+      closeForm();
+      await load();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Erro ao criar agendamento');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const barbersForService = useMemo(() => {
+    // Filtro UI simples: por enquanto exibe todos os employees (backend valida capability)
+    // Refinamento futuro: GET /employees?serviceId=... pra filtrar capability.
+    return employees;
+  }, [employees]);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Agenda</h1>
-        <p className="text-sm text-muted-foreground">
-          Arraste eventos pra remarcar. Clique pra cancelar.
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Agenda</h1>
+          <p className="text-sm text-muted-foreground">
+            Arraste eventos pra remarcar. Clique pra cancelar.
+          </p>
+        </div>
+        <Button onClick={() => openNewForm()} disabled={showForm}>
+          <Plus className="mr-1 h-4 w-4" /> Novo agendamento
+        </Button>
       </div>
 
       <Card>
@@ -174,8 +244,8 @@ export default function AdminAgendaPage() {
             <Label htmlFor="barber">Barbeiro</Label>
             <select
               id="barber"
-              value={barberId}
-              onChange={(e) => setBarberId(e.target.value)}
+              value={barberFilter}
+              onChange={(e) => setBarberFilter(e.target.value)}
               className="h-9 rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="">Todos</option>
@@ -191,6 +261,111 @@ export default function AdminAgendaPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {showForm ? (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Novo agendamento</CardTitle>
+            <Button variant="ghost" size="sm" onClick={closeForm}>
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submitNewAppointment} className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="form-service">Serviço</Label>
+                <select
+                  id="form-service"
+                  required
+                  value={formService}
+                  onChange={(e) => setFormService(e.target.value)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {services
+                    .filter((s) => s.isActive)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.durationMin}min)
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="form-barber">Barbeiro</Label>
+                <select
+                  id="form-barber"
+                  required
+                  value={formBarber}
+                  onChange={(e) => setFormBarber(e.target.value)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {barbersForService.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="form-start">Data e hora</Label>
+                <Input
+                  id="form-start"
+                  type="datetime-local"
+                  required
+                  value={formStartAt ? toDatetimeLocal(formStartAt) : ''}
+                  onChange={(e) => setFormStartAt(e.target.value ? new Date(e.target.value) : null)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="form-name">Nome do cliente</Label>
+                <Input
+                  id="form-name"
+                  required
+                  minLength={2}
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="João da Silva"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="form-phone">Telefone (opcional)</Label>
+                <Input
+                  id="form-phone"
+                  type="tel"
+                  value={formPhone}
+                  onChange={(e) => setFormPhone(e.target.value)}
+                  placeholder="+5511999999999"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="form-email">Email (opcional)</Label>
+                <Input
+                  id="form-email"
+                  type="email"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  placeholder="cliente@email.com"
+                />
+              </div>
+
+              {formError ? (
+                <p className="md:col-span-2 text-sm text-destructive">{formError}</p>
+              ) : null}
+
+              <div className="md:col-span-2 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={closeForm} disabled={busy}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={busy}>
+                  {busy ? 'Criando...' : 'Criar agendamento'}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {loadError ? (
         <Card>
@@ -243,3 +418,12 @@ function formatYMD(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/** YYYY-MM-DDTHH:MM no fuso local do browser (formato esperado por <input datetime-local>). */
+function toDatetimeLocal(date: Date): string {
+  const y = date.getFullYear();
+  const mo = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const mi = String(date.getMinutes()).padStart(2, '0');
+  return `${y}-${mo}-${d}T${h}:${mi}`;
+}

@@ -13,6 +13,7 @@ export * from './common';
 export * from './employees';
 export * from './me-appointments';
 export * from './onboarding';
+export * from './public-tenant';
 export * from './reschedule';
 export * from './schedule';
 export * from './services';

@@ -10,10 +10,16 @@ import {
   View,
 } from 'react-native';
 
-import { getSupabase } from '@/lib/supabase';
+import { useSession } from '@/lib/session';
 
+/**
+ * Login opcional do cliente. ADR-010 §1: guest-first — login só
+ * desbloqueia histórico e cancel in-app. Cliente sem conta usa o
+ * resto do app normalmente.
+ */
 export default function LoginScreen() {
   const router = useRouter();
+  const { signIn } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -22,19 +28,13 @@ export default function LoginScreen() {
   async function handleSubmit() {
     setError(null);
     setLoading(true);
-    try {
-      const supabase = getSupabase();
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-      if (authError) {
-        setError(authError.message);
-        return;
-      }
-      router.replace('/');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro inesperado');
-    } finally {
-      setLoading(false);
+    const result = await signIn(email, password);
+    setLoading(false);
+    if (!result.ok) {
+      setError(result.error ?? 'Erro ao entrar.');
+      return;
     }
+    router.replace('/meus-agendamentos');
   }
 
   return (
@@ -46,7 +46,7 @@ export default function LoginScreen() {
         <View className="gap-1">
           <Text className="text-2xl font-bold text-slate-900">Entrar</Text>
           <Text className="text-sm text-slate-500">
-            Para clientes — agende com seu barbeiro favorito.
+            Acompanhe seus agendamentos e cancele com 1 toque.
           </Text>
         </View>
 
@@ -91,6 +91,10 @@ export default function LoginScreen() {
           ) : (
             <Text className="text-base font-semibold text-white">Entrar</Text>
           )}
+        </Pressable>
+
+        <Pressable onPress={() => router.back()} className="mt-2 items-center">
+          <Text className="text-sm text-slate-500">Voltar</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>

@@ -56,7 +56,16 @@ export class SlotsService {
         if (barberRangesForDay.length === 0) continue; // barbeiro não trabalha
 
         const barberRangesUtc = barberRangesForDay.map((r) => toRangeUtc(date, r, timezone));
-        const working = intersect(shopRangesUtc, barberRangesUtc);
+        let working = intersect(shopRangesUtc, barberRangesUtc);
+
+        // Subtrai TimeOff do working — barbeiro indisponível nessas faixas.
+        if (barber.timeOff && barber.timeOff.length > 0) {
+          const timeOffRanges: Range[] = barber.timeOff.map((t) => ({
+            start: t.startAt,
+            end: t.endAt,
+          }));
+          working = subtract(working, timeOffRanges);
+        }
 
         for (const range of working) {
           let cursor = range.start.getTime();
@@ -110,12 +119,22 @@ export interface BarberAppointment {
   endAt: Date;
 }
 
+export interface BarberTimeOffRange {
+  startAt: Date;
+  endAt: Date;
+}
+
 export interface BarberInput {
   id: string;
   displayName: string;
   schedules: HourRange[];
   /** Appointments já filtrados a status='booked' e overlap com [from..to]. */
   appointments: BarberAppointment[];
+  /**
+   * Períodos de indisponibilidade (BarberTimeOff) que overlap com a janela
+   * consultada. Sprint 7 (ADR-008 §6).
+   */
+  timeOff?: BarberTimeOffRange[];
 }
 
 export interface SlotsInput {

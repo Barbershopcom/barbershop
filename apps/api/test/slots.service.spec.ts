@@ -379,6 +379,76 @@ describe('SlotsService.compute()', () => {
     expect(times).toContainEqual(atLocal('2026-05-26 12:00'));
   });
 
+  it('TimeOff 10-14: slots 10/11/12/13 excluídos, 9 e 14-17 mantidos', () => {
+    // Shop+barbeiro 9-18, sem appointments, TimeOff 10-14 → slots livres = 9 + 14..17
+    const out = service.compute(
+      baseInput({
+        barbers: [
+          barber({
+            id: 'b1',
+            displayName: 'João',
+            schedules: [{ weekday, opensAt: '09:00', closesAt: '18:00' }],
+            timeOff: [
+              {
+                startAt: atLocal('2026-05-26 10:00'),
+                endAt: atLocal('2026-05-26 14:00'),
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(out.map((s) => s.startAt)).toEqual([
+      atLocal('2026-05-26 09:00'),
+      atLocal('2026-05-26 14:00'),
+      atLocal('2026-05-26 15:00'),
+      atLocal('2026-05-26 16:00'),
+      atLocal('2026-05-26 17:00'),
+    ]);
+  });
+
+  it('TimeOff dia inteiro: barbeiro não aparece', () => {
+    const out = service.compute(
+      baseInput({
+        barbers: [
+          barber({
+            id: 'b1',
+            displayName: 'João',
+            schedules: [{ weekday, opensAt: '09:00', closesAt: '18:00' }],
+            timeOff: [
+              {
+                startAt: atLocal('2026-05-26 00:00'),
+                endAt: atLocal('2026-05-27 00:00'),
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(out).toEqual([]);
+  });
+
+  it('TimeOff fora do dia consultado não afeta', () => {
+    const out = service.compute(
+      baseInput({
+        barbers: [
+          barber({
+            id: 'b1',
+            displayName: 'João',
+            schedules: [{ weekday, opensAt: '09:00', closesAt: '18:00' }],
+            timeOff: [
+              {
+                startAt: atLocal('2026-05-27 10:00'),
+                endAt: atLocal('2026-05-27 14:00'),
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(out).toHaveLength(9); // todos os slots 9-17 mantidos
+  });
+
   it('appointment fora do range working não interfere', () => {
     // Working 9-12, appointment 14-15 → todos os slots de 9-11 disponíveis
     const out = service.compute(

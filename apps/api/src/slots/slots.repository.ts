@@ -85,7 +85,8 @@ export class SlotsRepository {
       select: { weekday: true, opensAt: true, closesAt: true },
     });
 
-    // 2. Barbeiros ativos com capability pro serviço
+    // 2. Barbeiros ativos com capability pro serviço.
+    //    Carrega também TimeOff que overlap com a janela (Sprint 7).
     const employees = await this.prisma.employee.findMany({
       where: {
         tenantId,
@@ -108,6 +109,13 @@ export class SlotsRepository {
           },
           select: { startAt: true, endAt: true },
         },
+        timeOff: {
+          where: {
+            startAt: { lt: toDateUtcExclusive },
+            endAt: { gt: fromDateUtc },
+          },
+          select: { startAt: true, endAt: true },
+        },
       },
     });
 
@@ -116,6 +124,7 @@ export class SlotsRepository {
       displayName: e.displayName,
       schedules: e.schedules,
       appointments: e.appointments,
+      timeOff: e.timeOff,
     }));
 
     return { shopHours: shopHoursRows, barbers };

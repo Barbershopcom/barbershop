@@ -3,6 +3,7 @@
 
 export * from './admin-appointments';
 export * from './appointments';
+export * from './barber-time-off';
 export * from './barbershop-hours';
 export * from './book-appointment';
 export * from './capabilities';

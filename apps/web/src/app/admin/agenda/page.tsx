@@ -38,6 +38,7 @@ export default function AdminAgendaPage() {
   const [employees, setEmployees] = useState<EmployeeDto[]>([]);
   const [services, setServices] = useState<ServiceDto[]>([]);
   const [barberFilter, setBarberFilter] = useState<string>('');
+  const [includeAllStatuses, setIncludeAllStatuses] = useState(false);
   const [items, setItems] = useState<AdminAppointmentItem[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -75,6 +76,7 @@ export default function AdminAgendaPage() {
         to: visibleRange.to,
       });
       if (barberFilter) params.set('barberId', barberFilter);
+      if (includeAllStatuses) params.set('includeAllStatuses', 'true');
       const data = await api.get<AdminAppointmentItem[]>(
         `/admin/appointments?${params.toString()}`,
       );
@@ -82,7 +84,7 @@ export default function AdminAgendaPage() {
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Erro ao carregar agenda');
     }
-  }, [visibleRange, barberFilter]);
+  }, [visibleRange, barberFilter, includeAllStatuses]);
 
   useEffect(() => {
     void load();
@@ -99,11 +101,13 @@ export default function AdminAgendaPage() {
     () =>
       items.map((a) => ({
         id: a.id,
-        title: `${a.customerName} — ${a.service.name}`,
+        title: `${statusEmoji(a.status)} ${a.customerName} — ${a.service.name}`,
         start: a.startAt,
         end: a.endAt,
-        backgroundColor: a.status === 'cancelled' ? '#A1A1AA' : '#357BE4',
-        borderColor: a.status === 'cancelled' ? '#A1A1AA' : '#357BE4',
+        backgroundColor: statusColor(a.status),
+        borderColor: statusColor(a.status),
+        textColor: a.status === 'booked' ? '#FFFFFF' : '#1a1a1a',
+        editable: a.status === 'booked', // só booked pode ser arrastado
         extendedProps: { appt: a },
       })),
     [items],
@@ -152,9 +156,13 @@ export default function AdminAgendaPage() {
       minute: '2-digit',
     });
     if (!window.confirm(`Cancelar ${appt.customerName} em ${label}?`)) return;
+    const reason = window.prompt('Motivo do cancelamento (opcional):') ?? '';
     setBusy(true);
     try {
-      await api.patch(`/admin/appointments/${appt.id}/cancel`);
+      await api.patch(
+        `/admin/appointments/${appt.id}/cancel`,
+        reason.trim() ? { reason: reason.trim() } : {},
+      );
       await load();
     } catch (err) {
       window.alert(err instanceof ApiError ? err.message : 'Erro ao cancelar');
@@ -256,6 +264,15 @@ export default function AdminAgendaPage() {
               ))}
             </select>
           </div>
+          <label className="flex items-center gap-2 pb-1.5 text-sm">
+            <input
+              type="checkbox"
+              checked={includeAllStatuses}
+              onChange={(e) => setIncludeAllStatuses(e.target.checked)}
+              className="h-4 w-4 rounded border-input"
+            />
+            Incluir cancelados / concluídos
+          </label>
           <Button variant="outline" onClick={() => void load()} disabled={busy}>
             Atualizar
           </Button>
@@ -409,6 +426,33 @@ export default function AdminAgendaPage() {
       ) : null}
     </div>
   );
+}
+
+/** Cor por status — booked = primário, cancelados/etc = tons mais frios. */
+function statusColor(status: AdminAppointmentItem['status']): string {
+  switch (status) {
+    case 'booked':
+      return '#357BE4';
+    case 'cancelled':
+      return '#E5E7EB'; // cinza claro
+    case 'completed':
+      return '#10B981'; // verde
+    case 'no_show':
+      return '#F59E0B'; // âmbar
+  }
+}
+
+function statusEmoji(status: AdminAppointmentItem['status']): string {
+  switch (status) {
+    case 'booked':
+      return '';
+    case 'cancelled':
+      return '❌';
+    case 'completed':
+      return '✅';
+    case 'no_show':
+      return '⚠️';
+  }
 }
 
 function formatYMD(date: Date): string {

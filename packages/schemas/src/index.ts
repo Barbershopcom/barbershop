@@ -2,6 +2,7 @@
 // conforme entidades forem modeladas no Sprint 1+.
 
 export * from './admin-appointments';
+export * from './admin-cancel';
 export * from './admin-create-appointment';
 export * from './appointments';
 export * from './barber-time-off';

@@ -28,6 +28,8 @@ import {
   type AdminAppointmentItem,
   type AdminAppointmentsQuery,
   adminAppointmentsQuerySchema,
+  type AdminCancelAppointmentInput,
+  adminCancelAppointmentSchema,
   type AdminCreateAppointmentInput,
   adminCreateAppointmentSchema,
   type BookedAppointment,
@@ -129,6 +131,7 @@ export class AdminAppointmentsController {
         endAt: true,
         status: true,
         cancelledBy: true,
+        cancelReason: true,
         customerName: true,
         customerPhone: true,
         customerEmail: true,
@@ -144,6 +147,7 @@ export class AdminAppointmentsController {
       endAt: r.endAt.toISOString(),
       status: r.status as AdminAppointmentItem['status'],
       cancelledBy: r.cancelledBy as AdminAppointmentItem['cancelledBy'],
+      cancelReason: r.cancelReason,
       customerName: r.customerName,
       customerPhone: r.customerPhone,
       customerEmail: r.customerEmail,
@@ -159,6 +163,8 @@ export class AdminAppointmentsController {
     @Tx() ctx: TenantContextValue,
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(adminCancelAppointmentSchema.optional()))
+    body?: AdminCancelAppointmentInput,
   ): Promise<void> {
     await this.requireAdmin(ctx, user);
 
@@ -199,6 +205,7 @@ export class AdminAppointmentsController {
         status: 'cancelled',
         cancelledBy: 'admin',
         cancelledAt: new Date(),
+        ...(body?.reason ? { cancelReason: body.reason } : {}),
       },
     });
 

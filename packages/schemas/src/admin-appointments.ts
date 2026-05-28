@@ -47,6 +47,7 @@ export interface AdminAppointmentItem {
   endAt: string; // UTC ISO
   status: 'booked' | 'cancelled' | 'completed' | 'no_show';
   cancelledBy: 'customer' | 'admin' | 'system' | null;
+  cancelReason: string | null;
   customerName: string;
   customerPhone: string | null;
   customerEmail: string | null;

@@ -229,6 +229,200 @@ export class BookingService {
     return { status: 201, body: response };
   }
 
+  /**
+   * Reschedule: muda startAt/endAt de um appointment booked.
+   * Revalida slot + EXCLUDE constraint pega race. Dispara email
+   * "remarcado" pro cliente com link de cancel novo.
+   */
+  async reschedule(args: {
+    appointmentId: string;
+    newStartAtIso: string;
+  }): Promise<{ id: string; oldStartAt: Date; newStartAt: Date; newEndAt: Date }> {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id: args.appointmentId },
+      select: {
+        id: true,
+        status: true,
+        startAt: true,
+        endAt: true,
+        barberId: true,
+        serviceId: true,
+        barbershopId: true,
+        tenantId: true,
+        customerName: true,
+        customerEmail: true,
+      },
+    });
+    if (!appt) {
+      throw new BookingRescheduleError('not_found', 'Appointment não encontrado.');
+    }
+    if (appt.status !== 'booked') {
+      throw new BookingRescheduleError(
+        'invalid_status',
+        `Só é possível remarcar appointment 'booked', estado atual: '${appt.status}'.`,
+      );
+    }
+
+    const newStartAt = new Date(args.newStartAtIso);
+    if (Number.isNaN(newStartAt.getTime())) {
+      throw new BookingRescheduleError('invalid_input', '`newStartAt` inválido.');
+    }
+    // No-op se o novo horário for igual ao atual
+    if (newStartAt.getTime() === appt.startAt.getTime()) {
+      return {
+        id: appt.id,
+        oldStartAt: appt.startAt,
+        newStartAt: appt.startAt,
+        newEndAt: appt.endAt,
+      };
+    }
+
+    // Carrega dados frescos pra revalidação
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: appt.tenantId },
+      select: { id: true, slug: true, name: true, timezone: true },
+    });
+    const service = await this.prisma.service.findUnique({
+      where: { id: appt.serviceId },
+      select: { id: true, durationMin: true, bufferMin: true, name: true },
+    });
+    const barber = await this.prisma.employee.findUnique({
+      where: { id: appt.barberId },
+      select: { id: true, displayName: true, isActive: true },
+    });
+    if (!tenant || !service || !barber || !barber.isActive) {
+      throw new BookingRescheduleError('invalid_input', 'Dados inválidos pro reschedule.');
+    }
+
+    const newEndAt = new Date(newStartAt.getTime() + service.durationMin * 60_000);
+    const dateInTz = formatDateInTz(newStartAt, tenant.timezone);
+    const fromDateUtc = dateStartUtc(dateInTz, tenant.timezone);
+    const toDateUtcExclusive = dateEndExclusiveUtc(dateInTz, tenant.timezone);
+
+    const { shopHours, barbers } = await this.repo.loadSlotInputs({
+      tenantId: tenant.id,
+      barbershopId: appt.barbershopId,
+      serviceId: service.id,
+      barberId: appt.barberId,
+      fromDateUtc,
+      toDateUtcExclusive,
+    });
+
+    // Revalidação: o slot novo precisa estar disponível, MAS excluindo
+    // o próprio appointment que está sendo reschedulado (senão ele
+    // "conflita consigo mesmo" na lista de bookings).
+    const barbersForCheck = barbers.map((b) =>
+      b.id === appt.barberId
+        ? {
+            ...b,
+            appointments: b.appointments.filter(
+              (a) =>
+                a.startAt.getTime() !== appt.startAt.getTime() ||
+                a.endAt.getTime() !== appt.endAt.getTime(),
+            ),
+          }
+        : b,
+    );
+
+    const available = this.slots.compute({
+      timezone: tenant.timezone,
+      serviceDurationMin: service.durationMin,
+      serviceBufferMin: service.bufferMin,
+      shopHours,
+      barbers: barbersForCheck,
+      fromDate: dateInTz,
+      toDate: dateInTz,
+      now: new Date(),
+    });
+
+    const match = available.find(
+      (s) => s.startAt.getTime() === newStartAt.getTime() && s.barberId === appt.barberId,
+    );
+    if (!match) {
+      throw new BookingRescheduleError('slot_unavailable', 'Horário novo indisponível.');
+    }
+
+    // UPDATE atômico. EXCLUDE constraint pega race se outra request reservou.
+    try {
+      await this.prisma.appointment.update({
+        where: { id: appt.id },
+        data: { startAt: newStartAt, endAt: newEndAt },
+      });
+    } catch (err) {
+      const sqlState = extractSqlState(err);
+      if (sqlState === '23P01') {
+        throw new BookingRescheduleError(
+          'slot_taken',
+          'Esse horário acabou de ser reservado por outro.',
+        );
+      }
+      throw err;
+    }
+
+    // Email de remarcação com token regenerado
+    if (appt.customerEmail) {
+      void this.sendRescheduleEmail({
+        to: appt.customerEmail,
+        appointmentId: appt.id,
+        oldStartAt: appt.startAt,
+        newStartAt,
+        customerName: appt.customerName,
+        tenantName: tenant.name,
+        tenantTimezone: tenant.timezone,
+        serviceName: service.name,
+        serviceDurationMin: service.durationMin,
+        barberName: barber.displayName,
+      });
+    }
+
+    return {
+      id: appt.id,
+      oldStartAt: appt.startAt,
+      newStartAt,
+      newEndAt,
+    };
+  }
+
+  private async sendRescheduleEmail(args: {
+    to: string;
+    appointmentId: string;
+    oldStartAt: Date;
+    newStartAt: Date;
+    customerName: string;
+    tenantName: string;
+    tenantTimezone: string;
+    serviceName: string;
+    serviceDurationMin: number;
+    barberName: string;
+  }): Promise<void> {
+    const secret = this.config.get<string>('APPOINTMENT_CANCEL_SECRET');
+    const webUrl = this.config.get<string>('PUBLIC_WEB_URL') ?? 'http://localhost:3000';
+    let cancelUrl: string | undefined;
+    if (secret) {
+      const token = encodeCancelToken(
+        { apptId: args.appointmentId, exp: Math.floor(args.newStartAt.getTime() / 1000) },
+        secret,
+      );
+      cancelUrl = `${webUrl}/cancel/${token}`;
+    }
+
+    await this.email.sendBookingRescheduled({
+      to: args.to,
+      vars: {
+        tenantName: args.tenantName,
+        customerName: args.customerName,
+        previousDateLabel: formatDate(args.oldStartAt, args.tenantTimezone),
+        previousTimeLabel: formatTime(args.oldStartAt, args.tenantTimezone),
+        dateLabel: formatDate(args.newStartAt, args.tenantTimezone),
+        timeLabel: formatTime(args.newStartAt, args.tenantTimezone),
+        durationLabel: formatDuration(args.serviceDurationMin),
+        serviceName: args.serviceName,
+        barberName: args.barberName,
+        cancelUrl,
+      },
+    });
+  }
+
   private async scheduleReminder(args: {
     apptId: string;
     startAt: Date;
@@ -317,6 +511,24 @@ function formatDuration(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}min`;
+}
+
+/**
+ * Erro de domínio do reschedule. Controller mapeia pra HTTP code apropriado.
+ */
+export class BookingRescheduleError extends Error {
+  constructor(
+    public readonly code:
+      | 'not_found'
+      | 'invalid_status'
+      | 'invalid_input'
+      | 'slot_unavailable'
+      | 'slot_taken',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'BookingRescheduleError';
+  }
 }
 
 function hashRequest(body: BookAppointmentInput): string {

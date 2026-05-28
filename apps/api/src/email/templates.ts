@@ -132,6 +132,57 @@ export function bookingReminderTemplate(v: BookingTemplateVars): string {
 </html>`;
 }
 
+/**
+ * Reschedule precisa de campos extras: o horário ANTIGO pra contexto.
+ */
+export interface RescheduleTemplateVars extends BookingTemplateVars {
+  /** Data antiga formatada PT-BR (ex: "quinta-feira, 28 de maio") */
+  previousDateLabel: string;
+  /** Hora antiga formatada (ex: "14:00") */
+  previousTimeLabel: string;
+}
+
+export function bookingRescheduledTemplate(v: RescheduleTemplateVars): string {
+  const cancelBlock = v.cancelUrl
+    ? `
+      <p style="margin-top: 24px; font-size: 14px; color: #4a4a4a;">
+        Não vai conseguir comparecer no novo horário? Use este link a qualquer momento:
+      </p>
+      <a href="${escapeHtml(v.cancelUrl)}" style="${BUTTON_STYLE}">Cancelar agendamento</a>
+    `
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Agendamento remarcado</title>
+</head>
+<body style="margin: 0; background: #f0f2f5;">
+  <div style="${BASE_STYLE}">
+    <h1 style="font-size: 22px; margin: 0 0 8px;">Seu agendamento foi remarcado</h1>
+    <p style="color: #4a4a4a; margin: 0;">Olá, ${escapeHtml(v.customerName)}.</p>
+
+    <div style="${BOX_STYLE}">
+      <p style="margin: 0 0 8px; font-weight: 600;">${escapeHtml(v.tenantName)}</p>
+      <p style="margin: 0 0 12px; color: #727B8E; text-decoration: line-through;">
+        Era: ${escapeHtml(v.previousDateLabel)} às ${escapeHtml(v.previousTimeLabel)}
+      </p>
+      <p style="margin: 0; color: #1a1a1a; font-weight: 600;">
+        Agora: ${escapeHtml(v.dateLabel)} às ${escapeHtml(v.timeLabel)}
+        <span style="font-weight: 400; color: #4a4a4a;">(${escapeHtml(v.durationLabel)})</span>
+      </p>
+      <p style="margin: 8px 0 0; color: #4a4a4a;">
+        ${escapeHtml(v.serviceName)} com ${escapeHtml(v.barberName)}
+      </p>
+    </div>
+
+    ${cancelBlock}
+  </div>
+</body>
+</html>`;
+}
+
 export function bookingCancelledTemplate(v: BookingTemplateVars): string {
   return `<!DOCTYPE html>
 <html lang="pt-BR">

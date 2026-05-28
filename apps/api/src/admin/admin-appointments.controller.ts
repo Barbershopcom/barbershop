@@ -1,4 +1,7 @@
 import {
+  BadRequestException,
+  Body,
+  ConflictException,
   Controller,
   ForbiddenException,
   Get,
@@ -9,18 +12,29 @@ import {
   ParseUUIDPipe,
   Patch,
   Query,
+  UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { fromZonedTime } from 'date-fns-tz';
 import {
   type AdminAppointmentItem,
   type AdminAppointmentsQuery,
   adminAppointmentsQuerySchema,
+  type RescheduleAppointmentInput,
+  rescheduleAppointmentSchema,
 } from '@barbearia/schemas';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { EmailService } from '../email/email.service';
+import { BookingRescheduleError } from '../slots/booking.service';
+import { BookingService } from '../slots/booking.service';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -37,7 +51,10 @@ import { Tx } from '../tenancy/tenancy.decorators';
 @ApiBearerAuth()
 @Controller('admin/appointments')
 export class AdminAppointmentsController {
-  constructor(private readonly email: EmailService) {}
+  constructor(
+    private readonly email: EmailService,
+    private readonly booking: BookingService,
+  ) {}
 
   /**
    * Confirma que o user logado é admin no tenant resolvido.
@@ -200,6 +217,49 @@ export class AdminAppointmentsController {
           },
         });
       }
+    }
+  }
+
+  @Patch(':id/reschedule')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Appointment remarcado (id preservado, startAt/endAt atualizados).' })
+  async reschedule(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(rescheduleAppointmentSchema)) body: RescheduleAppointmentInput,
+  ): Promise<{ id: string; oldStartAt: string; newStartAt: string; newEndAt: string }> {
+    await this.requireAdmin(ctx, user);
+
+    const exists = await ctx.tx.appointment.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!exists) throw new NotFoundException('Appointment não encontrado.');
+
+    try {
+      const result = await this.booking.reschedule({
+        appointmentId: id,
+        newStartAtIso: body.newStartAt,
+      });
+      return {
+        id: result.id,
+        oldStartAt: result.oldStartAt.toISOString(),
+        newStartAt: result.newStartAt.toISOString(),
+        newEndAt: result.newEndAt.toISOString(),
+      };
+    } catch (err) {
+      if (err instanceof BookingRescheduleError) {
+        if (err.code === 'not_found') throw new NotFoundException(err.message);
+        if (err.code === 'invalid_input') throw new BadRequestException(err.message);
+        if (err.code === 'invalid_status' || err.code === 'slot_unavailable') {
+          throw new UnprocessableEntityException({ message: err.message, code: err.code });
+        }
+        if (err.code === 'slot_taken') {
+          throw new ConflictException({ message: err.message, code: err.code });
+        }
+      }
+      throw err;
     }
   }
 }

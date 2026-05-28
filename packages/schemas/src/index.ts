@@ -11,6 +11,7 @@ export * from './common';
 export * from './employees';
 export * from './me-appointments';
 export * from './onboarding';
+export * from './reschedule';
 export * from './schedule';
 export * from './services';
 export * from './slots';

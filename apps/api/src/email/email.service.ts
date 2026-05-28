@@ -6,7 +6,9 @@ import {
   bookingCancelledTemplate,
   bookingConfirmationTemplate,
   bookingReminderTemplate,
+  bookingRescheduledTemplate,
   type BookingTemplateVars,
+  type RescheduleTemplateVars,
 } from './templates';
 
 /**
@@ -74,6 +76,18 @@ export class EmailService {
     return this.send({
       to: args.to,
       subject: `Lembrete: seu agendamento é amanhã — ${args.vars.tenantName}`,
+      html,
+    });
+  }
+
+  async sendBookingRescheduled(args: {
+    to: string;
+    vars: RescheduleTemplateVars;
+  }): Promise<{ ok: boolean; error?: string }> {
+    const html = bookingRescheduledTemplate(args.vars);
+    return this.send({
+      to: args.to,
+      subject: `Agendamento remarcado — ${args.vars.tenantName}`,
       html,
     });
   }

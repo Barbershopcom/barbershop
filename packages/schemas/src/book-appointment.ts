@@ -16,6 +16,12 @@ export const bookAppointmentSchema = z.object({
   customerName: z.string().trim().min(2).max(120),
   customerPhone: phoneE164Schema,
   customerEmail: emailSchema.optional(),
+  /**
+   * Token do Expo Push Service (formato `ExponentPushToken[xxx]`).
+   * Opcional — quando presente, API registra o device pra disparar
+   * reminder via push 24h antes (ADR-010 §5).
+   */
+  expoPushToken: z.string().max(255).optional(),
 });
 
 export type BookAppointmentInput = z.infer<typeof bookAppointmentSchema>;

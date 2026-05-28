@@ -188,6 +188,14 @@ export class BookingService {
       customerEmail: created.customerEmail,
     };
 
+    // 4.5. Upsert device pro Expo Push (ADR-010 §5/§8). Best-effort.
+    if (body.expoPushToken) {
+      void this.upsertCustomerDevice({
+        expoPushToken: body.expoPushToken,
+        customerPhone: body.customerPhone,
+      });
+    }
+
     // 5. Cache idempotency. ON CONFLICT DO NOTHING blinda contra race com retry.
     try {
       await this.prisma.idempotencyKey.create({
@@ -603,6 +611,29 @@ export class BookingService {
       // Não trava booking — log e segue. Cliente já recebeu confirmação.
       BookingService.logger.warn(
         `Falha ao agendar reminder pra ${args.apptId}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+
+  /**
+   * Upsert via SQL raw (sem Prisma client model — ADR-010 §8). Usa
+   * ON CONFLICT do expo_push_token pra atualizar last_seen_at + telefone
+   * se o cliente trocar de número mantendo o device.
+   */
+  private async upsertCustomerDevice(args: {
+    expoPushToken: string;
+    customerPhone: string;
+  }): Promise<void> {
+    try {
+      await this.prisma.$executeRaw`
+        INSERT INTO customer_devices (expo_push_token, customer_phone, last_seen_at)
+        VALUES (${args.expoPushToken}, ${args.customerPhone}, NOW())
+        ON CONFLICT (expo_push_token)
+        DO UPDATE SET customer_phone = EXCLUDED.customer_phone, last_seen_at = NOW()
+      `;
+    } catch (err) {
+      BookingService.logger.warn(
+        `Falha ao upsertar customer_device: ${err instanceof Error ? err.message : err}`,
       );
     }
   }

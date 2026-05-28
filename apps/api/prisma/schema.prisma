@@ -330,3 +330,17 @@ model Appointment {
   @@index([status])
   @@map("appointments")
 }
+
+/// Devices registrados pro Expo Push Service (ADR-010 §5/§8).
+/// Sem RLS — cliente reserva em N barbearias com o mesmo telefone/email,
+/// então não pertence a tenant específico. Filtros são por customerPhone.
+model CustomerDevice {
+  id            String   @id @default(uuid()) @db.Uuid
+  expoPushToken String   @unique @map("expo_push_token")
+  customerPhone String   @map("customer_phone")
+  lastSeenAt    DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([customerPhone])
+  @@map("customer_devices")
+}

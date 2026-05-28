@@ -14,6 +14,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { MeModule } from './me/me.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { PushModule } from './push/push.module';
 import { ServicesModule } from './services/services.module';
 import { SlotsModule } from './slots/slots.module';
 import { TenancyModule } from './tenancy/tenancy.module';
@@ -40,6 +41,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     AdminModule,
     EmailModule,
     JobsModule,
+    PushModule,
   ],
   providers: [
     {

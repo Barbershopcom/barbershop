@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
 import { formatPriceBRL } from '../email/format';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../push/push.service';
 import { encodeCancelToken } from '../slots/cancel-token';
 import { JobsService } from './jobs.service';
 
@@ -25,6 +26,7 @@ export class JobsWorkerService implements OnApplicationBootstrap {
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
     private readonly config: ConfigService,
+    private readonly push: PushService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -72,6 +74,7 @@ export class JobsWorkerService implements OnApplicationBootstrap {
         startAt: true,
         customerName: true,
         customerEmail: true,
+        customerPhone: true,
         service: { select: { name: true, durationMin: true, basePriceCents: true } },
         barber: { select: { displayName: true } },
         barbershop: { select: { tenantId: true } },
@@ -94,14 +97,6 @@ export class JobsWorkerService implements OnApplicationBootstrap {
       );
       return;
     }
-    if (!appt.customerEmail) {
-      // Marca enviado pra não fazer retry infinito buscando um email que não existe
-      await this.prisma.appointment.update({
-        where: { id: appt.id },
-        data: { reminderSentAt: new Date() },
-      });
-      return;
-    }
 
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: appt.barbershop.tenantId },
@@ -112,41 +107,88 @@ export class JobsWorkerService implements OnApplicationBootstrap {
       return;
     }
 
-    const secret = this.config.get<string>('APPOINTMENT_CANCEL_SECRET');
-    const webUrl = this.config.get<string>('PUBLIC_WEB_URL') ?? 'http://localhost:3000';
-    let cancelUrl: string | undefined;
-    if (secret) {
-      const token = encodeCancelToken(
-        { apptId: appt.id, exp: Math.floor(appt.startAt.getTime() / 1000) },
-        secret,
-      );
-      cancelUrl = `${webUrl}/cancel/${token}`;
+    // Push tokens registrados pra esse customerPhone (ADR-010 §5/§8).
+    const pushTokens = appt.customerPhone
+      ? await this.lookupPushTokens(appt.customerPhone)
+      : [];
+
+    if (!appt.customerEmail && pushTokens.length === 0) {
+      // Sem canal — marca enviado pra não fazer retry infinito.
+      await this.prisma.appointment.update({
+        where: { id: appt.id },
+        data: { reminderSentAt: new Date() },
+      });
+      return;
     }
 
-    const result = await this.email.sendBookingReminder({
-      to: appt.customerEmail,
-      vars: {
-        tenantName: tenant.name,
-        customerName: appt.customerName,
-        dateLabel: formatDate(appt.startAt, tenant.timezone),
-        timeLabel: formatTime(appt.startAt, tenant.timezone),
-        durationLabel: formatDuration(appt.service.durationMin),
-        serviceName: appt.service.name,
-        barberName: appt.barber.displayName,
-        priceLabel: formatPriceBRL(appt.service.basePriceCents),
-        cancelUrl,
-      },
-    });
+    const dateLabel = formatDate(appt.startAt, tenant.timezone);
+    const timeLabel = formatTime(appt.startAt, tenant.timezone);
 
-    if (!result.ok) {
-      // Throw força pg-boss retry com backoff
-      throw new Error(`Falha no envio: ${result.error ?? 'unknown'}`);
+    // Push best-effort — falha não trava email.
+    if (pushTokens.length > 0) {
+      void this.push.send({
+        tokens: pushTokens,
+        title: `Seu corte é amanhã em ${tenant.name}`,
+        body: `${appt.service.name} com ${appt.barber.displayName} — ${dateLabel}, ${timeLabel}.`,
+        data: { apptId: appt.id, tenantName: tenant.name },
+      });
+    }
+
+    if (appt.customerEmail) {
+      const secret = this.config.get<string>('APPOINTMENT_CANCEL_SECRET');
+      const webUrl = this.config.get<string>('PUBLIC_WEB_URL') ?? 'http://localhost:3000';
+      let cancelUrl: string | undefined;
+      if (secret) {
+        const token = encodeCancelToken(
+          { apptId: appt.id, exp: Math.floor(appt.startAt.getTime() / 1000) },
+          secret,
+        );
+        cancelUrl = `${webUrl}/cancel/${token}`;
+      }
+
+      const result = await this.email.sendBookingReminder({
+        to: appt.customerEmail,
+        vars: {
+          tenantName: tenant.name,
+          customerName: appt.customerName,
+          dateLabel,
+          timeLabel,
+          durationLabel: formatDuration(appt.service.durationMin),
+          serviceName: appt.service.name,
+          barberName: appt.barber.displayName,
+          priceLabel: formatPriceBRL(appt.service.basePriceCents),
+          cancelUrl,
+        },
+      });
+
+      if (!result.ok) {
+        // Throw força pg-boss retry com backoff
+        throw new Error(`Falha no envio: ${result.error ?? 'unknown'}`);
+      }
     }
 
     await this.prisma.appointment.update({
       where: { id: appt.id },
       data: { reminderSentAt: new Date() },
     });
+  }
+
+  /**
+   * Busca tokens Expo Push registrados pra esse telefone. SQL raw porque
+   * customer_devices não está no Prisma client gerado (ADR-010 §8).
+   */
+  private async lookupPushTokens(customerPhone: string): Promise<string[]> {
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ expo_push_token: string }>>`
+        SELECT expo_push_token FROM customer_devices WHERE customer_phone = ${customerPhone}
+      `;
+      return rows.map((r) => r.expo_push_token);
+    } catch (err) {
+      JobsWorkerService.logger.warn(
+        `Falha ao buscar push tokens: ${err instanceof Error ? err.message : err}`,
+      );
+      return [];
+    }
   }
 
   private async handleCleanup(): Promise<void> {

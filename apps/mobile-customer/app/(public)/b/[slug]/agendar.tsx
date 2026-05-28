@@ -27,6 +27,7 @@ import {
   formatTimeInTz,
   toE164,
 } from '@/lib/format';
+import { registerForPushNotificationsAsync } from '@/lib/push';
 import { generateUuid } from '@/lib/uuid';
 
 LocaleConfig.locales['pt-br'] = {
@@ -426,6 +427,10 @@ function BookingForm({
 
     setBusy(true);
     try {
+      // Tenta registrar push token (best-effort — null se sem permissão
+      // ou em simulator). Permission prompt aparece na primeira reserva.
+      const expoPushToken = await registerForPushNotificationsAsync();
+
       const booked = await api.post<BookedAppointment>(
         `/public/tenants/${encodeURIComponent(tenant.slug)}/appointments`,
         {
@@ -435,6 +440,7 @@ function BookingForm({
           customerName: trimmedName,
           customerPhone: e164,
           customerEmail: trimmedEmail || undefined,
+          expoPushToken: expoPushToken ?? undefined,
         },
         { idempotencyKey: getIdemKey() },
       );

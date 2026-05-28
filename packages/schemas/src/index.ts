@@ -12,6 +12,7 @@ export * from './capabilities';
 export * from './common';
 export * from './employees';
 export * from './me-appointments';
+export * from './me-customer-appointments';
 export * from './onboarding';
 export * from './public-tenant';
 export * from './reschedule';

@@ -35,7 +35,11 @@ export const bookedAppointmentSchema = z.object({
   endAt: z.string().datetime(),
   status: z.literal('booked'),
   customerName: z.string(),
-  customerPhone: phoneE164Schema,
+  /**
+   * Admin pode reservar sem telefone (cliente ligou e não deu).
+   * Público sempre exige (schema bookAppointmentSchema valida no input).
+   */
+  customerPhone: phoneE164Schema.nullable(),
   customerEmail: emailSchema.nullable(),
 });
 

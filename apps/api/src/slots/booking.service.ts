@@ -8,7 +8,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
-import type { BookAppointmentInput, BookedAppointment } from '@barbearia/schemas';
+import type {
+  AdminCreateAppointmentInput,
+  BookAppointmentInput,
+  BookedAppointment,
+} from '@barbearia/schemas';
 
 import { EmailService } from '../email/email.service';
 import { JobsService } from '../jobs/jobs.service';
@@ -227,6 +231,147 @@ export class BookingService {
     });
 
     return { status: 201, body: response };
+  }
+
+  /**
+   * Admin manual booking — sem idempotency, telefone opcional, sem throttle.
+   * Tenant resolvido via JWT (passado pelo caller). Revalida slot + EXCLUDE
+   * constraint igual ao público. Email + reminder iguais.
+   */
+  async bookAsAdmin(args: {
+    tenantId: string;
+    body: AdminCreateAppointmentInput;
+  }): Promise<BookedAppointment> {
+    const { tenantId, body } = args;
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, slug: true, name: true, timezone: true },
+    });
+    if (!tenant) {
+      throw new UnprocessableEntityException({
+        message: 'Tenant não encontrado.',
+        code: 'invalid_tenant',
+      });
+    }
+
+    const service = await this.repo.resolveActiveService(tenant.id, body.serviceId);
+
+    const barberWithCap = await this.prisma.employee.findFirst({
+      where: {
+        id: body.barberId,
+        tenantId: tenant.id,
+        barbershopId: service.barbershopId,
+        isActive: true,
+        capabilities: { some: { serviceId: service.id } },
+      },
+      select: { id: true, displayName: true },
+    });
+    if (!barberWithCap) {
+      throw new UnprocessableEntityException({
+        message: 'Barbeiro não atende esse serviço ou está inativo.',
+        code: 'invalid_barber',
+      });
+    }
+
+    const startAtUtc = new Date(body.startAt);
+    if (Number.isNaN(startAtUtc.getTime())) {
+      throw new BadRequestException('`startAt` inválido.');
+    }
+    const endAtUtc = new Date(startAtUtc.getTime() + service.durationMin * 60_000);
+
+    // Revalida via SlotsService
+    const dateInTz = formatDateInTz(startAtUtc, tenant.timezone);
+    const fromDateUtc = dateStartUtc(dateInTz, tenant.timezone);
+    const toDateUtcExclusive = dateEndExclusiveUtc(dateInTz, tenant.timezone);
+    const { shopHours, barbers } = await this.repo.loadSlotInputs({
+      tenantId: tenant.id,
+      barbershopId: service.barbershopId,
+      serviceId: service.id,
+      barberId: body.barberId,
+      fromDateUtc,
+      toDateUtcExclusive,
+    });
+    const available = this.slots.compute({
+      timezone: tenant.timezone,
+      serviceDurationMin: service.durationMin,
+      serviceBufferMin: service.bufferMin,
+      shopHours,
+      barbers,
+      fromDate: dateInTz,
+      toDate: dateInTz,
+      now: new Date(),
+    });
+    const slotMatch = available.find(
+      (s) => s.startAt.getTime() === startAtUtc.getTime() && s.barberId === body.barberId,
+    );
+    if (!slotMatch) {
+      throw new UnprocessableEntityException({
+        message: 'Horário indisponível.',
+        code: 'slot_unavailable',
+      });
+    }
+
+    let created;
+    try {
+      created = await this.prisma.appointment.create({
+        data: {
+          tenantId: tenant.id,
+          barbershopId: service.barbershopId,
+          barberId: body.barberId,
+          serviceId: service.id,
+          customerName: body.customerName.trim(),
+          customerPhone: body.customerPhone ?? null,
+          customerEmail: body.customerEmail ?? null,
+          startAt: startAtUtc,
+          endAt: endAtUtc,
+          status: 'booked',
+        },
+      });
+    } catch (err) {
+      const sqlState = extractSqlState(err);
+      if (sqlState === '23P01') {
+        throw new ConflictException({
+          message: 'Esse horário acabou de ser reservado.',
+          code: 'slot_taken',
+        });
+      }
+      throw err;
+    }
+
+    const response: BookedAppointment = {
+      id: created.id,
+      serviceId: created.serviceId,
+      barberId: created.barberId,
+      startAt: created.startAt.toISOString(),
+      endAt: created.endAt.toISOString(),
+      status: 'booked',
+      customerName: created.customerName,
+      customerPhone: created.customerPhone ?? body.customerPhone ?? null,
+      customerEmail: created.customerEmail,
+    };
+
+    if (body.customerEmail) {
+      void this.sendConfirmationEmail({
+        to: body.customerEmail,
+        appointmentId: created.id,
+        startAt: startAtUtc,
+        endAt: endAtUtc,
+        customerName: body.customerName.trim(),
+        tenantName: tenant.name,
+        tenantTimezone: tenant.timezone,
+        serviceName: service.name,
+        serviceDurationMin: service.durationMin,
+        barberName: barberWithCap.displayName,
+      });
+    }
+
+    void this.scheduleReminder({
+      apptId: created.id,
+      startAt: startAtUtc,
+    });
+
+    return response;
   }
 
   /**

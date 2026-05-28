@@ -11,6 +11,7 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Post,
   Query,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -21,11 +22,15 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { fromZonedTime } from 'date-fns-tz';
 import {
   type AdminAppointmentItem,
   type AdminAppointmentsQuery,
   adminAppointmentsQuerySchema,
+  type AdminCreateAppointmentInput,
+  adminCreateAppointmentSchema,
+  type BookedAppointment,
   type RescheduleAppointmentInput,
   rescheduleAppointmentSchema,
 } from '@barbearia/schemas';
@@ -218,6 +223,19 @@ export class AdminAppointmentsController {
         });
       }
     }
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @ApiOkResponse({ description: 'Cria appointment manualmente (cliente ligou).' })
+  async create(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(adminCreateAppointmentSchema)) body: AdminCreateAppointmentInput,
+  ): Promise<BookedAppointment> {
+    const admin = await this.requireAdmin(ctx, user);
+    return this.booking.bookAsAdmin({ tenantId: admin.tenantId, body });
   }
 
   @Patch(':id/reschedule')

@@ -1,12 +1,21 @@
-import type { PublicServiceDto, PublicTenantDto, Slot, SlotsResponse } from '@barbearia/schemas';
+import type {
+  BookedAppointment,
+  PublicServiceDto,
+  PublicTenantDto,
+  Slot,
+  SlotsResponse,
+} from '@barbearia/schemas';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
@@ -16,7 +25,9 @@ import {
   formatDurationLabel,
   formatPriceBRL,
   formatTimeInTz,
+  toE164,
 } from '@/lib/format';
+import { generateUuid } from '@/lib/uuid';
 
 LocaleConfig.locales['pt-br'] = {
   monthNames: [
@@ -159,12 +170,29 @@ export default function BookingFlow() {
       </View>
 
       {t && barberId ? (
-        <BookingFormPlaceholder
+        <BookingForm
           tenant={tenant}
+          service={service}
+          startAtIso={t}
+          barberId={barberId}
           onChange={() =>
             router.replace(`/b/${encodeURIComponent(slug)}/agendar?s=${encodeURIComponent(service.id)}`)
           }
-          t={t}
+          onSuccess={(booked) =>
+            router.replace({
+              pathname: `/b/${encodeURIComponent(slug)}/sucesso`,
+              params: {
+                id: booked.id,
+                tz: tenant.timezone,
+                tenantName: tenant.name,
+                tenantSlug: tenant.slug,
+                serviceName: service.name,
+                startAt: booked.startAt,
+                customerName: booked.customerName,
+                customerEmail: booked.customerEmail ?? '',
+              },
+            })
+          }
         />
       ) : (
         <SlotPicker
@@ -344,35 +372,173 @@ function FilterPill({
   );
 }
 
-/**
- * Placeholder Phase 3 → Phase 4 substitui pelo BookingForm.
- */
-function BookingFormPlaceholder({
-  tenant,
-  t,
-  onChange,
-}: {
+interface BookingFormProps {
   tenant: PublicTenantDto;
-  t: string;
+  service: PublicServiceDto;
+  startAtIso: string;
+  barberId: string;
   onChange: () => void;
-}) {
+  onSuccess: (booked: BookedAppointment) => void;
+}
+
+/**
+ * Form do cliente (nome, telefone, email opcional) + POST do booking.
+ * Idempotency-Key persiste em ref (re-submit no mesmo ciclo de vida
+ * usa a mesma key); fechar e reabrir gera nova.
+ */
+function BookingForm({
+  tenant,
+  service,
+  startAtIso,
+  barberId,
+  onChange,
+  onSuccess,
+}: BookingFormProps) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const idemKeyRef = useRef<string | null>(null);
+
+  function getIdemKey(): string {
+    if (!idemKeyRef.current) idemKeyRef.current = generateUuid();
+    return idemKeyRef.current;
+  }
+
+  async function handleSubmit() {
+    setError(null);
+    const trimmedName = name.trim();
+    if (trimmedName.length < 2) {
+      setError('Informe seu nome completo.');
+      return;
+    }
+    const e164 = toE164(phone);
+    if (!e164) {
+      setError('Telefone inválido. Ex: (11) 99999-9999.');
+      return;
+    }
+    const trimmedEmail = email.trim();
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError('Email inválido.');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const booked = await api.post<BookedAppointment>(
+        `/public/tenants/${encodeURIComponent(tenant.slug)}/appointments`,
+        {
+          serviceId: service.id,
+          barberId,
+          startAt: startAtIso,
+          customerName: trimmedName,
+          customerPhone: e164,
+          customerEmail: trimmedEmail || undefined,
+        },
+        { idempotencyKey: getIdemKey() },
+      );
+      onSuccess(booked);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setError('Esse horário acabou de ser reservado. Escolha outro.');
+      } else if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError(err instanceof Error ? err.message : 'Erro de rede.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <View className="mt-6 mx-6 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6">
-      <Text className="text-center text-sm font-medium text-slate-900">
-        Horário escolhido
-      </Text>
-      <Text className="mt-1 text-center text-base font-bold text-slate-900">
-        {formatSlotLabel(t, tenant.timezone)}
-      </Text>
-      <Text className="mt-2 text-center text-xs text-slate-500">
-        Próxima etapa (seus dados) em construção.
-      </Text>
-      <Pressable onPress={onChange} className="mt-4 items-center">
-        <Text className="text-sm font-medium text-blue-600 underline">
-          Trocar horário
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      className="mt-6 px-6"
+    >
+      <View className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <Text className="text-xs uppercase tracking-widest text-slate-400">
+          Horário escolhido
         </Text>
-      </Pressable>
-    </View>
+        <Text className="mt-1 text-base font-bold text-slate-900">
+          {formatSlotLabel(startAtIso, tenant.timezone)}
+        </Text>
+      </View>
+
+      <View className="mt-4 gap-3">
+        <View className="gap-1.5">
+          <Text className="text-sm font-medium text-slate-700">Seu nome</Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            autoComplete="name"
+            placeholder="João da Silva"
+            placeholderTextColor="#94a3b8"
+            editable={!busy}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900"
+          />
+        </View>
+
+        <View className="gap-1.5">
+          <Text className="text-sm font-medium text-slate-700">
+            Telefone (WhatsApp)
+          </Text>
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            placeholder="(11) 99999-9999"
+            placeholderTextColor="#94a3b8"
+            editable={!busy}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900"
+          />
+        </View>
+
+        <View className="gap-1.5">
+          <Text className="text-sm font-medium text-slate-700">
+            Email <Text className="text-xs text-slate-400">(opcional)</Text>
+          </Text>
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            placeholder="voce@email.com"
+            placeholderTextColor="#94a3b8"
+            editable={!busy}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900"
+          />
+        </View>
+
+        {error ? (
+          <View className="rounded-md bg-red-50 px-3 py-2">
+            <Text className="text-sm text-red-700">{error}</Text>
+          </View>
+        ) : null}
+
+        <Pressable
+          onPress={handleSubmit}
+          disabled={busy}
+          className="mt-2 items-center justify-center rounded-md bg-slate-900 px-4 py-3 disabled:opacity-60"
+        >
+          {busy ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="text-base font-semibold text-white">
+              Confirmar agendamento
+            </Text>
+          )}
+        </Pressable>
+
+        <Pressable onPress={onChange} disabled={busy} className="mt-1 items-center">
+          <Text className="text-sm text-slate-500">Trocar horário</Text>
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

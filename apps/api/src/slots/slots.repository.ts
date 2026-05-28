@@ -48,6 +48,7 @@ export class SlotsRepository {
     durationMin: number;
     bufferMin: number;
     name: string;
+    basePriceCents: number;
   }> {
     const service = await this.prisma.service.findFirst({
       where: { id: serviceId, tenantId, isActive: true },
@@ -57,6 +58,7 @@ export class SlotsRepository {
         durationMin: true,
         bufferMin: true,
         name: true,
+        basePriceCents: true,
       },
     });
     if (!service) throw new NotFoundException('Serviço não encontrado ou inativo.');

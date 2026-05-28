@@ -13,6 +13,7 @@ import { Throttle } from '@nestjs/throttler';
 
 import { Public } from '../auth/auth.decorators';
 import { EmailService } from '../email/email.service';
+import { formatPriceBRL } from '../email/format';
 import { PrismaService } from '../prisma/prisma.service';
 import { decodeCancelToken } from './cancel-token';
 
@@ -81,6 +82,7 @@ export class CustomerCancelController {
           durationLabel: appt.durationLabel,
           serviceName: appt.serviceName,
           barberName: appt.barberName,
+          priceLabel: appt.priceLabel,
         },
       });
     }
@@ -111,7 +113,7 @@ export class CustomerCancelController {
         endAt: true,
         customerName: true,
         customerEmail: true,
-        service: { select: { name: true, durationMin: true } },
+        service: { select: { name: true, durationMin: true, basePriceCents: true } },
         barber: { select: { displayName: true } },
         barbershop: { select: { name: true, tenantId: true } },
       },
@@ -137,6 +139,7 @@ export class CustomerCancelController {
       dateLabel: formatDate(appt.startAt, tenant.timezone),
       timeLabel: formatTime(appt.startAt, tenant.timezone),
       durationLabel: formatDuration(appt.service.durationMin),
+      priceLabel: formatPriceBRL(appt.service.basePriceCents),
     };
   }
 }
@@ -154,6 +157,7 @@ interface CancelPreview {
   dateLabel: string;
   timeLabel: string;
   durationLabel: string;
+  priceLabel: string;
 }
 
 function formatDate(date: Date, tz: string): string {

@@ -26,6 +26,7 @@ import {
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { EmailService } from '../email/email.service';
+import { formatPriceBRL } from '../email/format';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -166,7 +167,7 @@ export class AdminTimeOffController {
           startAt: true,
           customerName: true,
           customerEmail: true,
-          service: { select: { name: true, durationMin: true } },
+          service: { select: { name: true, durationMin: true, basePriceCents: true } },
           barber: { select: { displayName: true } },
         },
       });
@@ -202,6 +203,7 @@ export class AdminTimeOffController {
                 durationLabel: formatDuration(a.service.durationMin),
                 serviceName: a.service.name,
                 barberName: a.barber.displayName,
+                priceLabel: formatPriceBRL(a.service.basePriceCents),
               },
             });
           }

@@ -40,6 +40,7 @@ import {
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { EmailService } from '../email/email.service';
+import { formatPriceBRL } from '../email/format';
 import { BookingRescheduleError } from '../slots/booking.service';
 import { BookingService } from '../slots/booking.service';
 import { type TenantContextValue } from '../tenancy/tenant-context';
@@ -193,7 +194,7 @@ export class AdminAppointmentsController {
         endAt: true,
         customerName: true,
         customerEmail: true,
-        service: { select: { name: true, durationMin: true } },
+        service: { select: { name: true, durationMin: true, basePriceCents: true } },
         barber: { select: { displayName: true } },
         barbershop: { select: { tenantId: true } },
       },
@@ -226,6 +227,7 @@ export class AdminAppointmentsController {
             durationLabel: formatDuration(full.service.durationMin),
             serviceName: full.service.name,
             barberName: full.barber.displayName,
+            priceLabel: formatPriceBRL(full.service.basePriceCents),
           },
         });
       }

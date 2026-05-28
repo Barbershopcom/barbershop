@@ -15,6 +15,7 @@ import type {
 } from '@barbearia/schemas';
 
 import { EmailService } from '../email/email.service';
+import { formatPriceBRL } from '../email/format';
 import { JobsService } from '../jobs/jobs.service';
 import { APPOINTMENT_REMINDER_QUEUE, type ReminderPayload } from '../jobs/jobs-worker.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -219,6 +220,7 @@ export class BookingService {
         tenantTimezone: tenant.timezone,
         serviceName: service.name,
         serviceDurationMin: service.durationMin,
+        servicePriceCents: service.basePriceCents,
         barberName: barberWithCap.displayName,
       });
     }
@@ -362,6 +364,7 @@ export class BookingService {
         tenantTimezone: tenant.timezone,
         serviceName: service.name,
         serviceDurationMin: service.durationMin,
+        servicePriceCents: service.basePriceCents,
         barberName: barberWithCap.displayName,
       });
     }
@@ -429,7 +432,13 @@ export class BookingService {
     });
     const service = await this.prisma.service.findUnique({
       where: { id: appt.serviceId },
-      select: { id: true, durationMin: true, bufferMin: true, name: true },
+      select: {
+        id: true,
+        durationMin: true,
+        bufferMin: true,
+        name: true,
+        basePriceCents: true,
+      },
     });
     const barber = await this.prisma.employee.findUnique({
       where: { id: appt.barberId },
@@ -516,6 +525,7 @@ export class BookingService {
         tenantTimezone: tenant.timezone,
         serviceName: service.name,
         serviceDurationMin: service.durationMin,
+        servicePriceCents: service.basePriceCents,
         barberName: barber.displayName,
       });
     }
@@ -538,6 +548,7 @@ export class BookingService {
     tenantTimezone: string;
     serviceName: string;
     serviceDurationMin: number;
+    servicePriceCents: number;
     barberName: string;
   }): Promise<void> {
     const secret = this.config.get<string>('APPOINTMENT_CANCEL_SECRET');
@@ -563,6 +574,7 @@ export class BookingService {
         durationLabel: formatDuration(args.serviceDurationMin),
         serviceName: args.serviceName,
         barberName: args.barberName,
+        priceLabel: formatPriceBRL(args.servicePriceCents),
         cancelUrl,
       },
     });
@@ -605,6 +617,7 @@ export class BookingService {
     tenantTimezone: string;
     serviceName: string;
     serviceDurationMin: number;
+    servicePriceCents: number;
     barberName: string;
   }): Promise<void> {
     const secret = this.config.get<string>('APPOINTMENT_CANCEL_SECRET');
@@ -628,6 +641,7 @@ export class BookingService {
         durationLabel: formatDuration(args.serviceDurationMin),
         serviceName: args.serviceName,
         barberName: args.barberName,
+        priceLabel: formatPriceBRL(args.servicePriceCents),
         cancelUrl,
       },
     });

@@ -2,6 +2,7 @@ import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config';
 
 import { EmailService } from '../email/email.service';
+import { formatPriceBRL } from '../email/format';
 import { PrismaService } from '../prisma/prisma.service';
 import { encodeCancelToken } from '../slots/cancel-token';
 import { JobsService } from './jobs.service';
@@ -71,7 +72,7 @@ export class JobsWorkerService implements OnApplicationBootstrap {
         startAt: true,
         customerName: true,
         customerEmail: true,
-        service: { select: { name: true, durationMin: true } },
+        service: { select: { name: true, durationMin: true, basePriceCents: true } },
         barber: { select: { displayName: true } },
         barbershop: { select: { tenantId: true } },
       },
@@ -132,6 +133,7 @@ export class JobsWorkerService implements OnApplicationBootstrap {
         durationLabel: formatDuration(appt.service.durationMin),
         serviceName: appt.service.name,
         barberName: appt.barber.displayName,
+        priceLabel: formatPriceBRL(appt.service.basePriceCents),
         cancelUrl,
       },
     });

@@ -8,6 +8,10 @@ export interface PublicTenantDto {
   slug: string;
   name: string;
   timezone: string;
+  /** Perfil público — opcional (ADR-012). */
+  phoneE164: string | null;
+  addressLine: string | null;
+  instagramHandle: string | null;
 }
 
 export interface PublicServiceDto {

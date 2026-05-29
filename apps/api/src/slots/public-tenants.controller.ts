@@ -36,6 +36,9 @@ export class PublicTenantsController {
       slug: tenant.slug,
       name: tenant.name,
       timezone: tenant.timezone,
+      phoneE164: tenant.phoneE164,
+      addressLine: tenant.addressLine,
+      instagramHandle: tenant.instagramHandle,
     };
   }
 

@@ -24,12 +24,26 @@ export class SlotsRepository {
    * Resolve tenant pelo slug. Retorna 404 se não existir.
    * Não exige auth — slug é público.
    */
-  async resolveTenant(
-    slug: string,
-  ): Promise<{ id: string; slug: string; name: string; timezone: string }> {
+  async resolveTenant(slug: string): Promise<{
+    id: string;
+    slug: string;
+    name: string;
+    timezone: string;
+    phoneE164: string | null;
+    addressLine: string | null;
+    instagramHandle: string | null;
+  }> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { slug },
-      select: { id: true, slug: true, name: true, timezone: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        timezone: true,
+        phoneE164: true,
+        addressLine: true,
+        instagramHandle: true,
+      },
     });
     if (!tenant) throw new NotFoundException(`Tenant '${slug}' não encontrado.`);
     return tenant;

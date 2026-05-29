@@ -48,6 +48,10 @@ model Tenant {
   slug      String   @unique
   name      String
   timezone  String   @default("America/Sao_Paulo")
+  /// Perfil público — campos opcionais usados em landing/email (ADR-012).
+  phoneE164       String? @map("phone_e164")
+  addressLine     String? @map("address_line")
+  instagramHandle String? @map("instagram_handle")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

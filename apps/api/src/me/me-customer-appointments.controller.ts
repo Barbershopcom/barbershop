@@ -15,7 +15,7 @@ import { type MyCustomerAppointmentItem } from '@barbearia/schemas';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { EmailService } from '../email/email.service';
-import { formatPriceBRL } from '../email/format';
+import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -140,7 +140,13 @@ export class MeCustomerAppointmentsController {
     // Email best-effort de confirmação de cancelamento.
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: appt.tenantId },
-      select: { name: true, timezone: true },
+      select: {
+        name: true,
+        timezone: true,
+        phoneE164: true,
+        addressLine: true,
+        instagramHandle: true,
+      },
     });
     if (!tenant) return;
 
@@ -155,6 +161,7 @@ export class MeCustomerAppointmentsController {
         serviceName: appt.service.name,
         barberName: appt.barber.displayName,
         priceLabel: formatPriceBRL(appt.service.basePriceCents),
+        ...tenantContactVars(tenant),
       },
     });
   }

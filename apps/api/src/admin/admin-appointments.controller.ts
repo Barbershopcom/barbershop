@@ -40,7 +40,7 @@ import {
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { EmailService } from '../email/email.service';
-import { formatPriceBRL } from '../email/format';
+import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { BookingRescheduleError } from '../slots/booking.service';
 import { BookingService } from '../slots/booking.service';
 import { type TenantContextValue } from '../tenancy/tenant-context';
@@ -214,7 +214,13 @@ export class AdminAppointmentsController {
     if (full?.customerEmail) {
       const tenant = await ctx.tx.tenant.findUnique({
         where: { id: full.barbershop.tenantId },
-        select: { name: true, timezone: true },
+        select: {
+          name: true,
+          timezone: true,
+          phoneE164: true,
+          addressLine: true,
+          instagramHandle: true,
+        },
       });
       if (tenant) {
         void this.email.sendBookingCancelled({
@@ -228,6 +234,7 @@ export class AdminAppointmentsController {
             serviceName: full.service.name,
             barberName: full.barber.displayName,
             priceLabel: formatPriceBRL(full.service.basePriceCents),
+            ...tenantContactVars(tenant),
           },
         });
       }

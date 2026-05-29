@@ -2,7 +2,7 @@ import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config';
 
 import { EmailService } from '../email/email.service';
-import { formatPriceBRL } from '../email/format';
+import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
 import { encodeCancelToken } from '../slots/cancel-token';
@@ -100,7 +100,13 @@ export class JobsWorkerService implements OnApplicationBootstrap {
 
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: appt.barbershop.tenantId },
-      select: { name: true, timezone: true },
+      select: {
+        name: true,
+        timezone: true,
+        phoneE164: true,
+        addressLine: true,
+        instagramHandle: true,
+      },
     });
     if (!tenant) {
       JobsWorkerService.logger.warn(`Reminder skip: tenant não encontrado pra ${appt.id}`);
@@ -158,6 +164,7 @@ export class JobsWorkerService implements OnApplicationBootstrap {
           barberName: appt.barber.displayName,
           priceLabel: formatPriceBRL(appt.service.basePriceCents),
           cancelUrl,
+          ...tenantContactVars(tenant),
         },
       });
 

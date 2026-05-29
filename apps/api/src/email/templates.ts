@@ -32,6 +32,12 @@ export interface BookingTemplateVars {
   priceLabel?: string;
   /** URL completa do cancel link. Undefined em template de "cancelled" */
   cancelUrl?: string;
+  /** Endereço da barbearia, se setado (ADR-012). */
+  addressLine?: string | null;
+  /** Instagram handle (sem @), se setado (ADR-012). */
+  instagramHandle?: string | null;
+  /** URL pronta do WhatsApp (wa.me/...). Construir com `buildWhatsAppUrl`. */
+  whatsappUrl?: string | null;
 }
 
 export interface RescheduleTemplateVars extends BookingTemplateVars {
@@ -70,6 +76,7 @@ export function bookingConfirmationTemplate(v: BookingTemplateVars): string {
       badgeColor: COLOR_RED,
       rows: standardCardRows(v),
     }),
+    contact: contactBlock(v),
     cta: v.cancelUrl ? cancelButton(v.cancelUrl) : undefined,
     policies: policiesBlock({
       primary: 'Cancele com até 2h de antecedência sem custos adicionais.',
@@ -92,6 +99,7 @@ export function bookingReminderTemplate(v: BookingTemplateVars): string {
       badgeColor: COLOR_GOLD,
       rows: standardCardRows(v),
     }),
+    contact: contactBlock(v),
     cta: v.cancelUrl ? cancelButton(v.cancelUrl) : undefined,
     policies: policiesBlock({
       primary: 'Se algo mudou, cancele com pelo menos 2h de antecedência.',
@@ -113,6 +121,7 @@ export function bookingRescheduledTemplate(v: RescheduleTemplateVars): string {
       badgeColor: COLOR_RED,
       rows: rescheduledCardRows(v),
     }),
+    contact: contactBlock(v),
     cta: v.cancelUrl ? cancelButton(v.cancelUrl) : undefined,
     policies: policiesBlock({
       primary: 'Cancele com até 2h de antecedência sem custos adicionais.',
@@ -135,6 +144,7 @@ export function bookingCancelledTemplate(v: BookingTemplateVars): string {
       badgeColor: COLOR_MUTED,
       rows: cancelledCardRows(v),
     }),
+    contact: contactBlock(v),
     policies: policiesBlock({
       primary: 'Pra remarcar, é só voltar ao link da barbearia.',
       accent: 'Estamos sempre afiados.',
@@ -151,6 +161,7 @@ function vintageEmailShell(args: {
   preheader: string;
   hero: string;
   card: string;
+  contact?: string;
   cta?: string;
   policies?: string;
 }): string {
@@ -177,6 +188,7 @@ function vintageEmailShell(args: {
         ${args.card}
         ${args.cta ?? ''}
       </td></tr>
+      ${args.contact ?? ''}
       ${args.policies ?? ''}
       ${footerBlock(args.tenantName)}
       <tr><td style="height:4px;opacity:0.5;${STRIPE_GRADIENT}line-height:0;font-size:0;">&nbsp;</td></tr>
@@ -352,6 +364,44 @@ function cancelButton(cancelUrl: string): string {
       CANCELAR
     </a>
   </div>`;
+}
+
+/**
+ * Block opcional com contato da barbearia (endereço, Instagram, WhatsApp).
+ * Só renderiza se ao menos 1 field estiver setado. ADR-012 §9.
+ */
+function contactBlock(v: BookingTemplateVars): string | undefined {
+  const items: string[] = [];
+
+  if (v.addressLine) {
+    items.push(`<tr><td style="padding:4px 0;font-size:13px;color:${COLOR_DIM};">
+      📍 ${escapeHtml(v.addressLine)}
+    </td></tr>`);
+  }
+
+  if (v.instagramHandle) {
+    items.push(`<tr><td style="padding:4px 0;font-size:13px;">
+      <a href="https://instagram.com/${escapeHtml(v.instagramHandle)}" style="color:${COLOR_NAVY};text-decoration:none;">
+        📷 @${escapeHtml(v.instagramHandle)}
+      </a>
+    </td></tr>`);
+  }
+
+  if (v.whatsappUrl) {
+    items.push(`<tr><td style="padding:4px 0;font-size:13px;">
+      <a href="${escapeHtml(v.whatsappUrl)}" style="color:${COLOR_NAVY};text-decoration:none;font-weight:700;">
+        💬 Chamar no WhatsApp
+      </a>
+    </td></tr>`);
+  }
+
+  if (items.length === 0) return undefined;
+
+  return `<tr><td align="center" style="padding:0 32px 24px;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="font-family:${FONT_BODY};">
+      ${items.join('\n')}
+    </table>
+  </td></tr>`;
 }
 
 function policiesBlock(args: { primary: string; accent: string }): string {

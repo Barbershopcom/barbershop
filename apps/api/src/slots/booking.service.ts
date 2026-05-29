@@ -15,7 +15,7 @@ import type {
 } from '@barbearia/schemas';
 
 import { EmailService } from '../email/email.service';
-import { formatPriceBRL } from '../email/format';
+import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { JobsService } from '../jobs/jobs.service';
 import { APPOINTMENT_REMINDER_QUEUE, type ReminderPayload } from '../jobs/jobs-worker.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -224,8 +224,7 @@ export class BookingService {
         startAt: startAtUtc,
         endAt: endAtUtc,
         customerName: body.customerName.trim(),
-        tenantName: tenant.name,
-        tenantTimezone: tenant.timezone,
+        tenant,
         serviceName: service.name,
         serviceDurationMin: service.durationMin,
         servicePriceCents: service.basePriceCents,
@@ -256,7 +255,15 @@ export class BookingService {
 
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { id: true, slug: true, name: true, timezone: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        timezone: true,
+        phoneE164: true,
+        addressLine: true,
+        instagramHandle: true,
+      },
     });
     if (!tenant) {
       throw new UnprocessableEntityException({
@@ -368,8 +375,7 @@ export class BookingService {
         startAt: startAtUtc,
         endAt: endAtUtc,
         customerName: body.customerName.trim(),
-        tenantName: tenant.name,
-        tenantTimezone: tenant.timezone,
+        tenant,
         serviceName: service.name,
         serviceDurationMin: service.durationMin,
         servicePriceCents: service.basePriceCents,
@@ -436,7 +442,15 @@ export class BookingService {
     // Carrega dados frescos pra revalidação
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: appt.tenantId },
-      select: { id: true, slug: true, name: true, timezone: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        timezone: true,
+        phoneE164: true,
+        addressLine: true,
+        instagramHandle: true,
+      },
     });
     const service = await this.prisma.service.findUnique({
       where: { id: appt.serviceId },
@@ -529,8 +543,7 @@ export class BookingService {
         oldStartAt: appt.startAt,
         newStartAt,
         customerName: appt.customerName,
-        tenantName: tenant.name,
-        tenantTimezone: tenant.timezone,
+        tenant,
         serviceName: service.name,
         serviceDurationMin: service.durationMin,
         servicePriceCents: service.basePriceCents,
@@ -552,8 +565,13 @@ export class BookingService {
     oldStartAt: Date;
     newStartAt: Date;
     customerName: string;
-    tenantName: string;
-    tenantTimezone: string;
+    tenant: {
+      name: string;
+      timezone: string;
+      phoneE164?: string | null;
+      addressLine?: string | null;
+      instagramHandle?: string | null;
+    };
     serviceName: string;
     serviceDurationMin: number;
     servicePriceCents: number;
@@ -573,17 +591,18 @@ export class BookingService {
     await this.email.sendBookingRescheduled({
       to: args.to,
       vars: {
-        tenantName: args.tenantName,
+        tenantName: args.tenant.name,
         customerName: args.customerName,
-        previousDateLabel: formatDate(args.oldStartAt, args.tenantTimezone),
-        previousTimeLabel: formatTime(args.oldStartAt, args.tenantTimezone),
-        dateLabel: formatDate(args.newStartAt, args.tenantTimezone),
-        timeLabel: formatTime(args.newStartAt, args.tenantTimezone),
+        previousDateLabel: formatDate(args.oldStartAt, args.tenant.timezone),
+        previousTimeLabel: formatTime(args.oldStartAt, args.tenant.timezone),
+        dateLabel: formatDate(args.newStartAt, args.tenant.timezone),
+        timeLabel: formatTime(args.newStartAt, args.tenant.timezone),
         durationLabel: formatDuration(args.serviceDurationMin),
         serviceName: args.serviceName,
         barberName: args.barberName,
         priceLabel: formatPriceBRL(args.servicePriceCents),
         cancelUrl,
+        ...tenantContactVars(args.tenant),
       },
     });
   }
@@ -644,8 +663,13 @@ export class BookingService {
     startAt: Date;
     endAt: Date;
     customerName: string;
-    tenantName: string;
-    tenantTimezone: string;
+    tenant: {
+      name: string;
+      timezone: string;
+      phoneE164?: string | null;
+      addressLine?: string | null;
+      instagramHandle?: string | null;
+    };
     serviceName: string;
     serviceDurationMin: number;
     servicePriceCents: number;
@@ -665,15 +689,16 @@ export class BookingService {
     await this.email.sendBookingConfirmation({
       to: args.to,
       vars: {
-        tenantName: args.tenantName,
+        tenantName: args.tenant.name,
         customerName: args.customerName,
-        dateLabel: formatDate(args.startAt, args.tenantTimezone),
-        timeLabel: formatTime(args.startAt, args.tenantTimezone),
+        dateLabel: formatDate(args.startAt, args.tenant.timezone),
+        timeLabel: formatTime(args.startAt, args.tenant.timezone),
         durationLabel: formatDuration(args.serviceDurationMin),
         serviceName: args.serviceName,
         barberName: args.barberName,
         priceLabel: formatPriceBRL(args.servicePriceCents),
         cancelUrl,
+        ...tenantContactVars(args.tenant),
       },
     });
   }

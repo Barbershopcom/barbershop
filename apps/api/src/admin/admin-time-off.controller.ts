@@ -26,7 +26,7 @@ import {
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { EmailService } from '../email/email.service';
-import { formatPriceBRL } from '../email/format';
+import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -188,7 +188,13 @@ export class AdminTimeOffController {
         // Dispara emails best-effort. Busca tenant uma vez.
         const tenant = await ctx.tx.tenant.findUnique({
           where: { id: admin.tenantId },
-          select: { name: true, timezone: true },
+          select: {
+            name: true,
+            timezone: true,
+            phoneE164: true,
+            addressLine: true,
+            instagramHandle: true,
+          },
         });
         if (tenant) {
           for (const a of toCancel) {
@@ -204,6 +210,7 @@ export class AdminTimeOffController {
                 serviceName: a.service.name,
                 barberName: a.barber.displayName,
                 priceLabel: formatPriceBRL(a.service.basePriceCents),
+                ...tenantContactVars(tenant),
               },
             });
           }

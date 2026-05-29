@@ -13,7 +13,7 @@ import { Throttle } from '@nestjs/throttler';
 
 import { Public } from '../auth/auth.decorators';
 import { EmailService } from '../email/email.service';
-import { formatPriceBRL } from '../email/format';
+import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { PrismaService } from '../prisma/prisma.service';
 import { decodeCancelToken } from './cancel-token';
 
@@ -83,6 +83,12 @@ export class CustomerCancelController {
           serviceName: appt.serviceName,
           barberName: appt.barberName,
           priceLabel: appt.priceLabel,
+          ...tenantContactVars({
+            name: appt.tenantName,
+            phoneE164: appt.tenantPhoneE164,
+            addressLine: appt.tenantAddressLine,
+            instagramHandle: appt.tenantInstagramHandle,
+          }),
         },
       });
     }
@@ -122,7 +128,13 @@ export class CustomerCancelController {
 
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: appt.barbershop.tenantId },
-      select: { name: true, timezone: true },
+      select: {
+        name: true,
+        timezone: true,
+        phoneE164: true,
+        addressLine: true,
+        instagramHandle: true,
+      },
     });
     if (!tenant) throw new NotFoundException('Tenant não encontrado.');
 
@@ -134,6 +146,9 @@ export class CustomerCancelController {
       customerName: appt.customerName,
       customerEmail: appt.customerEmail,
       tenantName: tenant.name,
+      tenantPhoneE164: tenant.phoneE164,
+      tenantAddressLine: tenant.addressLine,
+      tenantInstagramHandle: tenant.instagramHandle,
       serviceName: appt.service.name,
       barberName: appt.barber.displayName,
       dateLabel: formatDate(appt.startAt, tenant.timezone),
@@ -152,6 +167,9 @@ interface CancelPreview {
   customerName: string;
   customerEmail: string | null;
   tenantName: string;
+  tenantPhoneE164: string | null;
+  tenantAddressLine: string | null;
+  tenantInstagramHandle: string | null;
   serviceName: string;
   barberName: string;
   dateLabel: string;

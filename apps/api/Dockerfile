@@ -40,6 +40,11 @@ RUN pnpm --filter=@barbearia/schemas build && \
 # resolução por symlinks legacy pra evitar refactor.
 RUN pnpm --filter=@barbearia/api deploy --prod --legacy /deploy
 
+# `pnpm deploy --legacy` não preserva os arquivos gerados pelo Prisma
+# (`.prisma/client/*` ficam no node_modules do builder mas não são
+# copiados pro /deploy). Re-roda generate apontando pra /deploy.
+RUN cd /deploy && /repo/node_modules/.bin/prisma generate --schema=./prisma/schema.prisma
+
 # ---------- Stage 2: runtime ----------
 FROM node:${NODE_VERSION} AS runtime
 

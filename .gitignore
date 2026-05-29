@@ -58,6 +58,10 @@ android/
 *.key
 *.mobileprovision
 *.orig.*
+# EAS Submit credentials
+play-service-account.json
+**/play-service-account.json
+AuthKey_*.p8
 
 # prisma
 prisma/migrations/dev/

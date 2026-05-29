@@ -21,8 +21,17 @@ async function bootstrap(): Promise<void> {
   );
 
   const corsOrigins = config.get<string[]>('CORS_ORIGINS') ?? [];
+  const nodeEnv = config.get<string>('NODE_ENV') ?? 'development';
+  // Production: sempre lista explícita (env validation garante não-vazio).
+  // Dev/test: lista opcional — sem origens, libera tudo pra facilitar Expo Go etc.
+  const corsOrigin =
+    nodeEnv === 'production'
+      ? corsOrigins
+      : corsOrigins.length > 0
+        ? corsOrigins
+        : true;
   app.enableCors({
-    origin: corsOrigins.length > 0 ? corsOrigins : true,
+    origin: corsOrigin,
     credentials: true,
   });
 

@@ -21,7 +21,13 @@
       "android": {
         "buildType": "apk"
       },
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://barbearia-api-production-a2e9.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://lhlqeplhpyvkafgtynpz.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_gMfrER3K9M1w_InQQeHUZw_DrUDQRNG",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://4378546d0c1a76e55a1bfcc48bf3f981@o4511472843816960.ingest.us.sentry.io/4511472909877248"
+      }
     },
     "production": {
       "distribution": "store",
@@ -32,6 +38,12 @@
       },
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://barbearia-api-production-a2e9.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://lhlqeplhpyvkafgtynpz.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_gMfrER3K9M1w_InQQeHUZw_DrUDQRNG",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://4378546d0c1a76e55a1bfcc48bf3f981@o4511472843816960.ingest.us.sentry.io/4511472909877248"
       }
     }
   },

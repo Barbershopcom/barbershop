@@ -55,6 +55,12 @@
         "projectId": "91d9a9b8-6493-4968-bbb7-e34dc0886223"
       }
     },
-    "owner": "jaja."
+    "owner": "jaja.",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/91d9a9b8-6493-4968-bbb7-e34dc0886223"
+    }
   }
 }

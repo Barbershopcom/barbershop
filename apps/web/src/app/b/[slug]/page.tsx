@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { Instagram, MapPin, MessageCircle } from 'lucide-react';
 
 import {
   formatDurationLabel,
@@ -50,9 +51,12 @@ export default async function PublicTenantLanding({ params }: PageProps) {
       getPublicServices(slug),
     ]);
 
+    const hasContact =
+      tenant.phoneE164 || tenant.addressLine || tenant.instagramHandle;
+
     return (
       <main className="mx-auto max-w-3xl px-4 py-10 md:px-6 md:py-16">
-        <header className="mb-10 text-center md:mb-14">
+        <header className="mb-8 text-center md:mb-10">
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
             {tenant.name}
           </h1>
@@ -60,6 +64,39 @@ export default async function PublicTenantLanding({ params }: PageProps) {
             Escolha um serviço para começar seu agendamento.
           </p>
         </header>
+
+        {hasContact ? (
+          <section className="mb-8 flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-4 text-sm md:flex-row md:justify-center md:gap-6">
+            {tenant.addressLine ? (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                <span>{tenant.addressLine}</span>
+              </div>
+            ) : null}
+            {tenant.instagramHandle ? (
+              <a
+                href={`https://instagram.com/${tenant.instagramHandle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Instagram className="h-4 w-4" />
+                <span>@{tenant.instagramHandle}</span>
+              </a>
+            ) : null}
+            {tenant.phoneE164 ? (
+              <a
+                href={buildWhatsAppLink(tenant.phoneE164, tenant.name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white transition-colors hover:bg-emerald-700"
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span>Chamar no WhatsApp</span>
+              </a>
+            ) : null}
+          </section>
+        ) : null}
 
         {services.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border bg-muted/40 p-8 text-center text-sm text-muted-foreground">
@@ -112,4 +149,13 @@ export default async function PublicTenantLanding({ params }: PageProps) {
     }
     throw err;
   }
+}
+
+function buildWhatsAppLink(phoneE164: string, tenantName: string): string {
+  // wa.me não aceita o '+' inicial nem espaços (ADR-012 §2).
+  const digits = phoneE164.replace(/^\+/, '');
+  const text = encodeURIComponent(
+    `Olá, ${tenantName}! Vim pelo site e gostaria de agendar.`,
+  );
+  return `https://wa.me/${digits}?text=${text}`;
 }

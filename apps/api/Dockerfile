@@ -43,7 +43,13 @@ RUN pnpm --filter=@barbearia/api deploy --prod --legacy /deploy
 # `pnpm deploy --legacy` não preserva os arquivos gerados pelo Prisma
 # (`.prisma/client/*` ficam no node_modules do builder mas não são
 # copiados pro /deploy). Re-roda generate apontando pra /deploy.
-RUN cd /deploy && /repo/node_modules/.bin/prisma generate --schema=./prisma/schema.prisma
+#
+# pnpm com workspaces hospeda o binário em /repo/apps/api/node_modules/.bin
+# (não em /repo/node_modules/.bin). Usa find pra robustez entre versões.
+RUN PRISMA_BIN=$(find /repo -name "prisma" -path "*/.bin/*" -type f 2>/dev/null | head -1) && \
+    if [ -z "$PRISMA_BIN" ]; then echo "ERROR: prisma binary not found"; exit 1; fi && \
+    echo "Using prisma binary: $PRISMA_BIN" && \
+    cd /deploy && $PRISMA_BIN generate --schema=./prisma/schema.prisma
 
 # ---------- Stage 2: runtime ----------
 FROM node:${NODE_VERSION} AS runtime

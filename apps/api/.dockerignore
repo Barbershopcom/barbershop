@@ -1,12 +1,39 @@
-node_modules
-dist
+# Aplicado quando o contexto de build é o root do monorepo
+# (Railway: aponta Root Directory pro repo, Dockerfile pra apps/api/Dockerfile).
+
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/.expo
+**/.expo-shared
+
+# Logs
+**/*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Env locais (Railway injeta via dashboard — nunca pra imagem)
 .env
-.env.*
-!.env.example
-*.log
-.turbo
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+
+# IDE / OS
 .git
 .gitignore
-README.md
-test
-coverage
+.vscode
+.idea
+.DS_Store
+
+# Tests + docs (não entram no runtime)
+**/coverage
+docs/
+
+# Apps que não fazem parte do build da imagem do API
+apps/web
+apps/mobile-business
+apps/mobile-customer

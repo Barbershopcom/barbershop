@@ -34,8 +34,11 @@ RUN pnpm --filter=@barbearia/schemas build && \
     pnpm --filter=@barbearia/api prisma:generate && \
     pnpm --filter=@barbearia/api build
 
-# Cria deploy package standalone (resolve symlinks + prod-only deps)
-RUN pnpm --filter=@barbearia/api deploy --prod /deploy
+# Cria deploy package standalone (resolve symlinks + prod-only deps).
+# `--legacy` necessário desde pnpm v10 (ADR-013): nova flag espera
+# workspace com `inject-workspace-packages=true` no .npmrc; mantemos
+# resolução por symlinks legacy pra evitar refactor.
+RUN pnpm --filter=@barbearia/api deploy --prod --legacy /deploy
 
 # ---------- Stage 2: runtime ----------
 FROM node:${NODE_VERSION} AS runtime

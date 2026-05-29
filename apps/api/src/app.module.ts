@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { SentryModule } from '@sentry/nestjs/setup';
 
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
@@ -21,6 +22,8 @@ import { TenancyModule } from './tenancy/tenancy.module';
 
 @Module({
   imports: [
+    // Sentry primeiro pra patchear módulos cedo (ADR-014 §3)
+    SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       validate: loadEnv,

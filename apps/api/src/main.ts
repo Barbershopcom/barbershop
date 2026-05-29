@@ -1,9 +1,11 @@
+import './instrument'; // Sentry init — DEVE vir antes de qualquer outro import
 import 'reflect-metadata';
 
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 
 import { AppModule } from './app.module';
 
@@ -19,6 +21,11 @@ async function bootstrap(): Promise<void> {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+
+  // Sentry filter global — captura todas as exceptions não-tratadas.
+  // No-op se SENTRY_DSN não setado (instrument.ts skip Sentry.init).
+  const { httpAdapter } = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new SentryGlobalFilter(httpAdapter));
 
   const corsOrigins = config.get<string[]>('CORS_ORIGINS') ?? [];
   const nodeEnv = config.get<string>('NODE_ENV') ?? 'development';

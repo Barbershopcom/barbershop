@@ -31,6 +31,9 @@ const schema = z
       .string()
       .min(16, 'APPOINTMENT_CANCEL_SECRET deve ter pelo menos 16 chars')
       .default(DEV_CANCEL_SECRET),
+
+    // Observability (ADR-014). Sem DSN, Sentry vira no-op (OK em dev).
+    SENTRY_DSN: z.string().url().optional(),
   })
   // Validações extras só em production — evita guard-rails atrapalhando dev.
   .superRefine((env, ctx) => {

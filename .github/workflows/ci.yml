@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build @barbearia/schemas (deps de api e web)
+        run: pnpm --filter @barbearia/schemas build
+
       - name: Generate Prisma Client
         run: pnpm --filter @barbearia/api prisma:generate
 
@@ -40,3 +43,7 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+  # NOTE: testes rodam localmente. CI no postgres genérico não tem o role
+  # `neondb_owner` que algumas migrations referenciam (ADR-002 §RLS).
+  # Pra habilitar: setup do role + GRANT antes de prisma migrate deploy.

@@ -5,9 +5,12 @@ import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { Sentry, initSentry } from '@/lib/sentry';
 import { SessionProvider } from '@/lib/session';
 
-export default function RootLayout() {
+initSentry();
+
+function RootLayout() {
   return (
     <SessionProvider>
       <StatusBar style="dark" />
@@ -18,3 +21,5 @@ export default function RootLayout() {
     </SessionProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);

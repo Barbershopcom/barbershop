@@ -3,9 +3,12 @@ import '../global.css';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
+import { Sentry, initSentry } from '@/lib/sentry';
 import { SessionProvider } from '@/lib/session';
 
-export default function RootLayout() {
+initSentry();
+
+function RootLayout() {
   return (
     <SessionProvider>
       <StatusBar style="dark" />
@@ -13,3 +16,5 @@ export default function RootLayout() {
     </SessionProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);

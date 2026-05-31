@@ -14,6 +14,7 @@ import { HealthModule } from './health/health.module';
 import { JobsModule } from './jobs/jobs.module';
 import { MeModule } from './me/me.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { PaymentModule } from './payment/payment.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PushModule } from './push/push.module';
 import { ServicesModule } from './services/services.module';
@@ -45,6 +46,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     EmailModule,
     JobsModule,
     PushModule,
+    PaymentModule,
   ],
   providers: [
     {

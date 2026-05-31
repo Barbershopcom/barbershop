@@ -11,7 +11,10 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { type MyCustomerAppointmentItem } from '@barbearia/schemas';
+import {
+  type MyCustomerAppointmentItem,
+  slotOccupyingStatuses,
+} from '@barbearia/schemas';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { EmailService } from '../email/email.service';
@@ -122,7 +125,7 @@ export class MeCustomerAppointmentsController {
       throw new ForbiddenException('Esse agendamento não é seu.');
     }
     if (appt.status === 'cancelled') return; // idempotente
-    if (appt.status !== 'booked') {
+    if (!slotOccupyingStatuses.includes(appt.status as never)) {
       throw new ForbiddenException(
         `Não é possível cancelar appointment com status '${appt.status}'.`,
       );

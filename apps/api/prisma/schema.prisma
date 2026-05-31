@@ -378,6 +378,23 @@ model Payment {
   @@map("payments")
 }
 
+/// Perfil de cliente final (ADR-016 §2). 1:1 com AppUser.
+/// NÃO tenant-scoped — cliente reserva em N barbearias com a mesma conta,
+/// igual CustomerDevice. Acesso via role bypassRLS + filtro explícito.
+model Customer {
+  id          String   @id @default(uuid()) @db.Uuid
+  appUserId   String   @unique @map("app_user_id") @db.Uuid
+  displayName String   @map("display_name")
+  phoneE164   String?  @map("phone_e164")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  appUser      AppUser       @relation(fields: [appUserId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@map("customers")
+}
+
 /// Devices registrados pro Expo Push Service (ADR-010 §5/§8).
 /// Sem RLS — cliente reserva em N barbearias com o mesmo telefone/email,
 /// então não pertence a tenant específico. Filtros são por customerPhone.

@@ -3,15 +3,25 @@ import { z } from 'zod';
 import { phoneE164Schema, uuidSchema } from './common';
 
 /**
- * Status do appointment. Slots subtraem só 'booked'.
- *  - cancelled: cliente desmarcou (libera o horário)
- *  - completed: confirmado após o horário (não bloqueia futuras buscas)
- *  - no_show: cliente não apareceu (também libera, mas marca histórico)
+ * Status do appointment — workflow novo (ADR-016 §3). Fonte canônica.
+ *  - awaiting_payment: reservou, não pagou ainda (segura o slot)
+ *  - pending: pago, aguardando barbeiro confirmar
+ *  - confirmed: barbeiro confirmou
+ *  - completed: corte realizado
+ *  - cancelled: cancelado (libera o horário)
+ *  - expired: barbeiro não confirmou e a hora passou (reembolso)
+ *  - no_show: cliente não apareceu
+ *
+ * Slots/EXCLUDE ocupam apenas awaiting_payment|pending|confirmed
+ * (ver `slotOccupyingStatuses` em ./payment).
  */
 export const appointmentStatusSchema = z.enum([
-  'booked',
-  'cancelled',
+  'awaiting_payment',
+  'pending',
+  'confirmed',
   'completed',
+  'cancelled',
+  'expired',
   'no_show',
 ]);
 

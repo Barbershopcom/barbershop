@@ -161,7 +161,14 @@ export class CustomerCancelController {
 
 interface CancelPreview {
   id: string;
-  status: 'booked' | 'cancelled' | 'completed' | 'no_show';
+  status:
+    | 'awaiting_payment'
+    | 'pending'
+    | 'confirmed'
+    | 'completed'
+    | 'cancelled'
+    | 'expired'
+    | 'no_show';
   startAtIso: string;
   endAtIso: string;
   customerName: string;

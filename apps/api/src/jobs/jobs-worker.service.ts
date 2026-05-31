@@ -85,7 +85,9 @@ export class JobsWorkerService implements OnApplicationBootstrap {
       JobsWorkerService.logger.warn(`Reminder skip: appointment ${payload.apptId} sumiu`);
       return;
     }
-    if (appt.status !== 'booked') {
+    // Só lembra appointment confirmado pelo barbeiro (ADR-016 §3).
+    // pending/awaiting_payment ainda não são compromisso firme.
+    if (appt.status !== 'confirmed') {
       JobsWorkerService.logger.debug(
         `Reminder skip: appointment ${payload.apptId} está '${appt.status}'`,
       );

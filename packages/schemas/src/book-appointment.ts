@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { appointmentStatusSchema } from './appointments';
 import { emailSchema, phoneE164Schema, uuidSchema } from './common';
 
 /**
@@ -39,7 +40,9 @@ export const bookedAppointmentSchema = z.object({
   barberId: uuidSchema,
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
-  status: z.literal('booked'),
+  status: appointmentStatusSchema,
+  /** Preço do serviço no momento do booking (centavos). ADR-016 §5. */
+  priceCents: z.number().int().nonnegative(),
   customerName: z.string(),
   /**
    * Admin pode reservar sem telefone (cliente ligou e não deu).

@@ -21,6 +21,7 @@ import {
   type PreviewTimeOffQuery,
   type PreviewTimeOffResponse,
   previewTimeOffQuerySchema,
+  slotOccupyingStatuses,
 } from '@barbearia/schemas';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
@@ -94,7 +95,7 @@ export class AdminTimeOffController {
     const overlapping = await ctx.tx.appointment.findMany({
       where: {
         barberId: query.barberId,
-        status: 'booked',
+        status: { in: [...slotOccupyingStatuses] },
         startAt: { lt: endAt },
         endAt: { gt: startAt },
       },
@@ -158,7 +159,7 @@ export class AdminTimeOffController {
       const toCancel = await ctx.tx.appointment.findMany({
         where: {
           barberId: body.barberId,
-          status: 'booked',
+          status: { in: [...slotOccupyingStatuses] },
           startAt: { lt: endAt },
           endAt: { gt: startAt },
         },

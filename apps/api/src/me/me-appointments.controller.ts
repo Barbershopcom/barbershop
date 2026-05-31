@@ -84,7 +84,8 @@ export class MeAppointmentsController {
       where: {
         barberId: employee.id,
         startAt: { gte: fromUtc, lt: toUtcExclusive },
-        status: { in: ['booked', 'completed'] },
+        // Agenda do barbeiro: ativos (aguardando/pending/confirmado) + concluídos.
+        status: { in: ['awaiting_payment', 'pending', 'confirmed', 'completed'] },
       },
       select: {
         id: true,

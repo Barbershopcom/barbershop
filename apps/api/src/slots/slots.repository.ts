@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { slotOccupyingStatuses } from '@barbearia/schemas';
 import { fromZonedTime } from 'date-fns-tz';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -119,7 +120,9 @@ export class SlotsRepository {
         },
         appointments: {
           where: {
-            status: 'booked',
+            // Ocupam o slot: awaiting_payment | pending | confirmed (ADR-016 §3).
+            // Espelha a EXCLUDE constraint anti-overbooking.
+            status: { in: [...slotOccupyingStatuses] },
             startAt: { lt: toDateUtcExclusive },
             endAt: { gt: fromDateUtc },
           },

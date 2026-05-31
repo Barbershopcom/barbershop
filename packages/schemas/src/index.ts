@@ -15,6 +15,7 @@ export * from './employees';
 export * from './me-appointments';
 export * from './me-customer-appointments';
 export * from './onboarding';
+export * from './payment';
 export * from './public-tenant';
 export * from './reschedule';
 export * from './schedule';

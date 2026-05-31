@@ -35,6 +35,7 @@ import {
   type BookedAppointment,
   type RescheduleAppointmentInput,
   rescheduleAppointmentSchema,
+  slotOccupyingStatuses,
 } from '@barbearia/schemas';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
@@ -124,7 +125,9 @@ export class AdminAppointmentsController {
       where: {
         startAt: { gte: fromUtc, lt: toUtcExclusive },
         ...(query.barberId ? { barberId: query.barberId } : {}),
-        ...(query.includeAllStatuses ? {} : { status: 'booked' }),
+        ...(query.includeAllStatuses
+          ? {}
+          : { status: { in: [...slotOccupyingStatuses] } }),
       },
       select: {
         id: true,
@@ -180,7 +183,9 @@ export class AdminAppointmentsController {
     // Já cancelado: idempotente, no-op.
     if (appointment.status === 'cancelled') return;
 
-    if (appointment.status !== 'booked') {
+    // Só dá pra cancelar appointment ativo (ocupa slot). completed/expired/
+    // no_show já são terminais.
+    if (!slotOccupyingStatuses.includes(appointment.status as never)) {
       throw new ForbiddenException(
         `Não é possível cancelar appointment com status '${appointment.status}'.`,
       );

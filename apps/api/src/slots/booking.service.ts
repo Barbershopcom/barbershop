@@ -154,7 +154,10 @@ export class BookingService {
           customerEmail: body.customerEmail ?? null,
           startAt: startAtUtc,
           endAt: endAtUtc,
-          status: 'booked',
+          // Booking público nasce aguardando pagamento (ADR-016 §3).
+          // PaymentService move pra 'pending' ao aprovar.
+          status: 'awaiting_payment',
+          priceCents: service.basePriceCents,
         },
       });
     } catch (err) {
@@ -182,7 +185,8 @@ export class BookingService {
       barberId: created.barberId,
       startAt: created.startAt.toISOString(),
       endAt: created.endAt.toISOString(),
-      status: 'booked',
+      status: created.status as BookedAppointment['status'],
+      priceCents: created.priceCents,
       customerName: created.customerName,
       customerPhone: created.customerPhone ?? body.customerPhone,
       customerEmail: created.customerEmail,
@@ -342,7 +346,10 @@ export class BookingService {
           customerEmail: body.customerEmail ?? null,
           startAt: startAtUtc,
           endAt: endAtUtc,
-          status: 'booked',
+          // Admin marca presencial/telefone — não passa por pagamento online,
+          // nasce confirmado direto (ADR-016 §3).
+          status: 'confirmed',
+          priceCents: service.basePriceCents,
         },
       });
     } catch (err) {
@@ -362,7 +369,8 @@ export class BookingService {
       barberId: created.barberId,
       startAt: created.startAt.toISOString(),
       endAt: created.endAt.toISOString(),
-      status: 'booked',
+      status: created.status as BookedAppointment['status'],
+      priceCents: created.priceCents,
       customerName: created.customerName,
       customerPhone: created.customerPhone ?? body.customerPhone ?? null,
       customerEmail: created.customerEmail,

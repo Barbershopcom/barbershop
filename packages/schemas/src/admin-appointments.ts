@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { AppointmentStatus } from './appointments';
 import { uuidSchema } from './common';
 import { isoDateSchema } from './slots';
 
@@ -45,7 +46,7 @@ export interface AdminAppointmentItem {
   id: string;
   startAt: string; // UTC ISO
   endAt: string; // UTC ISO
-  status: 'booked' | 'cancelled' | 'completed' | 'no_show';
+  status: AppointmentStatus;
   cancelledBy: 'customer' | 'admin' | 'system' | null;
   cancelReason: string | null;
   customerName: string;

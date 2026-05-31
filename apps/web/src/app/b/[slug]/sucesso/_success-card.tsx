@@ -48,20 +48,33 @@ export function SuccessCard({ tenantName, tenantSlug, bookingId }: Props) {
     );
   }
 
+  // Após o pagamento mock o booking fica 'pending' (aguardando barbeiro).
+  const isPending = payload?.booking.status === 'pending';
+
   return (
     <div className="text-center">
       <CheckCircle2 className="mx-auto h-14 w-14 text-primary" />
-      <h1 className="mt-4 text-2xl font-semibold">Agendamento confirmado!</h1>
+      <h1 className="mt-4 text-2xl font-semibold">
+        {isPending ? 'Pagamento recebido!' : 'Agendamento confirmado!'}
+      </h1>
       <p className="mt-1 text-sm text-muted-foreground">{tenantName}</p>
+
+      {isPending ? (
+        <p className="mx-auto mt-4 max-w-sm rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Aguardando o barbeiro confirmar — você recebe um aviso assim que ele
+          aceitar (normalmente em até 1h).
+        </p>
+      ) : null}
 
       {payload ? (
         <dl className="mt-6 space-y-3 rounded-lg border border-border bg-card p-5 text-left text-sm">
-          <Row label="Serviço" value={payload.serviceName} />
+          {payload.serviceName ? <Row label="Serviço" value={payload.serviceName} /> : null}
           <Row
             label="Data e hora"
             value={formatSlot(payload.booking.startAt, payload.timezone)}
           />
           <Row label="Cliente" value={payload.booking.customerName} />
+          <Row label="Valor" value={formatBRL(payload.booking.priceCents)} />
           {payload.booking.customerEmail ? (
             <Row label="Email" value={payload.booking.customerEmail} />
           ) : null}
@@ -113,4 +126,8 @@ function formatSlot(iso: string, tz: string): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(d);
+}
+
+function formatBRL(cents: number): string {
+  return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }

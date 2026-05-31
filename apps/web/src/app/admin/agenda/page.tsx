@@ -107,8 +107,8 @@ export default function AdminAgendaPage() {
         end: a.endAt,
         backgroundColor: statusColor(a.status),
         borderColor: statusColor(a.status),
-        textColor: a.status === 'booked' ? '#FFFFFF' : '#1a1a1a',
-        editable: a.status === 'booked', // só booked pode ser arrastado
+        textColor: a.status === 'confirmed' ? '#FFFFFF' : '#1a1a1a',
+        editable: isActiveStatus(a.status), // só ativos podem ser arrastados
         extendedProps: { appt: a },
       })),
     [items],
@@ -148,7 +148,7 @@ export default function AdminAgendaPage() {
 
   async function handleEventClick(arg: EventClickArg) {
     const appt = arg.event.extendedProps.appt as AdminAppointmentItem;
-    if (appt.status !== 'booked') return;
+    if (!isActiveStatus(appt.status)) return;
     const label = new Date(appt.startAt).toLocaleString('pt-BR', {
       weekday: 'long',
       day: '2-digit',
@@ -459,31 +459,48 @@ export default function AdminAgendaPage() {
   );
 }
 
-/** Cor por status — booked = primário, cancelados/etc = tons mais frios. */
+/** Cor por status (ADR-016 §3). Ativos = tons fortes; terminais = frios. */
 function statusColor(status: AdminAppointmentItem['status']): string {
   switch (status) {
-    case 'booked':
-      return '#357BE4';
-    case 'cancelled':
-      return '#E5E7EB'; // cinza claro
+    case 'awaiting_payment':
+      return '#D97706'; // âmbar escuro — falta pagar
+    case 'pending':
+      return '#F59E0B'; // amarelo — aguardando confirmação
+    case 'confirmed':
+      return '#357BE4'; // azul — confirmado
     case 'completed':
       return '#10B981'; // verde
+    case 'cancelled':
+      return '#E5E7EB'; // cinza claro
+    case 'expired':
+      return '#BF212F'; // vermelho
     case 'no_show':
-      return '#F59E0B'; // âmbar
+      return '#9CA3AF'; // cinza médio
   }
 }
 
 function statusEmoji(status: AdminAppointmentItem['status']): string {
   switch (status) {
-    case 'booked':
+    case 'awaiting_payment':
+      return '💳';
+    case 'pending':
+      return '⏳';
+    case 'confirmed':
       return '';
-    case 'cancelled':
-      return '❌';
     case 'completed':
       return '✅';
+    case 'cancelled':
+      return '❌';
+    case 'expired':
+      return '⌛';
     case 'no_show':
       return '⚠️';
   }
+}
+
+/** Status "ativos" que o admin pode arrastar/cancelar na agenda. */
+function isActiveStatus(status: AdminAppointmentItem['status']): boolean {
+  return status === 'awaiting_payment' || status === 'pending' || status === 'confirmed';
 }
 
 function formatYMD(date: Date): string {

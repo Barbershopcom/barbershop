@@ -161,7 +161,11 @@ function AppointmentCard({
 }) {
   const statusBg = statusBgColor(item.status);
   const statusText = statusLabel(item.status);
-  const canCancel = item.status === 'booked';
+  // Cancelável enquanto ativo (ocupa slot): aguardando pgto / pendente / confirmado.
+  const canCancel =
+    item.status === 'awaiting_payment' ||
+    item.status === 'pending' ||
+    item.status === 'confirmed';
 
   return (
     <View className="rounded-lg border border-slate-200 bg-white p-4">
@@ -218,25 +222,37 @@ function AppointmentCard({
 
 function statusBgColor(status: MyCustomerAppointmentItem['status']): string {
   switch (status) {
-    case 'booked':
-      return '#1a365d';
-    case 'cancelled':
-      return '#94a3b8';
+    case 'awaiting_payment':
+      return '#d97706'; // âmbar escuro — falta pagar
+    case 'pending':
+      return '#f59e0b'; // amarelo — aguardando barbeiro
+    case 'confirmed':
+      return '#1a365d'; // navy — confirmado
     case 'completed':
-      return '#10b981';
+      return '#10b981'; // verde
+    case 'cancelled':
+      return '#94a3b8'; // cinza
+    case 'expired':
+      return '#bf212f'; // vermelho
     case 'no_show':
-      return '#f59e0b';
+      return '#d97706'; // âmbar
   }
 }
 
 function statusLabel(status: MyCustomerAppointmentItem['status']): string {
   switch (status) {
-    case 'booked':
+    case 'awaiting_payment':
+      return 'Aguardando pagamento';
+    case 'pending':
+      return 'Aguardando confirmação';
+    case 'confirmed':
       return 'Confirmado';
-    case 'cancelled':
-      return 'Cancelado';
     case 'completed':
       return 'Concluído';
+    case 'cancelled':
+      return 'Cancelado';
+    case 'expired':
+      return 'Expirado';
     case 'no_show':
       return 'Faltou';
   }

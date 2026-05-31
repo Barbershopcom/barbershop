@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { CustomerService } from './customer.service';
 import { MeAppointmentsController } from './me-appointments.controller';
 import { MeCustomerAppointmentsController } from './me-customer-appointments.controller';
 import { MeScheduleController } from './me-schedule.controller';
@@ -14,5 +15,6 @@ import { MeController } from './me.controller';
     MeAppointmentsController,
     MeCustomerAppointmentsController,
   ],
+  providers: [CustomerService],
 })
 export class MeModule {}

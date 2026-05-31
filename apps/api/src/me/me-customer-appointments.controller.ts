@@ -20,6 +20,7 @@ import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { EmailService } from '../email/email.service';
 import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { PrismaService } from '../prisma/prisma.service';
+import { CustomerService } from './customer.service';
 
 /**
  * Endpoints "minhas reservas" pro CLIENTE FINAL (mobile-customer).
@@ -41,12 +42,13 @@ export class MeCustomerAppointmentsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
+    private readonly customers: CustomerService,
   ) {}
 
   @Get()
   @ApiOkResponse({
     description:
-      'Appointments cujo customerEmail = user.email. Ordenados por startAt desc.',
+      'Appointments do cliente logado (por customerId vinculado ou email). Ordenados por startAt desc.',
   })
   async list(
     @CurrentUser() user: AuthenticatedUser,
@@ -56,8 +58,14 @@ export class MeCustomerAppointmentsController {
         'Usuário sem email cadastrado — nada pra vincular.',
       );
     }
+
+    // Garante Customer + faz account-linking retroativo (guest → conta).
+    const { customerId } = await this.customers.ensureForUser(user);
+
     const rows = await this.prisma.appointment.findMany({
-      where: { customerEmail: user.email },
+      // customerId pega o que já foi vinculado; customerEmail cobre
+      // bookings novos guest com o mesmo email ainda não vinculados.
+      where: { OR: [{ customerId }, { customerEmail: user.email }] },
       select: {
         id: true,
         tenantId: true,

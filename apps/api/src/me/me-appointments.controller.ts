@@ -1,12 +1,29 @@
-import { Controller, Get, NotFoundException, Query } from '@nestjs/common';
+import {
+  Body,
+  ConflictException,
+  Controller,
+  ForbiddenException,
+  Get,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { fromZonedTime } from 'date-fns-tz';
 import {
+  type BarberActionResult,
   type MyAppointmentItem,
   type MyAppointmentsQuery,
   myAppointmentsQuerySchema,
+  type RejectAppointmentInput,
+  rejectAppointmentSchema,
 } from '@barbearia/schemas';
 
+import { AppointmentStatusService } from '../appointments/appointment-status.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
@@ -25,12 +42,39 @@ import { Tx } from '../tenancy/tenancy.decorators';
 @ApiBearerAuth()
 @Controller('me/appointments')
 export class MeAppointmentsController {
-  private async resolveEmployee(
+  constructor(private readonly apptStatus: AppointmentStatusService) {}
+
+  /**
+   * Confirma que o appointment pertence ao barbeiro logado (ou que ele é
+   * admin do tenant). RLS via ctx.tx já restringe ao tenant; aqui checamos
+   * que o barberId bate. Retorna o status atual.
+   */
+  private async assertOwnership(
     ctx: TenantContextValue,
-  ): Promise<{ id: string; tenantId: string; barbershopId: string; timezone: string }> {
+    appointmentId: string,
+  ): Promise<{ status: string }> {
+    const employee = await this.resolveEmployee(ctx);
+    const appt = await ctx.tx.appointment.findUnique({
+      where: { id: appointmentId },
+      select: { barberId: true, status: true },
+    });
+    if (!appt) throw new NotFoundException('Agendamento não encontrado.');
+    if (appt.barberId !== employee.id && employee.role !== 'admin') {
+      throw new ForbiddenException('Esse agendamento não é seu.');
+    }
+    return { status: appt.status };
+  }
+
+  private async resolveEmployee(ctx: TenantContextValue): Promise<{
+    id: string;
+    tenantId: string;
+    barbershopId: string;
+    timezone: string;
+    role: string;
+  }> {
     const employee = await ctx.tx.employee.findFirst({
       where: { appUserId: ctx.userId },
-      select: { id: true, tenantId: true, barbershopId: true },
+      select: { id: true, tenantId: true, barbershopId: true, role: true },
     });
     if (!employee) {
       throw new NotFoundException(
@@ -49,6 +93,7 @@ export class MeAppointmentsController {
       tenantId: employee.tenantId,
       barbershopId: employee.barbershopId,
       timezone: tenant?.timezone ?? 'America/Sao_Paulo',
+      role: employee.role,
     };
   }
 
@@ -110,5 +155,44 @@ export class MeAppointmentsController {
       customerPhone: r.customerPhone,
       service: r.service,
     }));
+  }
+
+  @Patch(':id/confirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Barbeiro confirma um agendamento pending.' })
+  async confirm(
+    @Tx() ctx: TenantContextValue,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<BarberActionResult> {
+    await this.assertOwnership(ctx, id);
+    const r = await this.apptStatus.confirm(id);
+    if (!r.ok) {
+      throw new ConflictException({
+        message: `Não foi possível confirmar (status atual: '${r.currentStatus}').`,
+        code: 'invalid_transition',
+        currentStatus: r.currentStatus,
+      });
+    }
+    return { id, status: 'confirmed' };
+  }
+
+  @Patch(':id/reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Barbeiro recusa um agendamento pending (estorna).' })
+  async reject(
+    @Tx() ctx: TenantContextValue,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(rejectAppointmentSchema)) body: RejectAppointmentInput,
+  ): Promise<BarberActionResult> {
+    await this.assertOwnership(ctx, id);
+    const r = await this.apptStatus.reject(id, body.reason);
+    if (!r.ok) {
+      throw new ConflictException({
+        message: `Não foi possível recusar (status atual: '${r.currentStatus}').`,
+        code: 'invalid_transition',
+        currentStatus: r.currentStatus,
+      });
+    }
+    return { id, status: 'cancelled' };
   }
 }

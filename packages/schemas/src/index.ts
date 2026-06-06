@@ -6,6 +6,7 @@ export * from './admin-cancel';
 export * from './admin-create-appointment';
 export * from './admin-tenant-profile';
 export * from './appointments';
+export * from './barber-actions';
 export * from './barber-time-off';
 export * from './barbershop-hours';
 export * from './book-appointment';

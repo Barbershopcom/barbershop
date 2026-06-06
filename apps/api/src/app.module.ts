@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { SentryModule } from '@sentry/nestjs/setup';
 
 import { AdminModule } from './admin/admin.module';
+import { AppointmentsModule } from './appointments/appointments.module';
 import { AuthModule } from './auth/auth.module';
 import { BarbershopHoursModule } from './barbershop-hours/barbershop-hours.module';
 import { loadEnv } from './config/env';
@@ -47,6 +48,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     JobsModule,
     PushModule,
     PaymentModule,
+    AppointmentsModule,
   ],
   providers: [
     {

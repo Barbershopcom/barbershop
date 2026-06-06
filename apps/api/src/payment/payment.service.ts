@@ -6,8 +6,16 @@ import {
   type PaymentMethod,
 } from '@barbearia/schemas';
 
+import {
+  APPOINTMENT_EXPIRATION_QUEUE,
+  type ExpirationPayload,
+} from '../jobs/jobs-worker.service';
+import { JobsService } from '../jobs/jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PAYMENT_PROVIDER, type PaymentProvider } from './payment-provider';
+
+/** Janela de confirmação do barbeiro após o pagamento (ADR-017 §1). */
+const CONFIRM_WINDOW_MS = 60 * 60 * 1000; // 1h
 
 /**
  * Orquestra pagamento de um appointment (ADR-016 §5).
@@ -28,6 +36,7 @@ export class PaymentService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
+    private readonly jobs: JobsService,
   ) {}
 
   /**
@@ -48,6 +57,7 @@ export class PaymentService {
         tenantId: true,
         status: true,
         priceCents: true,
+        startAt: true,
         payment: {
           select: {
             id: true,
@@ -91,6 +101,12 @@ export class PaymentService {
 
     const paid = charge.status === 'paid';
 
+    // Deadline de confirmação: o que vier primeiro entre +1h e o corte.
+    const now = Date.now();
+    const confirmDeadline = new Date(
+      Math.min(now + CONFIRM_WINDOW_MS, appt.startAt.getTime()),
+    );
+
     // Persiste Payment + transiciona appointment numa transação só.
     const payment = await this.prisma.$transaction(async (tx) => {
       const p = await tx.payment.upsert({
@@ -131,10 +147,11 @@ export class PaymentService {
       });
 
       // awaiting_payment → pending só quando aprovado.
+      // confirmDeadline = min(agora+1h, startAt) — ADR-017 §1.
       if (paid) {
         await tx.appointment.update({
           where: { id: appt.id },
-          data: { status: 'pending' },
+          data: { status: 'pending', confirmDeadline },
         });
       }
 
@@ -145,10 +162,58 @@ export class PaymentService {
       `Pagamento ${payment.status} appt=${appt.id} método=${args.method} total=${breakdown.amountCents}c`,
     );
 
+    // Agenda expiração (best-effort, fora da transação — ADR-017 §2).
+    if (paid) {
+      await this.scheduleExpiration(appt.id, confirmDeadline);
+    }
+
     return {
       payment: toDto(payment),
       pixQrCode: charge.pixQrCode,
     };
+  }
+
+  /**
+   * Agenda o job que expira o appointment se o barbeiro não confirmar até
+   * o deadline. Idempotente no worker (expire() é no-op se já mudou).
+   * Best-effort: falha não trava o pagamento.
+   */
+  private async scheduleExpiration(apptId: string, deadline: Date): Promise<void> {
+    try {
+      const payload: ExpirationPayload = { apptId };
+      await this.jobs.send(APPOINTMENT_EXPIRATION_QUEUE, payload, {
+        startAfter: deadline,
+        retryLimit: 3,
+        retryBackoff: true,
+      });
+    } catch (err) {
+      PaymentService.logger.warn(
+        `Falha ao agendar expiração de ${apptId}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+
+  /**
+   * Estorna o pagamento de um appointment (recusa/expiração — ADR-017 §4).
+   * Mock: paid → refunded + refundedAt. Não move dinheiro (não há), mas
+   * mantém o registro coerente pro PSP real (S21) chamar o refund de verdade.
+   *
+   * Idempotente e best-effort: se não há payment pago, no-op silencioso
+   * (ex: booking guest que nunca pagou, ou já estornado).
+   */
+  async refund(appointmentId: string): Promise<void> {
+    const payment = await this.prisma.payment.findUnique({
+      where: { appointmentId },
+      select: { id: true, status: true },
+    });
+    if (!payment || payment.status !== 'paid') {
+      return; // nada pago ou já estornado — nada a fazer
+    }
+    await this.prisma.payment.update({
+      where: { appointmentId },
+      data: { status: 'refunded', refundedAt: new Date() },
+    });
+    PaymentService.logger.log(`Pagamento estornado (mock) appt=${appointmentId}`);
   }
 }
 

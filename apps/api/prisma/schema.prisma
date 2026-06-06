@@ -327,6 +327,8 @@ model Appointment {
   cancelReason   String?   @map("cancel_reason")
   /** Quando o reminder email foi disparado (idempotência do worker). */
   reminderSentAt DateTime? @map("reminder_sent_at") @db.Timestamptz(6)
+  /** Prazo pro barbeiro confirmar; min(booking+1h, startAt). ADR-017 §1. */
+  confirmDeadline DateTime? @map("confirm_deadline") @db.Timestamptz(6)
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -367,6 +369,8 @@ model Payment {
   /// Resposta/webhook do PSP (auditoria + reconciliação)
   providerPayload   Json?     @map("provider_payload")
   paidAt            DateTime? @map("paid_at") @db.Timestamptz(6)
+  /// Quando foi estornado (recusa/expiração). ADR-017 §4.
+  refundedAt        DateTime? @map("refunded_at") @db.Timestamptz(6)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -407,4 +411,18 @@ model CustomerDevice {
 
   @@index([customerPhone])
   @@map("customer_devices")
+}
+
+/// Devices push do BARBEIRO/admin (ADR-017 §6). Espelha CustomerDevice
+/// mas ligado ao AppUser (barbeiro é sempre logado), não ao telefone.
+/// Recebe push de novo 'pending' pra confirmar. Sem RLS (não tenant-scoped).
+model EmployeeDevice {
+  id            String   @id @default(uuid()) @db.Uuid
+  appUserId     String   @map("app_user_id") @db.Uuid
+  expoPushToken String   @unique @map("expo_push_token")
+  lastSeenAt    DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([appUserId])
+  @@map("employee_devices")
 }

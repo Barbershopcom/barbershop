@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 
+import { AppointmentsModule } from '../appointments/appointments.module';
 import { PushModule } from '../push/push.module';
 import { JobsWorkerService } from './jobs-worker.service';
 import { JobsService } from './jobs.service';
@@ -14,7 +15,7 @@ import { JobsService } from './jobs.service';
  */
 @Global()
 @Module({
-  imports: [PushModule],
+  imports: [PushModule, AppointmentsModule],
   providers: [JobsService, JobsWorkerService],
   exports: [JobsService],
 })

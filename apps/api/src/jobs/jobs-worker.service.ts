@@ -1,6 +1,7 @@
 import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+import { AppointmentStatusService } from '../appointments/appointment-status.service';
 import { EmailService } from '../email/email.service';
 import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { PrismaService } from '../prisma/prisma.service';
@@ -27,6 +28,7 @@ export class JobsWorkerService implements OnApplicationBootstrap {
     private readonly email: EmailService,
     private readonly config: ConfigService,
     private readonly push: PushService,
+    private readonly apptStatus: AppointmentStatusService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -41,6 +43,7 @@ export class JobsWorkerService implements OnApplicationBootstrap {
     // Cria as queues antes de registrar handlers (pg-boss v10+ exige createQueue)
     await boss.createQueue(APPOINTMENT_REMINDER_QUEUE);
     await boss.createQueue(IDEMPOTENCY_CLEANUP_QUEUE);
+    await boss.createQueue(APPOINTMENT_EXPIRATION_QUEUE);
 
     // Reminder worker. pg-boss entrega batch de 1+ jobs; processamos
     // sequencialmente pra log limpo (volume é baixo, paralelismo não vale a pena).
@@ -54,6 +57,18 @@ export class JobsWorkerService implements OnApplicationBootstrap {
       },
     );
     JobsWorkerService.logger.log(`Worker registrado: ${APPOINTMENT_REMINDER_QUEUE}`);
+
+    // Expiration worker — pending vencido → expired (ADR-017 §2).
+    await boss.work<ExpirationPayload>(
+      APPOINTMENT_EXPIRATION_QUEUE,
+      { batchSize: 5 },
+      async (batch) => {
+        for (const job of batch) {
+          await this.apptStatus.expire(job.data.apptId);
+        }
+      },
+    );
+    JobsWorkerService.logger.log(`Worker registrado: ${APPOINTMENT_EXPIRATION_QUEUE}`);
 
     // Cleanup worker
     await boss.work(IDEMPOTENCY_CLEANUP_QUEUE, async () => this.handleCleanup());
@@ -212,8 +227,13 @@ export class JobsWorkerService implements OnApplicationBootstrap {
 
 export const APPOINTMENT_REMINDER_QUEUE = 'appointment-reminder';
 export const IDEMPOTENCY_CLEANUP_QUEUE = 'idempotency-cleanup';
+export const APPOINTMENT_EXPIRATION_QUEUE = 'appointment-expiration';
 
 export interface ReminderPayload {
+  apptId: string;
+}
+
+export interface ExpirationPayload {
   apptId: string;
 }
 

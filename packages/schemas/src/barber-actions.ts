@@ -10,8 +10,8 @@ export const rejectAppointmentSchema = z.object({
 });
 export type RejectAppointmentInput = z.infer<typeof rejectAppointmentSchema>;
 
-/** Resposta das ações confirm/reject. */
+/** Resposta das ações do barbeiro (confirm/reject/complete/no-show). */
 export interface BarberActionResult {
   id: string;
-  status: 'confirmed' | 'cancelled';
+  status: 'confirmed' | 'cancelled' | 'completed' | 'no_show';
 }

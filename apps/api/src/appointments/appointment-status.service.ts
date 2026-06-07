@@ -67,6 +67,22 @@ export class AppointmentStatusService {
   }
 
   /**
+   * Barbeiro marca corte como concluído: confirmed → completed (ADR-018 §1).
+   * Sem refund (serviço prestado). Gancho de avaliação vem no S17.
+   */
+  async complete(appointmentId: string): Promise<TransitionResult> {
+    return this.transition(appointmentId, 'confirmed', 'completed', {});
+  }
+
+  /**
+   * Barbeiro marca falta do cliente: confirmed → no_show (ADR-018 §1).
+   * Sem refund (cliente faltou — política padrão do mercado).
+   */
+  async noShow(appointmentId: string): Promise<TransitionResult> {
+    return this.transition(appointmentId, 'confirmed', 'no_show', {});
+  }
+
+  /**
    * Núcleo atômico: muda status SE a origem bater. UPDATE condicional
    * (`WHERE id AND status=from`) resolve a corrida — só um vencedor.
    * Retorna {ok:false, currentStatus} se a origem não bateu (no-op).

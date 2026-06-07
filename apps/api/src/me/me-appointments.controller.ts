@@ -212,6 +212,44 @@ export class MeAppointmentsController {
     }
     return { id, status: 'cancelled' };
   }
+
+  @Patch(':id/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Barbeiro marca um confirmed como concluído.' })
+  async complete(
+    @Tx() ctx: TenantContextValue,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<BarberActionResult> {
+    await this.assertOwnership(ctx, id);
+    const r = await this.apptStatus.complete(id);
+    if (!r.ok) {
+      throw new ConflictException({
+        message: `Não foi possível concluir (status atual: '${r.currentStatus}').`,
+        code: 'invalid_transition',
+        currentStatus: r.currentStatus,
+      });
+    }
+    return { id, status: 'completed' };
+  }
+
+  @Patch(':id/no-show')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Barbeiro marca falta do cliente num confirmed.' })
+  async noShow(
+    @Tx() ctx: TenantContextValue,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<BarberActionResult> {
+    await this.assertOwnership(ctx, id);
+    const r = await this.apptStatus.noShow(id);
+    if (!r.ok) {
+      throw new ConflictException({
+        message: `Não foi possível marcar falta (status atual: '${r.currentStatus}').`,
+        code: 'invalid_transition',
+        currentStatus: r.currentStatus,
+      });
+    }
+    return { id, status: 'no_show' };
+  }
 }
 
 interface ApptRow {

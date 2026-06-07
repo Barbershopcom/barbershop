@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { AppointmentStatus } from './appointments';
 import { isoDateSchema } from './slots';
 
 /**
@@ -46,7 +47,9 @@ export interface MyAppointmentItem {
   id: string;
   startAt: string; // UTC ISO
   endAt: string; // UTC ISO
-  status: 'booked' | 'cancelled' | 'completed' | 'no_show';
+  status: AppointmentStatus;
+  /** Prazo de confirmação — presente quando pending (ADR-017). */
+  confirmDeadline: string | null;
   customerName: string;
   customerPhone: string | null;
   service: {

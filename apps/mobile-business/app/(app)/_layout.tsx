@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from 'expo-router';
-import { CalendarDays, House, Scissors, UserRound } from 'lucide-react-native';
+import { BellRing, CalendarDays, House, Scissors, UserRound } from 'lucide-react-native';
 import { useEffect } from 'react';
 
 import { api } from '@/lib/api';
@@ -60,6 +60,13 @@ export default function AppLayout() {
         options={{
           title: 'Início',
           tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="pendentes"
+        options={{
+          title: 'Pendentes',
+          tabBarIcon: ({ color, size }) => <BellRing size={size} color={color} />,
         }}
       />
       <Tabs.Screen

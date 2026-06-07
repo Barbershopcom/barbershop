@@ -137,6 +137,7 @@ export class MeAppointmentsController {
         startAt: true,
         endAt: true,
         status: true,
+        confirmDeadline: true,
         customerName: true,
         customerPhone: true,
         service: {
@@ -146,15 +147,31 @@ export class MeAppointmentsController {
       orderBy: { startAt: 'asc' },
     });
 
-    return rows.map((r) => ({
-      id: r.id,
-      startAt: r.startAt.toISOString(),
-      endAt: r.endAt.toISOString(),
-      status: r.status as MyAppointmentItem['status'],
-      customerName: r.customerName,
-      customerPhone: r.customerPhone,
-      service: r.service,
-    }));
+    return rows.map(toItem);
+  }
+
+  @Get('pending')
+  @ApiOkResponse({
+    description: 'Agendamentos pending do barbeiro (aguardando confirmação), sem janela.',
+  })
+  async pending(@Tx() ctx: TenantContextValue): Promise<MyAppointmentItem[]> {
+    const employee = await this.resolveEmployee(ctx);
+    const rows = await ctx.tx.appointment.findMany({
+      where: { barberId: employee.id, status: 'pending' },
+      select: {
+        id: true,
+        startAt: true,
+        endAt: true,
+        status: true,
+        confirmDeadline: true,
+        customerName: true,
+        customerPhone: true,
+        service: { select: { id: true, name: true, durationMin: true } },
+      },
+      // Mais urgente primeiro (deadline mais próximo).
+      orderBy: { confirmDeadline: 'asc' },
+    });
+    return rows.map(toItem);
   }
 
   @Patch(':id/confirm')
@@ -195,4 +212,28 @@ export class MeAppointmentsController {
     }
     return { id, status: 'cancelled' };
   }
+}
+
+interface ApptRow {
+  id: string;
+  startAt: Date;
+  endAt: Date;
+  status: string;
+  confirmDeadline: Date | null;
+  customerName: string;
+  customerPhone: string | null;
+  service: { id: string; name: string; durationMin: number };
+}
+
+function toItem(r: ApptRow): MyAppointmentItem {
+  return {
+    id: r.id,
+    startAt: r.startAt.toISOString(),
+    endAt: r.endAt.toISOString(),
+    status: r.status as MyAppointmentItem['status'],
+    confirmDeadline: r.confirmDeadline ? r.confirmDeadline.toISOString() : null,
+    customerName: r.customerName,
+    customerPhone: r.customerPhone,
+    service: r.service,
+  };
 }

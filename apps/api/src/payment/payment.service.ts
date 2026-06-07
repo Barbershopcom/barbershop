@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   computePriceBreakdown,
@@ -6,6 +6,7 @@ import {
   type PaymentMethod,
 } from '@barbearia/schemas';
 
+import { AppointmentNotifier } from '../appointments/appointment-notifier.service';
 import {
   APPOINTMENT_EXPIRATION_QUEUE,
   type ExpirationPayload,
@@ -37,6 +38,8 @@ export class PaymentService {
     private readonly prisma: PrismaService,
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
     private readonly jobs: JobsService,
+    @Inject(forwardRef(() => AppointmentNotifier))
+    private readonly notifier: AppointmentNotifier,
   ) {}
 
   /**
@@ -162,9 +165,10 @@ export class PaymentService {
       `Pagamento ${payment.status} appt=${appt.id} método=${args.method} total=${breakdown.amountCents}c`,
     );
 
-    // Agenda expiração (best-effort, fora da transação — ADR-017 §2).
+    // Agenda expiração + avisa o barbeiro (best-effort — ADR-017 §2/§5).
     if (paid) {
       await this.scheduleExpiration(appt.id, confirmDeadline);
+      void this.notifier.notifyNewPending(appt.id);
     }
 
     return {

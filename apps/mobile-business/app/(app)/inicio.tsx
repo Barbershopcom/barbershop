@@ -2,16 +2,19 @@ import type { MyAppointmentItem } from '@barbearia/schemas';
 import { Link } from 'expo-router';
 import {
   CalendarDays,
+  Check,
   ChevronRight,
   LogOut,
   Phone,
   Scissors,
   Sparkles,
   UserRound,
+  UserX,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   Pressable,
   RefreshControl,
@@ -55,6 +58,7 @@ export default function InicioScreen() {
   const [appointments, setAppointments] = useState<MyAppointmentItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [actingId, setActingId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -68,6 +72,51 @@ export default function InicioScreen() {
       setError(err instanceof ApiError ? err.message : 'Erro ao carregar agendamentos');
     }
   }, []);
+
+  const complete = useCallback(
+    async (id: string) => {
+      setActingId(id);
+      try {
+        await api.patch(`/me/appointments/${id}/complete`);
+        await refresh();
+      } catch (err) {
+        Alert.alert('Erro', err instanceof ApiError ? err.message : 'Não foi possível concluir.');
+      } finally {
+        setActingId(null);
+      }
+    },
+    [refresh],
+  );
+
+  const noShow = useCallback(
+    (item: MyAppointmentItem) => {
+      Alert.alert(
+        'Cliente faltou?',
+        `${item.customerName} — ${item.service.name}\nMarcar como falta (sem estorno).`,
+        [
+          { text: 'Voltar', style: 'cancel' },
+          {
+            text: 'Faltou',
+            style: 'destructive',
+            onPress: () => {
+              setActingId(item.id);
+              api
+                .patch(`/me/appointments/${item.id}/no-show`)
+                .then(() => refresh())
+                .catch((err) =>
+                  Alert.alert(
+                    'Erro',
+                    err instanceof ApiError ? err.message : 'Não foi possível marcar falta.',
+                  ),
+                )
+                .finally(() => setActingId(null));
+            },
+          },
+        ],
+      );
+    },
+    [refresh],
+  );
 
   useEffect(() => {
     if (state.status === 'linked') void refresh();
@@ -152,7 +201,13 @@ export default function InicioScreen() {
               Hoje
             </Text>
             {appointments.map((a) => (
-              <AppointmentRow key={a.id} item={a} />
+              <AppointmentRow
+                key={a.id}
+                item={a}
+                busy={actingId === a.id}
+                onComplete={() => complete(a.id)}
+                onNoShow={() => noShow(a)}
+              />
             ))}
           </View>
         ) : null}
@@ -211,33 +266,90 @@ export default function InicioScreen() {
   );
 }
 
-function AppointmentRow({ item }: { item: MyAppointmentItem }) {
+function AppointmentRow({
+  item,
+  busy,
+  onComplete,
+  onNoShow,
+}: {
+  item: MyAppointmentItem;
+  busy: boolean;
+  onComplete: () => void;
+  onNoShow: () => void;
+}) {
   function callCustomer() {
     if (!item.customerPhone) return;
     void Linking.openURL(`tel:${item.customerPhone}`);
   }
 
+  // Ações de conclusão só pra confirmados (ADR-018 §4).
+  const canFinish = item.status === 'confirmed';
+
   return (
-    <View className="flex-row items-center gap-3 rounded-lg border border-border bg-background p-4">
-      <View className="w-16 items-center">
-        <Text className="text-base font-bold text-foreground">{formatTime(item.startAt)}</Text>
-        <Text className="text-xs text-foreground-muted">{item.service.durationMin}min</Text>
+    <View className="gap-3 rounded-lg border border-border bg-background p-4">
+      <View className="flex-row items-center gap-3">
+        <View className="w-16 items-center">
+          <Text className="text-base font-bold text-foreground">{formatTime(item.startAt)}</Text>
+          <Text className="text-xs text-foreground-muted">{item.service.durationMin}min</Text>
+        </View>
+        <View className="flex-1">
+          <Text className="text-sm font-semibold text-foreground">{item.customerName}</Text>
+          <Text className="text-xs text-foreground-muted">{item.service.name}</Text>
+          <StatusPill status={item.status} />
+        </View>
+        {item.customerPhone ? (
+          <Pressable
+            onPress={callCustomer}
+            className="h-10 w-10 items-center justify-center rounded-full bg-primary/10 active:opacity-60"
+            accessibilityLabel={`Ligar para ${item.customerName}`}
+          >
+            <Phone size={18} color="#357BE4" />
+          </Pressable>
+        ) : null}
       </View>
-      <View className="flex-1">
-        <Text className="text-sm font-semibold text-foreground">{item.customerName}</Text>
-        <Text className="text-xs text-foreground-muted">{item.service.name}</Text>
-      </View>
-      {item.customerPhone ? (
-        <Pressable
-          onPress={callCustomer}
-          className="h-10 w-10 items-center justify-center rounded-full bg-primary/10 active:opacity-60"
-          accessibilityLabel={`Ligar para ${item.customerName}`}
-        >
-          <Phone size={18} color="#357BE4" />
-        </Pressable>
+
+      {canFinish ? (
+        <View className="flex-row gap-2">
+          <Pressable
+            onPress={onNoShow}
+            disabled={busy}
+            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-md border border-border py-2.5 active:opacity-60 disabled:opacity-40"
+          >
+            <UserX size={15} color="#727B8E" />
+            <Text className="text-sm font-medium text-foreground-muted">Faltou</Text>
+          </Pressable>
+          <Pressable
+            onPress={onComplete}
+            disabled={busy}
+            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-md bg-success py-2.5 active:opacity-80 disabled:opacity-40"
+          >
+            {busy ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <>
+                <Check size={15} color="white" />
+                <Text className="text-sm font-bold text-white">Concluir</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
       ) : null}
     </View>
   );
+}
+
+function StatusPill({ status }: { status: MyAppointmentItem['status'] }) {
+  const map: Record<MyAppointmentItem['status'], { label: string; cls: string }> = {
+    awaiting_payment: { label: 'Aguardando pgto', cls: 'text-brand-orange' },
+    pending: { label: 'Aguardando você', cls: 'text-brand-orange' },
+    confirmed: { label: 'Confirmado', cls: 'text-primary' },
+    completed: { label: 'Concluído', cls: 'text-success' },
+    cancelled: { label: 'Cancelado', cls: 'text-foreground-muted' },
+    expired: { label: 'Expirado', cls: 'text-destructive' },
+    no_show: { label: 'Faltou', cls: 'text-foreground-muted' },
+  };
+  const s = map[status];
+  return <Text className={`mt-0.5 text-[11px] font-semibold ${s.cls}`}>{s.label}</Text>;
 }
 
 function MenuRow({

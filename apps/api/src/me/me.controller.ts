@@ -12,11 +12,17 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { type UpdateMyEmployeeInput, updateMyEmployeeSchema } from '@barbearia/schemas';
+import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  type RegisterDeviceInput,
+  registerDeviceSchema,
+  type UpdateMyEmployeeInput,
+  updateMyEmployeeSchema,
+} from '@barbearia/schemas';
 
 import { type AuthenticatedUser, CurrentUser } from '../auth/auth.decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { PrismaService } from '../prisma/prisma.service';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -39,6 +45,28 @@ function rolesFor(employeeRole: string): string[] {
 @Controller('me')
 export class MeController {
   private readonly logger = new Logger(MeController.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  @Post('devices')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse({
+    description: 'Registra/atualiza o device push do barbeiro logado (ADR-017 §6).',
+  })
+  async registerDevice(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(registerDeviceSchema)) body: RegisterDeviceInput,
+  ): Promise<void> {
+    // employee_devices não é tenant-scoped — SQL raw via PrismaService
+    // global (mesmo padrão de customer_devices, ADR-010 §8).
+    // ON CONFLICT(token): atualiza dono + last_seen (token migra de conta).
+    await this.prisma.$executeRaw`
+      INSERT INTO employee_devices (app_user_id, expo_push_token, last_seen_at)
+      VALUES (${user.id}::uuid, ${body.expoPushToken}, NOW())
+      ON CONFLICT (expo_push_token)
+      DO UPDATE SET app_user_id = EXCLUDED.app_user_id, last_seen_at = NOW()
+    `;
+  }
 
   @Get()
   @ApiOkResponse({

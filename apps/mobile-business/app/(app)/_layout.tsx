@@ -1,6 +1,9 @@
 import { Redirect, Tabs } from 'expo-router';
 import { CalendarDays, House, Scissors, UserRound } from 'lucide-react-native';
+import { useEffect } from 'react';
 
+import { api } from '@/lib/api';
+import { registerForPushNotificationsAsync } from '@/lib/push';
 import { useSession } from '@/lib/session';
 
 const ACTIVE_COLOR = '#357BE4';
@@ -12,6 +15,21 @@ const INACTIVE_COLOR = '#727B8E';
  */
 export default function AppLayout() {
   const { state } = useSession();
+  const linked = state.status === 'linked';
+
+  // Registra device push do barbeiro ao logar (ADR-017 §6). Best-effort.
+  useEffect(() => {
+    if (!linked) return;
+    void (async () => {
+      const token = await registerForPushNotificationsAsync();
+      if (!token) return;
+      try {
+        await api.post('/me/devices', { expoPushToken: token });
+      } catch {
+        // best-effort — barbeiro ainda vê pendentes na lista
+      }
+    })();
+  }, [linked]);
 
   if (state.status !== 'linked') {
     return <Redirect href="/" />;

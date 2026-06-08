@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { slotOccupyingStatuses } from '@barbearia/schemas';
 
 import { PaymentService } from '../payment/payment.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -80,6 +81,35 @@ export class AppointmentStatusService {
    */
   async noShow(appointmentId: string): Promise<TransitionResult> {
     return this.transition(appointmentId, 'confirmed', 'no_show', {});
+  }
+
+  /**
+   * Cancela um appointment ativo por causa de folga do barbeiro (ADR-018 §7).
+   * Aceita qualquer status que ocupa slot (awaiting_payment|pending|confirmed)
+   * → cancelled + refund + notifica o cliente. No-op se já saiu de um estado
+   * ativo (race com job/cliente). Reusa o evento 'rejected' pra notificação.
+   */
+  async cancelForTimeOff(appointmentId: string, reason: string): Promise<TransitionResult> {
+    const updated = await this.prisma.appointment.updateMany({
+      where: { id: appointmentId, status: { in: [...slotOccupyingStatuses] } },
+      data: {
+        status: 'cancelled',
+        cancelledBy: 'barber',
+        cancelledAt: new Date(),
+        cancelReason: reason,
+      },
+    });
+    if (updated.count === 0) {
+      const current = await this.prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { status: true },
+      });
+      return { ok: false, currentStatus: current?.status ?? null };
+    }
+    await this.payments.refund(appointmentId);
+    void this.notify('rejected', appointmentId);
+    AppointmentStatusService.logger.log(`Appt ${appointmentId}: folga → cancelled`);
+    return { ok: true, currentStatus: 'cancelled' };
   }
 
   /**

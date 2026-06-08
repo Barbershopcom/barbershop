@@ -2,6 +2,7 @@ import type { MyAppointmentItem } from '@barbearia/schemas';
 import { Link } from 'expo-router';
 import {
   CalendarDays,
+  CalendarOff,
   Check,
   ChevronRight,
   LogOut,
@@ -244,6 +245,12 @@ export default function InicioScreen() {
             title="Minha agenda"
             subtitle="Defina seus horários de trabalho semanais"
           />
+          <MenuRow
+            href="/folgas"
+            icon={<CalendarOff size={20} color="#357BE4" />}
+            title="Minhas folgas"
+            subtitle="Marque períodos em que você não vai atender"
+          />
         </View>
 
         {/* Sair */}
@@ -358,7 +365,7 @@ function MenuRow({
   title,
   subtitle,
 }: {
-  href: '/perfil' | '/servicos' | '/agenda';
+  href: '/perfil' | '/servicos' | '/agenda' | '/folgas';
   icon: React.ReactNode;
   title: string;
   subtitle: string;

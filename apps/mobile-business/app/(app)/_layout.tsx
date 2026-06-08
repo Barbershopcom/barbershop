@@ -93,6 +93,7 @@ export default function AppLayout() {
       {/* Acessíveis via menu em Início, fora da barra de tabs. */}
       <Tabs.Screen name="folgas" options={{ href: null }} />
       <Tabs.Screen name="avaliacoes" options={{ href: null }} />
+      <Tabs.Screen name="cupons" options={{ href: null }} />
     </Tabs>
   );
 }

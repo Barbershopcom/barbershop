@@ -10,6 +10,7 @@ import {
   Scissors,
   Sparkles,
   Star,
+  Ticket,
   UserRound,
   UserX,
 } from 'lucide-react-native';
@@ -129,6 +130,7 @@ export default function InicioScreen() {
   const { employee, barbershop, tenant } = state;
   const firstName = employee.displayName.split(' ')[0] ?? employee.displayName;
   const count = appointments?.length ?? 0;
+  const isAdmin = employee.role === 'admin' || employee.role === 'admin_barber';
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -258,6 +260,14 @@ export default function InicioScreen() {
             title="Avaliações"
             subtitle="Veja sua nota e o que os clientes comentaram"
           />
+          {isAdmin ? (
+            <MenuRow
+              href="/cupons"
+              icon={<Ticket size={20} color="#357BE4" />}
+              title="Cupons"
+              subtitle="Crie promoções de desconto pros clientes"
+            />
+          ) : null}
         </View>
 
         {/* Sair */}
@@ -372,7 +382,7 @@ function MenuRow({
   title,
   subtitle,
 }: {
-  href: '/perfil' | '/servicos' | '/agenda' | '/folgas' | '/avaliacoes';
+  href: '/perfil' | '/servicos' | '/agenda' | '/folgas' | '/avaliacoes' | '/cupons';
   icon: React.ReactNode;
   title: string;
   subtitle: string;

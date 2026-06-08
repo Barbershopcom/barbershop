@@ -13,6 +13,7 @@ export * from './book-appointment';
 export * from './capabilities';
 export * from './common';
 export * from './device';
+export * from './discover';
 export * from './employees';
 export * from './me-appointments';
 export * from './me-customer-appointments';

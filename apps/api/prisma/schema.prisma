@@ -53,6 +53,8 @@ model Tenant {
   phoneE164       String? @map("phone_e164")
   addressLine     String? @map("address_line")
   instagramHandle String? @map("instagram_handle")
+  /// Opt-in do marketplace de descoberta (ADR-020 §1). Default true no piloto.
+  listedPublicly  Boolean @default(true) @map("listed_publicly")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

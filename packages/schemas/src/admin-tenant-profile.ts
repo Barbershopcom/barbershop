@@ -8,6 +8,8 @@ import { phoneE164Schema } from './common';
  */
 export const updateTenantProfileSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
+  /** Opt-in do marketplace de descoberta (ADR-020 §1). */
+  listedPublicly: z.boolean().optional(),
   phoneE164: phoneE164Schema.nullable().optional(),
   addressLine: z
     .string()

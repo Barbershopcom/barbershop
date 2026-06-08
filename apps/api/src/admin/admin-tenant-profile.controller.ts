@@ -60,6 +60,7 @@ export class AdminTenantProfileController {
         phoneE164: true,
         addressLine: true,
         instagramHandle: true,
+        listedPublicly: true,
       },
     });
     if (!tenant) throw new NotFoundException('Tenant não encontrado.');
@@ -79,6 +80,9 @@ export class AdminTenantProfileController {
         where: { id: admin.tenantId },
         data: {
           ...(body.name !== undefined && { name: body.name }),
+          ...(body.listedPublicly !== undefined && {
+            listedPublicly: body.listedPublicly,
+          }),
           ...(body.phoneE164 !== undefined && { phoneE164: body.phoneE164 }),
           ...(body.addressLine !== undefined && { addressLine: body.addressLine }),
           ...(body.instagramHandle !== undefined && {

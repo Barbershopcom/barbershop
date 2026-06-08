@@ -348,6 +348,7 @@ model Appointment {
   customer   Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
   payment    Payment?
   review     Review?
+  couponRedemption CouponRedemption?
 
   @@index([tenantId])
   @@index([barberId, startAt])
@@ -438,6 +439,53 @@ model Review {
   @@index([barbershopId])
   @@index([customerId])
   @@map("reviews")
+}
+
+/// Cupom de desconto (ADR-021 §1). Tenant-scoped (RLS). `code` único por
+/// tenant; validação case-insensitive. discountValue: bps se 'percent',
+/// centavos se 'fixed'. timesRedeemed tem guard atômico no resgate.
+model Coupon {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  code           String
+  description    String?
+  /// 'percent' | 'fixed'
+  discountType   String    @map("discount_type")
+  /// percent: basis points (1000=10%); fixed: centavos
+  discountValue  Int       @map("discount_value")
+  minOrderCents  Int?      @map("min_order_cents")
+  validFrom      DateTime? @map("valid_from") @db.Timestamptz(6)
+  validUntil     DateTime? @map("valid_until") @db.Timestamptz(6)
+  maxRedemptions Int?      @map("max_redemptions")
+  timesRedeemed  Int       @default(0) @map("times_redeemed")
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  redemptions CouponRedemption[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("coupons")
+}
+
+/// Resgate de cupom num appointment (ADR-021 §2). 1 cupom por appointment.
+model CouponRedemption {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  couponId      String   @map("coupon_id") @db.Uuid
+  appointmentId String   @unique @map("appointment_id") @db.Uuid
+  customerEmail String?  @map("customer_email")
+  /// Desconto realmente aplicado (centavos).
+  discountCents Int      @map("discount_cents")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  coupon      Coupon      @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([couponId])
+  @@map("coupon_redemptions")
 }
 
 /// Devices registrados pro Expo Push Service (ADR-010 §5/§8).

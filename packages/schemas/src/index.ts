@@ -12,6 +12,7 @@ export * from './barbershop-hours';
 export * from './book-appointment';
 export * from './capabilities';
 export * from './common';
+export * from './coupon';
 export * from './device';
 export * from './discover';
 export * from './employees';

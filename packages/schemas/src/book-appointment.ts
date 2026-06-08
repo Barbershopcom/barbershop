@@ -23,6 +23,11 @@ export const bookAppointmentSchema = z.object({
    * reminder via push 24h antes (ADR-010 §5).
    */
   expoPushToken: z.string().max(255).optional(),
+  /**
+   * Código de cupom opcional (ADR-021 §4). Backend re-valida server-side
+   * (fonte de verdade) e aplica o desconto no `priceCents` snapshot.
+   */
+  couponCode: z.string().trim().min(3).max(32).optional(),
 });
 
 export type BookAppointmentInput = z.infer<typeof bookAppointmentSchema>;

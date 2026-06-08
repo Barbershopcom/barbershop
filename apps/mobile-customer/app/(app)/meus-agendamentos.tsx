@@ -1,14 +1,16 @@
 import type { MyCustomerAppointmentItem } from '@barbearia/schemas';
 import { useRouter } from 'expo-router';
-import { Calendar, ChevronLeft, X } from 'lucide-react-native';
+import { Calendar, ChevronLeft, Scissors, Star, X } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
@@ -34,6 +36,7 @@ export default function MyAppointmentsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [tab, setTab] = useState<'upcoming' | 'history'>('upcoming');
+  const [reviewing, setReviewing] = useState<MyCustomerAppointmentItem | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setState({ kind: 'loading' });
@@ -195,6 +198,13 @@ export default function MyAppointmentsScreen() {
               keyExtractor={(it) => it.id}
               contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
               ItemSeparatorComponent={() => <View className="h-3" />}
+              ListHeaderComponent={
+                tab === 'history' ? (
+                  <View className="-mx-6">
+                    <CutCounterBanner items={state.items} />
+                  </View>
+                ) : null
+              }
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
@@ -203,12 +213,37 @@ export default function MyAppointmentsScreen() {
                   item={item}
                   busy={busyId === item.id}
                   onCancel={() => confirmCancel(item)}
+                  onReview={() => setReviewing(item)}
                 />
               )}
             />
           );
         })()
       )}
+
+      <ReviewModal
+        item={reviewing}
+        onClose={() => setReviewing(null)}
+        onSubmitted={() => {
+          setReviewing(null);
+          void load(true);
+        }}
+      />
+    </View>
+  );
+}
+
+/** Conta cortes concluídos a partir da lista carregada (fonte canônica
+ *  é Customer.completedCutsCount; pra o piloto contar localmente basta). */
+function CutCounterBanner({ items }: { items: MyCustomerAppointmentItem[] }) {
+  const count = items.filter((it) => it.status === 'completed').length;
+  if (count === 0) return null;
+  return (
+    <View className="mx-6 mb-3 flex-row items-center gap-3 rounded-lg bg-slate-900 px-4 py-3">
+      <Scissors size={20} color="#fff" strokeWidth={1.5} />
+      <Text className="text-sm font-semibold text-white">
+        {count} {count === 1 ? 'corte concluído' : 'cortes concluídos'}
+      </Text>
     </View>
   );
 }
@@ -217,10 +252,12 @@ function AppointmentCard({
   item,
   busy,
   onCancel,
+  onReview,
 }: {
   item: MyCustomerAppointmentItem;
   busy: boolean;
   onCancel: () => void;
+  onReview: () => void;
 }) {
   const statusBg = statusBgColor(item.status);
   const statusText = statusLabel(item.status);
@@ -229,6 +266,8 @@ function AppointmentCard({
     item.status === 'awaiting_payment' ||
     item.status === 'pending' ||
     item.status === 'confirmed';
+  // Avaliável: corte concluído ainda sem review (ADR-019 §1).
+  const canReview = item.status === 'completed' && !item.hasReview;
 
   return (
     <View className="rounded-lg border border-slate-200 bg-white p-4">
@@ -279,7 +318,139 @@ function AppointmentCard({
           )}
         </Pressable>
       ) : null}
+
+      {canReview ? (
+        <Pressable
+          onPress={onReview}
+          className="mt-3 flex-row items-center justify-center gap-1.5 rounded-md bg-amber-500 py-2 active:opacity-80"
+        >
+          <Star size={14} color="#fff" fill="#fff" />
+          <Text className="text-sm font-semibold text-white">Avaliar atendimento</Text>
+        </Pressable>
+      ) : item.status === 'completed' && item.hasReview ? (
+        <View className="mt-3 flex-row items-center justify-center gap-1.5">
+          <Star size={13} color="#f59e0b" fill="#f59e0b" />
+          <Text className="text-xs font-medium text-slate-500">Você avaliou este corte</Text>
+        </View>
+      ) : null}
     </View>
+  );
+}
+
+/** Seletor de 1..5 estrelas. */
+function StarRating({
+  value,
+  onChange,
+  size = 36,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  size?: number;
+}) {
+  return (
+    <View className="flex-row justify-center gap-2">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Pressable key={n} onPress={() => onChange(n)} hitSlop={6}>
+          <Star
+            size={size}
+            color="#f59e0b"
+            fill={n <= value ? '#f59e0b' : 'transparent'}
+            strokeWidth={1.5}
+          />
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+/** Modal de avaliação (estrelas + comentário) de um corte concluído. */
+function ReviewModal({
+  item,
+  onClose,
+  onSubmitted,
+}: {
+  item: MyCustomerAppointmentItem | null;
+  onClose: () => void;
+  onSubmitted: () => void;
+}) {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Reseta o form sempre que abre num appointment diferente.
+  useEffect(() => {
+    setRating(0);
+    setComment('');
+    setSubmitting(false);
+  }, [item?.id]);
+
+  async function submit() {
+    if (!item || rating < 1) return;
+    setSubmitting(true);
+    try {
+      await api.post('/me/reviews', {
+        appointmentId: item.id,
+        rating,
+        comment: comment.trim() || undefined,
+      });
+      onSubmitted();
+    } catch (err) {
+      Alert.alert(
+        'Erro',
+        err instanceof ApiError ? err.message : 'Não foi possível enviar a avaliação.',
+      );
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal
+      visible={item !== null}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 justify-end bg-black/40">
+        <View className="rounded-t-3xl bg-white px-6 pb-10 pt-5">
+          <View className="mb-1 flex-row items-center justify-between">
+            <Text className="text-lg font-bold text-slate-900">Avaliar atendimento</Text>
+            <Pressable onPress={onClose} hitSlop={8}>
+              <X size={22} color="#64748b" />
+            </Pressable>
+          </View>
+          {item ? (
+            <Text className="mb-5 text-sm text-slate-500">
+              {item.service.name} com {item.barber.displayName} · {item.tenant.name}
+            </Text>
+          ) : null}
+
+          <StarRating value={rating} onChange={setRating} />
+
+          <TextInput
+            value={comment}
+            onChangeText={setComment}
+            placeholder="Conte como foi (opcional)"
+            placeholderTextColor="#94a3b8"
+            multiline
+            maxLength={1000}
+            className="mt-5 min-h-20 rounded-lg border border-slate-200 px-3 py-3 text-sm text-slate-900"
+            style={{ textAlignVertical: 'top' }}
+          />
+
+          <Pressable
+            onPress={submit}
+            disabled={rating < 1 || submitting}
+            className="mt-5 items-center justify-center rounded-lg bg-slate-900 py-3.5 disabled:opacity-40"
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className="text-base font-bold text-white">Enviar avaliação</Text>
+            )}
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 

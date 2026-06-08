@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Instagram, MapPin, MessageCircle } from 'lucide-react';
+import { Instagram, MapPin, MessageCircle, Star } from 'lucide-react';
 
 import {
   formatDurationLabel,
@@ -60,6 +60,29 @@ export default async function PublicTenantLanding({ params }: PageProps) {
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
             {tenant.name}
           </h1>
+          {tenant.ratingCount > 0 && tenant.ratingAvg !== null ? (
+            <div className="mt-3 flex items-center justify-center gap-1.5 text-sm">
+              <span className="flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star
+                    key={n}
+                    className={`h-4 w-4 ${
+                      n <= Math.round(tenant.ratingAvg ?? 0)
+                        ? 'fill-amber-400 text-amber-400'
+                        : 'text-muted-foreground/40'
+                    }`}
+                  />
+                ))}
+              </span>
+              <span className="font-medium text-foreground">
+                {tenant.ratingAvg.toFixed(1)}
+              </span>
+              <span className="text-muted-foreground">
+                ({tenant.ratingCount}{' '}
+                {tenant.ratingCount === 1 ? 'avaliação' : 'avaliações'})
+              </span>
+            </div>
+          ) : null}
           <p className="mt-2 text-sm text-muted-foreground">
             Escolha um serviço para começar seu agendamento.
           </p>

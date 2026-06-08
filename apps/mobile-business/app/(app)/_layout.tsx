@@ -90,8 +90,9 @@ export default function AppLayout() {
           tabBarIcon: ({ color, size }) => <UserRound size={size} color={color} />,
         }}
       />
-      {/* Acessível via menu em Início, fora da barra de tabs. */}
+      {/* Acessíveis via menu em Início, fora da barra de tabs. */}
       <Tabs.Screen name="folgas" options={{ href: null }} />
+      <Tabs.Screen name="avaliacoes" options={{ href: null }} />
     </Tabs>
   );
 }

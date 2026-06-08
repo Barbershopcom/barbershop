@@ -9,6 +9,7 @@ import {
   Phone,
   Scissors,
   Sparkles,
+  Star,
   UserRound,
   UserX,
 } from 'lucide-react-native';
@@ -251,6 +252,12 @@ export default function InicioScreen() {
             title="Minhas folgas"
             subtitle="Marque períodos em que você não vai atender"
           />
+          <MenuRow
+            href="/avaliacoes"
+            icon={<Star size={20} color="#357BE4" />}
+            title="Avaliações"
+            subtitle="Veja sua nota e o que os clientes comentaram"
+          />
         </View>
 
         {/* Sair */}
@@ -365,7 +372,7 @@ function MenuRow({
   title,
   subtitle,
 }: {
-  href: '/perfil' | '/servicos' | '/agenda' | '/folgas';
+  href: '/perfil' | '/servicos' | '/agenda' | '/folgas' | '/avaliacoes';
   icon: React.ReactNode;
   title: string;
   subtitle: string;

@@ -21,12 +21,19 @@ type LoadState =
   | { kind: 'ready'; items: MyCustomerAppointmentItem[] }
   | { kind: 'error'; message: string };
 
+const ACTIVE_STATUSES: ReadonlySet<MyCustomerAppointmentItem['status']> = new Set([
+  'awaiting_payment',
+  'pending',
+  'confirmed',
+]);
+
 export default function MyAppointmentsScreen() {
   const router = useRouter();
   const { signOut } = useSession();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [tab, setTab] = useState<'upcoming' | 'history'>('upcoming');
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setState({ kind: 'loading' });
@@ -95,9 +102,41 @@ export default function MyAppointmentsScreen() {
         </Pressable>
       </View>
 
-      <Text className="px-6 pb-4 text-2xl font-bold text-slate-900">
+      <Text className="px-6 pb-3 text-2xl font-bold text-slate-900">
         Meus agendamentos
       </Text>
+
+      {/* Tabs Próximos / Histórico (ADR-018 §5) */}
+      <View className="mb-2 flex-row gap-2 px-6">
+        <Pressable
+          onPress={() => setTab('upcoming')}
+          className={`flex-1 items-center rounded-md py-2 ${
+            tab === 'upcoming' ? 'bg-slate-900' : 'bg-slate-100'
+          }`}
+        >
+          <Text
+            className={`text-sm font-semibold ${
+              tab === 'upcoming' ? 'text-white' : 'text-slate-600'
+            }`}
+          >
+            Próximos
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setTab('history')}
+          className={`flex-1 items-center rounded-md py-2 ${
+            tab === 'history' ? 'bg-slate-900' : 'bg-slate-100'
+          }`}
+        >
+          <Text
+            className={`text-sm font-semibold ${
+              tab === 'history' ? 'text-white' : 'text-slate-600'
+            }`}
+          >
+            Histórico
+          </Text>
+        </Pressable>
+      </View>
 
       {state.kind === 'loading' ? (
         <View className="flex-1 items-center justify-center">
@@ -113,38 +152,62 @@ export default function MyAppointmentsScreen() {
             <Text className="text-sm font-semibold text-white">Tentar de novo</Text>
           </Pressable>
         </View>
-      ) : state.items.length === 0 ? (
-        <View className="flex-1 items-center justify-center gap-3 px-6">
-          <Calendar size={48} color="#cbd5e1" strokeWidth={1.5} />
-          <Text className="text-center text-base text-slate-500">
-            Você ainda não tem agendamentos.
-          </Text>
-          <Pressable
-            onPress={() => router.replace('/')}
-            className="mt-4 rounded-md bg-slate-900 px-4 py-2"
-          >
-            <Text className="text-sm font-semibold text-white">
-              Encontrar uma barbearia
-            </Text>
-          </Pressable>
-        </View>
       ) : (
-        <FlatList
-          data={state.items}
-          keyExtractor={(it) => it.id}
-          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
-          ItemSeparatorComponent={() => <View className="h-3" />}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        (() => {
+          const filtered = state.items
+            .filter((it) =>
+              tab === 'upcoming'
+                ? ACTIVE_STATUSES.has(it.status)
+                : !ACTIVE_STATUSES.has(it.status),
+            )
+            .sort((a, b) =>
+              tab === 'upcoming'
+                ? a.startAt.localeCompare(b.startAt) // próximos: crescente
+                : b.startAt.localeCompare(a.startAt), // histórico: recente primeiro
+            );
+
+          if (filtered.length === 0) {
+            return (
+              <View className="flex-1 items-center justify-center gap-3 px-6">
+                <Calendar size={48} color="#cbd5e1" strokeWidth={1.5} />
+                <Text className="text-center text-base text-slate-500">
+                  {tab === 'upcoming'
+                    ? 'Nenhum agendamento ativo.'
+                    : 'Nada no histórico ainda.'}
+                </Text>
+                {tab === 'upcoming' ? (
+                  <Pressable
+                    onPress={() => router.replace('/')}
+                    className="mt-4 rounded-md bg-slate-900 px-4 py-2"
+                  >
+                    <Text className="text-sm font-semibold text-white">
+                      Encontrar uma barbearia
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            );
           }
-          renderItem={({ item }) => (
-            <AppointmentCard
-              item={item}
-              busy={busyId === item.id}
-              onCancel={() => confirmCancel(item)}
+
+          return (
+            <FlatList
+              data={filtered}
+              keyExtractor={(it) => it.id}
+              contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }}
+              ItemSeparatorComponent={() => <View className="h-3" />}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              }
+              renderItem={({ item }) => (
+                <AppointmentCard
+                  item={item}
+                  busy={busyId === item.id}
+                  onCancel={() => confirmCancel(item)}
+                />
+              )}
             />
-          )}
-        />
+          );
+        })()
       )}
     </View>
   );

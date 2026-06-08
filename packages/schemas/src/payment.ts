@@ -52,8 +52,11 @@ export const MOCK_METHOD_FEES: Record<PaymentMethod, MethodFeeConfig> = {
   wallet: { pctBps: 0, fixedCents: 0 }, // saldo: sem taxa (incentivo) — fase futura
 };
 
-/** Comissão da plataforma sobre o valor do serviço (ADR-015). */
-export const PLATFORM_COMMISSION_BPS = 500; // 5%
+/**
+ * Comissão da plataforma sobre o valor do serviço (ADR-015; revisado pra 15%
+ * no handoff NAVALHA — "VOCÊ RECEBE" do barbeiro = líquido após 15%).
+ */
+export const PLATFORM_COMMISSION_BPS = 1500; // 15%
 
 export interface PriceBreakdown {
   /** Preço base do(s) serviço(s) em centavos. */

@@ -39,12 +39,12 @@ describe('computePriceBreakdown', () => {
     expect(b.amountCents).toBe(6000);
   });
 
-  it('platformFee é 5% do serviço, independente do método', () => {
+  it('platformFee é 15% do serviço, independente do método', () => {
     const expected = Math.ceil((SERVICE * PLATFORM_COMMISSION_BPS) / 10_000);
     for (const m of ['pix', 'debit', 'credit', 'wallet'] as const) {
       expect(computePriceBreakdown(SERVICE, m).platformFeeCents).toBe(expected);
     }
-    expect(expected).toBe(300); // 5% de 6000
+    expect(expected).toBe(900); // 15% de 6000 (NAVALHA)
   });
 
   it('fee arredonda pra CIMA (nunca prejuízo de centavo)', () => {

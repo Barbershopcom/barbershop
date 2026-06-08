@@ -21,6 +21,7 @@ export * from './onboarding';
 export * from './payment';
 export * from './public-tenant';
 export * from './reschedule';
+export * from './review';
 export * from './schedule';
 export * from './services';
 export * from './slots';

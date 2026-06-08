@@ -129,6 +129,9 @@ model Barbershop {
   locationId  String   @map("location_id") @db.Uuid
   name        String
   description String?
+  /// Rating agregado (cache; fonte = tabela reviews). ADR-019 §2.
+  ratingAvg   Float?   @map("rating_avg")
+  ratingCount Int      @default(0) @map("rating_count")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -137,6 +140,7 @@ model Barbershop {
   services     Service[]
   employees    Employee[]
   appointments Appointment[]
+  reviews      Review[]
 
   @@index([tenantId])
   @@index([locationId])
@@ -201,6 +205,9 @@ model Employee {
   email        String?
   role         String
   isActive     Boolean  @default(true) @map("is_active")
+  /// Rating agregado (cache; fonte = tabela reviews). ADR-019 §2.
+  ratingAvg    Float?   @map("rating_avg")
+  ratingCount  Int      @default(0) @map("rating_count")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -210,6 +217,7 @@ model Employee {
   schedules    BarberSchedule[]
   appointments Appointment[]
   timeOff      BarberTimeOff[]
+  reviews      Review[]
 
   @@index([tenantId])
   @@index([barbershopId])
@@ -337,6 +345,7 @@ model Appointment {
   service    Service    @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   customer   Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
   payment    Payment?
+  review     Review?
 
   @@index([tenantId])
   @@index([barberId, startAt])
@@ -390,13 +399,43 @@ model Customer {
   appUserId   String   @unique @map("app_user_id") @db.Uuid
   displayName String   @map("display_name")
   phoneE164   String?  @map("phone_e164")
+  /// Total de cortes concluídos (cache; fonte = appointments completed). ADR-019 §3.
+  completedCutsCount Int @default(0) @map("completed_cuts_count")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   appUser      AppUser       @relation(fields: [appUserId], references: [id], onDelete: Cascade)
   appointments Appointment[]
+  reviews      Review[]
 
   @@map("customers")
+}
+
+/// Avaliação de um appointment concluído (ADR-019 §1). 1 por appointment.
+/// Tenant-scoped (RLS); cliente escreve via bypassRLS + filtro explícito.
+/// rating 1..5; agregados em Employee/Barbershop recomputados na escrita.
+model Review {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  appointmentId String   @unique @map("appointment_id") @db.Uuid
+  customerId    String   @map("customer_id") @db.Uuid
+  barberId      String   @map("barber_id") @db.Uuid
+  barbershopId  String   @map("barbershop_id") @db.Uuid
+  rating        Int
+  comment       String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  barber      Employee    @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  barbershop  Barbershop  @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([barberId])
+  @@index([barbershopId])
+  @@index([customerId])
+  @@map("reviews")
 }
 
 /// Devices registrados pro Expo Push Service (ADR-010 §5/§8).

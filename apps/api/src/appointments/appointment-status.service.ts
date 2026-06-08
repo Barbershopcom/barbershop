@@ -69,10 +69,25 @@ export class AppointmentStatusService {
 
   /**
    * Barbeiro marca corte como concluído: confirmed → completed (ADR-018 §1).
-   * Sem refund (serviço prestado). Gancho de avaliação vem no S17.
+   * Sem refund (serviço prestado). Incrementa o contador de cortes do cliente
+   * (ADR-019 §3) e abre o gancho de avaliação (cliente pode dar review).
    */
   async complete(appointmentId: string): Promise<TransitionResult> {
-    return this.transition(appointmentId, 'confirmed', 'completed', {});
+    const r = await this.transition(appointmentId, 'confirmed', 'completed', {});
+    if (r.ok) {
+      // Contador de cortes do cliente (cache; só quando há conta vinculada).
+      const appt = await this.prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { customerId: true },
+      });
+      if (appt?.customerId) {
+        await this.prisma.customer.update({
+          where: { id: appt.customerId },
+          data: { completedCutsCount: { increment: 1 } },
+        });
+      }
+    }
+    return r;
   }
 
   /**

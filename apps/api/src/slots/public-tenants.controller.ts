@@ -1,10 +1,11 @@
 import { Controller, Get, Header, Param } from '@nestjs/common';
 import { ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import type { PublicServiceDto, PublicTenantDto } from '@barbearia/schemas';
+import type { PublicServiceDto, PublicTenantDto, ReviewItem } from '@barbearia/schemas';
 
 import { Public } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
+import { ReviewsService } from '../reviews/reviews.service';
 import { SlotsRepository } from './slots.repository';
 
 /**
@@ -22,6 +23,7 @@ export class PublicTenantsController {
   constructor(
     private readonly repo: SlotsRepository,
     private readonly prisma: PrismaService,
+    private readonly reviews: ReviewsService,
   ) {}
 
   @Get()
@@ -31,6 +33,7 @@ export class PublicTenantsController {
   @ApiOkResponse({ description: 'Dados públicos do tenant.' })
   async get(@Param('slug') slug: string): Promise<PublicTenantDto> {
     const tenant = await this.repo.resolveTenant(slug);
+    const rating = await this.reviews.tenantRating(tenant.id);
     return {
       id: tenant.id,
       slug: tenant.slug,
@@ -39,7 +42,19 @@ export class PublicTenantsController {
       phoneE164: tenant.phoneE164,
       addressLine: tenant.addressLine,
       instagramHandle: tenant.instagramHandle,
+      ratingAvg: rating.avg,
+      ratingCount: rating.count,
     };
+  }
+
+  @Get('reviews')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Header('Cache-Control', 'public, max-age=60')
+  @ApiParam({ name: 'slug', description: 'Slug público da barbearia.' })
+  @ApiOkResponse({ description: 'Avaliações públicas recentes da barbearia.' })
+  async listReviews(@Param('slug') slug: string): Promise<ReviewItem[]> {
+    const tenant = await this.repo.resolveTenant(slug);
+    return this.reviews.listForTenant(tenant.id, 20);
   }
 
   @Get('services')

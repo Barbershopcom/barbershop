@@ -76,6 +76,7 @@ export class MeCustomerAppointmentsController {
         cancelReason: true,
         service: { select: { id: true, name: true, durationMin: true } },
         barber: { select: { id: true, displayName: true } },
+        review: { select: { id: true } },
       },
       orderBy: { startAt: 'desc' },
       take: 100,
@@ -101,6 +102,7 @@ export class MeCustomerAppointmentsController {
         service: r.service,
         barber: r.barber,
         tenant: t ?? { id: r.tenantId, slug: '', name: '', timezone: 'America/Sao_Paulo' },
+        hasReview: r.review !== null,
       };
     });
   }

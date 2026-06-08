@@ -18,6 +18,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { PaymentModule } from './payment/payment.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PushModule } from './push/push.module';
+import { ReviewsModule } from './reviews/reviews.module';
 import { ServicesModule } from './services/services.module';
 import { SlotsModule } from './slots/slots.module';
 import { TenancyModule } from './tenancy/tenancy.module';
@@ -49,6 +50,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     PushModule,
     PaymentModule,
     AppointmentsModule,
+    ReviewsModule,
   ],
   providers: [
     {

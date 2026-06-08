@@ -12,6 +12,9 @@ export interface PublicTenantDto {
   phoneE164: string | null;
   addressLine: string | null;
   instagramHandle: string | null;
+  /** Rating médio 1..5 (null se sem avaliações) + total. ADR-019 §5. */
+  ratingAvg: number | null;
+  ratingCount: number;
 }
 
 export interface PublicServiceDto {

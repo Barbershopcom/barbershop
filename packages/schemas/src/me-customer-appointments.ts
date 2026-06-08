@@ -16,4 +16,6 @@ export interface MyCustomerAppointmentItem {
   service: { id: string; name: string; durationMin: number };
   barber: { id: string; displayName: string };
   tenant: { id: string; slug: string; name: string; timezone: string };
+  /** Já avaliado? Só relevante quando status='completed' (ADR-019 §1). */
+  hasReview: boolean;
 }

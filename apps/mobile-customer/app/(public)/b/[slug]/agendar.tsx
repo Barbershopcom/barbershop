@@ -1,12 +1,14 @@
-import type {
-  BookedAppointment,
-  PublicServiceDto,
-  PublicTenantDto,
-  Slot,
-  SlotsResponse,
+import {
+  type BookedAppointment,
+  type CouponValidationResult,
+  couponReasonLabel,
+  type PublicServiceDto,
+  type PublicTenantDto,
+  type Slot,
+  type SlotsResponse,
 } from '@barbearia/schemas';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, Tag, X } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -402,9 +404,51 @@ function BookingForm({
   const [error, setError] = useState<string | null>(null);
   const idemKeyRef = useRef<string | null>(null);
 
+  // Cupom (ADR-021 §5). `applied` guarda o resultado validado + o código.
+  const [couponInput, setCouponInput] = useState('');
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponMsg, setCouponMsg] = useState<string | null>(null);
+  const [applied, setApplied] = useState<
+    (CouponValidationResult & { code: string }) | null
+  >(null);
+
   function getIdemKey(): string {
     if (!idemKeyRef.current) idemKeyRef.current = generateUuid();
     return idemKeyRef.current;
+  }
+
+  async function applyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (code.length < 3) {
+      setCouponMsg('Código inválido.');
+      return;
+    }
+    setCouponBusy(true);
+    setCouponMsg(null);
+    try {
+      const res = await api.post<CouponValidationResult>(
+        `/public/tenants/${encodeURIComponent(tenant.slug)}/coupons/validate`,
+        { code, serviceId: service.id },
+      );
+      if (res.valid) {
+        setApplied({ ...res, code });
+        setCouponMsg(null);
+      } else {
+        setApplied(null);
+        setCouponMsg(res.reason ? couponReasonLabel(res.reason) : 'Cupom inválido.');
+      }
+    } catch (err) {
+      setApplied(null);
+      setCouponMsg(err instanceof ApiError ? err.message : 'Erro ao validar cupom.');
+    } finally {
+      setCouponBusy(false);
+    }
+  }
+
+  function removeCoupon() {
+    setApplied(null);
+    setCouponInput('');
+    setCouponMsg(null);
   }
 
   async function handleSubmit() {
@@ -441,6 +485,7 @@ function BookingForm({
           customerPhone: e164,
           customerEmail: trimmedEmail || undefined,
           expoPushToken: expoPushToken ?? undefined,
+          couponCode: applied?.code,
         },
         { idempotencyKey: getIdemKey() },
       );
@@ -448,6 +493,10 @@ function BookingForm({
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setError('Esse horário acabou de ser reservado. Escolha outro.');
+      } else if (err instanceof ApiError && err.status === 422) {
+        // Cupom pode ter expirado/esgotado entre validar e confirmar.
+        setApplied(null);
+        setError(err.message);
       } else if (err instanceof ApiError) {
         setError(err.message);
       } else {
@@ -518,6 +567,80 @@ function BookingForm({
             editable={!busy}
             className="rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900"
           />
+        </View>
+
+        {/* Cupom de desconto */}
+        <View className="gap-1.5">
+          <Text className="text-sm font-medium text-slate-700">
+            Cupom <Text className="text-xs text-slate-400">(opcional)</Text>
+          </Text>
+          {applied ? (
+            <View className="flex-row items-center justify-between rounded-md border border-green-300 bg-green-50 px-3 py-2.5">
+              <View className="flex-row items-center gap-2">
+                <Tag size={16} color="#15803d" />
+                <Text className="text-sm font-semibold text-green-800">{applied.code}</Text>
+              </View>
+              <Pressable
+                onPress={removeCoupon}
+                disabled={busy}
+                hitSlop={8}
+                accessibilityLabel="Remover cupom"
+              >
+                <X size={16} color="#15803d" />
+              </Pressable>
+            </View>
+          ) : (
+            <View className="flex-row gap-2">
+              <TextInput
+                value={couponInput}
+                onChangeText={(v) => setCouponInput(v.toUpperCase())}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                placeholder="DESCONTO10"
+                placeholderTextColor="#94a3b8"
+                editable={!busy && !couponBusy}
+                className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900"
+              />
+              <Pressable
+                onPress={applyCoupon}
+                disabled={busy || couponBusy}
+                className="items-center justify-center rounded-md border border-slate-900 px-4 disabled:opacity-50"
+              >
+                {couponBusy ? (
+                  <ActivityIndicator color="#0f172a" size="small" />
+                ) : (
+                  <Text className="text-sm font-semibold text-slate-900">Aplicar</Text>
+                )}
+              </Pressable>
+            </View>
+          )}
+          {couponMsg ? <Text className="text-xs text-red-600">{couponMsg}</Text> : null}
+        </View>
+
+        {/* Resumo de preço */}
+        <View className="gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+          <View className="flex-row justify-between">
+            <Text className="text-sm text-slate-500">Serviço</Text>
+            <Text className="text-sm text-slate-700">
+              {formatPriceBRL(service.basePriceCents)}
+            </Text>
+          </View>
+          {applied && applied.discountCents ? (
+            <View className="flex-row justify-between">
+              <Text className="text-sm text-green-700">Desconto</Text>
+              <Text className="text-sm text-green-700">
+                -{formatPriceBRL(applied.discountCents)}
+              </Text>
+            </View>
+          ) : null}
+          <View className="mt-0.5 flex-row justify-between border-t border-slate-200 pt-1.5">
+            <Text className="text-sm font-semibold text-slate-900">Total</Text>
+            <Text className="text-base font-bold text-slate-900">
+              {formatPriceBRL(
+                applied?.finalPriceCents ?? service.basePriceCents,
+              )}
+            </Text>
+          </View>
         </View>
 
         {error ? (

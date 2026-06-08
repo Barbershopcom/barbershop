@@ -1,0 +1,159 @@
+// cancel.jsx — A18 Cancelar agendamento (com taxa), vintage style.
+// Exports to window: CancelScreen.
+const { useState } = React;
+
+const brlC = (n) => 'R$\u00a0' + n.toFixed(2).replace('.', ',');
+const TOTAL_C = 76.0;
+
+function PoleC({ w = 9, h = 20 }) {
+  return (
+    <span style={{ display: 'inline-block', width: w, height: h, borderRadius: 999, border: '1.3px solid var(--frame)', overflow: 'hidden',
+      background: 'repeating-linear-gradient(-45deg, var(--vermelho) 0 4px, var(--papel) 4px 8px, var(--navy) 8px 12px, var(--papel) 12px 16px)', boxShadow: 'inset 0 0 0 1.5px var(--papel)' }} />
+  );
+}
+
+const REASONS = ['Imprevisto', 'Mudei de ideia', 'Achei outro horário', 'Outro'];
+
+function ConfirmedOverlay({ fee, refund, onClose }) {
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 30, background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'cfade .35s ease' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 34px', textAlign: 'center' }}>
+        <div style={{ width: 86, height: 86, borderRadius: '50%', background: 'var(--tint)', border: '1.5px solid var(--hairline-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 22 }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M15 9l-6 6M9 9l6 6" /></svg>
+        </div>
+        <div style={{ fontFamily: 'var(--display)', fontSize: 34, lineHeight: 0.95, letterSpacing: 0.5, color: 'var(--ink)' }}>AGENDAMENTO CANCELADO</div>
+        <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 15, color: 'var(--muted)', marginTop: 12, maxWidth: 290, lineHeight: 1.45 }}>
+          {refund > 0
+            ? `Seu horário foi liberado. O reembolso de ${brlC(refund)} cai na sua forma de pagamento em até 5 dias úteis.`
+            : 'Seu horário foi liberado. Esperamos te ver no próximo corte!'}
+        </div>
+        {fee > 0 && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 16, padding: '7px 14px', borderRadius: 999, background: 'var(--amber-bg)', border: '1px solid var(--amber)' }}>
+            <span style={{ fontFamily: 'var(--ui)', fontSize: 11.5, fontWeight: 700, color: 'var(--amber-ink)' }}>Taxa retida: {brlC(fee)}</span>
+          </div>
+        )}
+      </div>
+      <div style={{ padding: '0 18px 40px' }}>
+        <button onClick={onClose} style={{ width: '100%', height: 52, borderRadius: 14, border: 'none', cursor: 'pointer', background: 'var(--frame)', color: '#fff', fontFamily: 'var(--ui)', fontSize: 15.5, fontWeight: 700 }}>Voltar pros agendamentos</button>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════
+function CancelScreen({ tweaks = {} }) {
+  const { dark = false, comTaxa = true, refundEnabled = true } = tweaks;
+  const [reason, setReason] = useState(null);
+  const [status, setStatus] = useState('idle'); // idle | loading | done
+
+  const fee = comTaxa ? TOTAL_C * 0.5 : 0;
+  const refund = refundEnabled ? TOTAL_C - fee : 0;
+
+  const confirm = () => {
+    if (status === 'loading') return;
+    setStatus('loading');
+    setTimeout(() => setStatus('done'), 1500);
+  };
+
+  return (
+    <div data-theme={dark ? 'dark' : 'light'} style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)', position: 'relative' }}>
+      {/* app bar */}
+      <div style={{ paddingTop: 56, paddingBottom: 12, paddingLeft: 16, paddingRight: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', borderBottom: '1px solid var(--hairline)' }}>
+        <button style={{ width: 38, height: 38, borderRadius: 11, border: '1.4px solid var(--hairline)', background: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <svg width="11" height="18" viewBox="0 0 12 20" fill="none" stroke="var(--ink)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2L2 10l8 8" /></svg>
+        </button>
+        <span style={{ fontFamily: 'var(--display)', fontSize: 23, letterSpacing: 1, color: 'var(--ink)' }}>CANCELAR</span>
+        <PoleC w={12} h={26} />
+      </div>
+
+      {/* body */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '22px 18px 150px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        {/* warning hero */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ width: 66, height: 66, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: comTaxa ? 'var(--red-bg)' : 'var(--amber-bg)', border: '1.5px solid ' + (comTaxa ? 'var(--vermelho)' : 'var(--amber)') }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={comTaxa ? 'var(--vermelho)' : 'var(--amber-ink)'} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.2 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.2a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+          </div>
+          <div style={{ fontFamily: 'var(--display)', fontSize: 28, lineHeight: 1.0, letterSpacing: 0.5, color: 'var(--ink)', marginTop: 14 }}>CANCELAR ESTE CORTE?</div>
+          <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 14.5, color: 'var(--muted)', marginTop: 12, maxWidth: 300, lineHeight: 1.45 }}>
+            {comTaxa
+              ? 'Faltam menos de 2h pro horário, então uma taxa de cancelamento se aplica.'
+              : 'Você ainda está na janela de cancelamento gratuito. Pode cancelar sem custo.'}
+          </div>
+        </div>
+
+        {/* booking recap */}
+        <div style={{ borderRadius: 16, background: 'var(--card)', border: '1px solid var(--hairline)', padding: 14, boxShadow: '0 6px 16px rgba(28,25,23,.05)', display: 'flex', gap: 13, alignItems: 'center' }}>
+          <div style={{ flex: '0 0 auto', width: 50, borderRadius: 12, background: 'var(--tint)', border: '1px solid var(--hairline)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 0' }}>
+            <span style={{ fontFamily: 'var(--display)', fontSize: 24, lineHeight: 0.9, color: 'var(--frame-ink)' }}>17</span>
+            <span style={{ fontFamily: 'var(--ui)', fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--muted)', marginTop: 2 }}>mai</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--ui)', fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>sáb · 14:00</div>
+            <div style={{ fontFamily: 'var(--ui)', fontSize: 14.5, fontWeight: 700, color: 'var(--ink)', marginTop: 3 }}>Corte clássico + Barba</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <PoleC w={7} h={16} />
+              <span style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 11.5, color: 'var(--muted)' }}>com Jajá · Barbearia do Jajá</span>
+            </div>
+          </div>
+        </div>
+
+        {/* fee breakdown */}
+        <div style={{ borderRadius: 16, background: 'var(--card)', border: '1px solid var(--hairline)', padding: '14px 16px', boxShadow: '0 6px 16px rgba(28,25,23,.05)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontFamily: 'var(--ui)', fontSize: 13, color: 'var(--muted)' }}>Valor pago</span>
+              <span style={{ fontFamily: 'var(--ui)', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{brlC(TOTAL_C)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontFamily: 'var(--ui)', fontSize: 13, color: comTaxa ? 'var(--vermelho-ink)' : 'var(--muted)' }}>Taxa de cancelamento{comTaxa ? ' · 50%' : ''}</span>
+              <span style={{ fontFamily: 'var(--ui)', fontSize: 13.5, fontWeight: 700, color: comTaxa ? 'var(--vermelho-ink)' : 'var(--green)', fontVariantNumeric: 'tabular-nums' }}>{comTaxa ? '– ' + brlC(fee) : 'Grátis'}</span>
+            </div>
+            <div style={{ borderTop: '1.4px dashed var(--hairline-strong)', margin: '2px 0' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontFamily: 'var(--ui)', fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{refundEnabled ? 'Reembolso' : 'Sem reembolso'}</span>
+              <span style={{ fontFamily: 'var(--display)', fontSize: 24, letterSpacing: 0.4, color: 'var(--frame-ink)', whiteSpace: 'nowrap' }}>{brlC(refund)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* reason */}
+        <div>
+          <div style={{ fontFamily: 'var(--ui)', fontSize: 11, fontWeight: 800, letterSpacing: 0.9, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 11 }}>Motivo <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, fontFamily: 'var(--serif)', fontStyle: 'italic' }}>· opcional</span></div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
+            {REASONS.map((r) => {
+              const on = reason === r;
+              return (
+                <button key={r} onClick={() => setReason(on ? null : r)} style={{ fontFamily: 'var(--ui)', fontSize: 13, fontWeight: on ? 700 : 500, cursor: 'pointer',
+                  padding: '9px 15px', borderRadius: 999, whiteSpace: 'nowrap', border: '1.5px solid ' + (on ? 'var(--frame)' : 'var(--hairline-strong)'),
+                  background: on ? 'color-mix(in srgb, var(--frame) 12%, transparent)' : 'transparent', color: on ? 'var(--frame-ink)' : 'var(--ink)', transition: 'all .12s',
+                  display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  {on && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--frame-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>}
+                  {r}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* sticky actions */}
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '13px 18px 30px', background: 'linear-gradient(to top, var(--bg) 74%, transparent)', zIndex: 8, display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <button onClick={confirm} disabled={status === 'loading'} style={{ width: '100%', height: 54, borderRadius: 15, border: 'none', cursor: 'pointer',
+          background: 'var(--vermelho)', color: '#fff', fontFamily: 'var(--ui)', fontSize: 15.5, fontWeight: 700, letterSpacing: 0.2,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, boxShadow: '0 8px 22px rgba(191,33,47,.26)' }}>
+          {status === 'loading'
+            ? <><span style={{ width: 18, height: 18, borderRadius: '50%', border: '2.4px solid rgba(255,255,255,.4)', borderTopColor: '#fff', animation: 'cspin .7s linear infinite' }} />Cancelando…</>
+            : comTaxa ? `Confirmar · taxa de ${brlC(fee)}` : 'Confirmar cancelamento'}
+        </button>
+        <button style={{ width: '100%', height: 48, borderRadius: 13, border: '1.4px solid var(--hairline-strong)', background: 'transparent', color: 'var(--ink)', fontFamily: 'var(--ui)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
+          Manter agendamento
+        </button>
+      </div>
+
+      {status === 'done' && <ConfirmedOverlay fee={fee} refund={refund} onClose={() => setStatus('idle')} />}
+    </div>
+  );
+}
+
+window.CancelScreen = CancelScreen;

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NAVALHA · Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Lora:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="ds-styles.css" />
+</head>
+<body>
+<div class="ds">
+  <!-- NAV -->
+  <aside class="ds-nav">
+    <div class="ds-brand">
+      <span class="seal"><span class="pole"></span></span>
+      <div><b>NAVALHA</b><span>Design System</span></div>
+    </div>
+    <div class="grp">Fundamentos</div>
+    <a href="#cores">Cores</a>
+    <a href="#tipografia">Tipografia</a>
+    <a href="#espacamento">Espaçamento & raio</a>
+    <div class="grp">Componentes</div>
+    <a href="#botoes">Botões</a>
+    <a href="#inputs">Inputs</a>
+    <a href="#badges">Status badges</a>
+    <a href="#cards">Cards</a>
+    <a href="#pagamento">Pagamento</a>
+    <a href="#navegacao">Navegação</a>
+    <a href="#estados">Estados</a>
+    <a href="#overlays">Overlays & Stepper</a>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="ds-main">
+    <div class="ds-hero">
+      <h1>DESIGN SYSTEM</h1>
+      <p>A linguagem visual do NAVALHA — papel &amp; couro. Tudo que o cliente, o barbeiro e o dono veem nasce daqui. Vintage na alma, moderno no uso.</p>
+      <div class="ds-stripe"></div>
+    </div>
+
+    <!-- COLORS -->
+    <section class="sec" id="cores">
+      <div class="sec-h"><h2>CORES</h2><span class="tag">Marca + status</span></div>
+      <p class="sec-desc">Cinco cores de marca herdadas da barbearia clássica. O navy ancora, o vermelho chama à ação, o dourado dá o toque vintage, o papel é o fundo e a tinta é o texto.</p>
+      <div class="subh">Paleta da marca</div>
+      <div class="swatches" id="brand-sw"></div>
+      <div class="subh">Cores de status</div>
+      <div class="demo"><div class="status-row" id="status-sw"></div></div>
+    </section>
+
+    <!-- TYPE -->
+    <section class="sec" id="tipografia">
+      <div class="sec-h"><h2>TIPOGRAFIA</h2><span class="tag">3 famílias</span></div>
+      <p class="sec-desc">Bebas Neue para títulos e números (display, condensada, impactante). Lora itálico para toques editoriais e legendas. Inter para toda a interface.</p>
+      <div class="demo">
+        <div class="type-spec"><div class="tname">Display / H1</div><div class="tsample" style="font-family:var(--display);font-size:46px;letter-spacing:.5px;line-height:1">CORTE NA HORA CERTA</div><div class="tmeta">Bebas Neue · 46–84px</div></div>
+        <div class="type-spec"><div class="tname">Display / H2</div><div class="tsample" style="font-family:var(--display);font-size:32px;letter-spacing:.5px">AGENDAMENTOS</div><div class="tmeta">Bebas Neue · 28–34px</div></div>
+        <div class="type-spec"><div class="tname">Serif / destaque</div><div class="tsample" style="font-family:var(--serif);font-style:italic;font-size:20px;color:var(--muted)">seu corte, na hora certa</div><div class="tmeta">Lora Italic · 14–20px</div></div>
+        <div class="type-spec"><div class="tname">UI / título</div><div class="tsample" style="font-family:var(--ui);font-size:16px;font-weight:700">Corte clássico + Barba</div><div class="tmeta">Inter 700 · 15–16px</div></div>
+        <div class="type-spec"><div class="tname">UI / corpo</div><div class="tsample" style="font-family:var(--ui);font-size:14px">Escolha o serviço, o barbeiro e o horário.</div><div class="tmeta">Inter 400/500 · 14px</div></div>
+        <div class="type-spec"><div class="tname">UI / label</div><div class="tsample" style="font-family:var(--ui);font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)">Forma de pagamento</div><div class="tmeta">Inter 800 · 10–11px · caps</div></div>
+      </div>
+    </section>
+
+    <!-- SPACING -->
+    <section class="sec" id="espacamento">
+      <div class="sec-h"><h2>ESPAÇAMENTO &amp; RAIO</h2></div>
+      <p class="sec-desc">Escala base 4px. Raios consistentes: 8 (pílulas/inputs pequenos), 12 (botões/inputs), 16 (cards), 22 (cards grandes/modais).</p>
+      <div class="grid2">
+        <div class="demo">
+          <div class="lbl">Raio de borda</div>
+          <div class="row" style="gap:18px">
+            <div style="text-align:center"><div style="width:64px;height:64px;background:var(--navy);border-radius:8px"></div><div style="font-family:var(--ui);font-size:11px;color:var(--muted);margin-top:7px">8px</div></div>
+            <div style="text-align:center"><div style="width:64px;height:64px;background:var(--navy);border-radius:12px"></div><div style="font-family:var(--ui);font-size:11px;color:var(--muted);margin-top:7px">12px</div></div>
+            <div style="text-align:center"><div style="width:64px;height:64px;background:var(--navy);border-radius:16px"></div><div style="font-family:var(--ui);font-size:11px;color:var(--muted);margin-top:7px">16px</div></div>
+            <div style="text-align:center"><div style="width:64px;height:64px;background:var(--navy);border-radius:22px"></div><div style="font-family:var(--ui);font-size:11px;color:var(--muted);margin-top:7px">22px</div></div>
+          </div>
+        </div>
+        <div class="demo">
+          <div class="lbl">Escala de espaço (4px)</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="row" style="gap:10px"><span style="font-family:var(--ui);font-size:11px;color:var(--muted);width:34px">4</span><div style="height:14px;width:4px;background:var(--vermelho)"></div></div>
+            <div class="row" style="gap:10px"><span style="font-family:var(--ui);font-size:11px;color:var(--muted);width:34px">8</span><div style="height:14px;width:8px;background:var(--vermelho)"></div></div>
+            <div class="row" style="gap:10px"><span style="font-family:var(--ui);font-size:11px;color:var(--muted);width:34px">12</span><div style="height:14px;width:12px;background:var(--vermelho)"></div></div>
+            <div class="row" style="gap:10px"><span style="font-family:var(--ui);font-size:11px;color:var(--muted);width:34px">16</span><div style="height:14px;width:16px;background:var(--vermelho)"></div></div>
+            <div class="row" style="gap:10px"><span style="font-family:var(--ui);font-size:11px;color:var(--muted);width:34px">24</span><div style="height:14px;width:24px;background:var(--vermelho)"></div></div>
+            <div class="row" style="gap:10px"><span style="font-family:var(--ui);font-size:11px;color:var(--muted);width:34px">32</span><div style="height:14px;width:32px;background:var(--vermelho)"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BUTTONS -->
+    <section class="sec" id="botoes">
+      <div class="sec-h"><h2>BOTÕES</h2><span class="tag">&lt;Button&gt;</span></div>
+      <p class="sec-desc">Primary (navy) pra ação principal, Secondary (contornado), Destructive (vermelho), Ghost (texto) e Gold (destaque). Tamanhos sm / md / lg + estado de carregamento.</p>
+      <div class="demo">
+        <div class="lbl">Variações</div>
+        <div class="row">
+          <button class="btn btn-primary">Primary</button>
+          <button class="btn btn-secondary">Secondary</button>
+          <button class="btn btn-destructive">Destructive</button>
+          <button class="btn btn-ghost">Ghost</button>
+          <button class="btn btn-gold">Gold</button>
+          <button class="btn btn-primary" disabled>Disabled</button>
+        </div>
+        <div class="lbl" style="margin-top:22px">Tamanhos</div>
+        <div class="row">
+          <button class="btn btn-primary sm">Pequeno</button>
+          <button class="btn btn-primary">Médio</button>
+          <button class="btn btn-primary lg">Grande</button>
+        </div>
+        <div class="lbl" style="margin-top:22px">Com ícone &amp; carregando</div>
+        <div class="row">
+          <button class="btn btn-primary">Agendar agora
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+          <button class="btn btn-destructive" id="loadBtn"><span class="spin"></span>Processando…</button>
+          <button class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>Salvar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- INPUTS -->
+    <section class="sec" id="inputs">
+      <div class="sec-h"><h2>INPUTS</h2><span class="tag">&lt;Input&gt;</span></div>
+      <p class="sec-desc">Campo base com label em caps. Variações: foco, senha com toggle, telefone com máscara BR, e estado de erro.</p>
+      <div class="demo grid2">
+        <div class="field"><label>Email</label><div class="input"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><input value="joao@email.com" readonly /></div></div>
+        <div class="field"><label>Em foco</label><div class="input focus"><input value="Digitando…" readonly /></div></div>
+        <div class="field"><label>Senha</label><div class="input"><input value="••••••••" readonly /><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div></div>
+        <div class="field"><label>Telefone (máscara BR)</label><div class="input"><span style="font-family:var(--ui);font-size:14px;color:var(--muted)">🇧🇷</span><input value="(11) 95555-0123" readonly /></div></div>
+        <div class="field"><label>Com erro</label><div class="input error"><input value="email-invalido" readonly /></div><div class="err"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>Email inválido</div></div>
+        <div class="field"><label>Com dica</label><div class="input"><input value="barbearia-do-jaja" readonly /></div><div class="hint">Vira o link navalha.app/b/…</div></div>
+      </div>
+    </section>
+
+    <!-- BADGES -->
+    <section class="sec" id="badges">
+      <div class="sec-h"><h2>STATUS BADGES</h2><span class="tag">&lt;StatusBadge&gt; · 6 variações</span></div>
+      <p class="sec-desc">Comunicam o estado de um agendamento com cor + rótulo. Usadas em listas, detalhes e na agenda do admin.</p>
+      <div class="demo"><div class="status-row" id="badge-row"></div></div>
+    </section>
+
+    <!-- CARDS -->
+    <section class="sec" id="cards">
+      <div class="sec-h"><h2>CARDS</h2><span class="tag">7 tipos</span></div>
+      <p class="sec-desc">A unidade de conteúdo do sistema. Cada contexto tem o seu, mas todos compartilham raio 16, borda fina e sombra suave.</p>
+
+      <div class="subh">AppointmentCard · por status</div>
+      <div class="grid2">
+        <div class="mcard" style="padding:16px;display:flex;align-items:center;gap:13px;border-left:3px solid var(--st-confirmado)">
+          <div style="text-align:center;width:52px;flex:0 0 auto"><div style="font-family:var(--display);font-size:13px;color:var(--muted)">SÁB</div><div style="font-family:var(--display);font-size:26px;color:var(--navy-ink);line-height:.8">17</div><div style="font-family:var(--ui);font-size:11px;color:var(--muted)">14:00</div></div>
+          <div style="width:1px;height:42px;background:var(--line)"></div>
+          <div style="flex:1"><div style="font-family:var(--ui);font-size:14.5px;font-weight:700">Corte clássico + Barba</div><div style="font-family:var(--serif);font-style:italic;font-size:12px;color:var(--muted)">com Jajá · Barbearia do Jajá</div><div style="margin-top:7px"><span class="badge" style="background:rgba(26,54,93,.12);color:var(--st-confirmado)"><span class="dot" style="background:var(--st-confirmado)"></span>Confirmado</span></div></div>
+          <span style="font-family:var(--ui);font-size:14px;font-weight:800">R$ 64</span>
+        </div>
+        <div class="mcard" style="padding:16px;display:flex;align-items:center;gap:13px;border-left:3px solid var(--st-pendente)">
+          <div style="text-align:center;width:52px;flex:0 0 auto"><div style="font-family:var(--display);font-size:13px;color:var(--muted)">DOM</div><div style="font-family:var(--display);font-size:26px;color:var(--navy-ink);line-height:.8">18</div><div style="font-family:var(--ui);font-size:11px;color:var(--muted)">10:30</div></div>
+          <div style="width:1px;height:42px;background:var(--line)"></div>
+          <div style="flex:1"><div style="font-family:var(--ui);font-size:14.5px;font-weight:700">Barba terapia</div><div style="font-family:var(--serif);font-style:italic;font-size:12px;color:var(--muted)">com Renan</div><div style="margin-top:7px"><span class="badge" style="background:rgba(245,158,11,.16);color:#9a6608"><span class="dot" style="background:var(--st-pendente)"></span>Pendente</span></div></div>
+          <span style="font-family:var(--ui);font-size:14px;font-weight:800">R$ 30</span>
+        </div>
+      </div>
+
+      <div class="subh">ServiceCard · com / sem desconto</div>
+      <div class="grid2">
+        <div class="mcard" style="padding:15px;display:flex;align-items:center;gap:12px">
+          <span class="mono" style="width:42px;height:42px;background:var(--tint)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.4"/><circle cx="6" cy="18" r="2.4"/><path d="M8 7.5L20 18M8 16.5L20 6"/></svg></span>
+          <div style="flex:1"><div style="font-family:var(--ui);font-size:14.5px;font-weight:700">Corte clássico</div><div style="font-family:var(--serif);font-style:italic;font-size:12px;color:var(--muted)">30 min</div></div>
+          <span style="font-family:var(--ui);font-size:15px;font-weight:800">R$ 50</span>
+        </div>
+        <div class="mcard" style="padding:15px;display:flex;align-items:center;gap:12px;border:1px solid color-mix(in srgb, var(--vermelho) 30%, var(--line))">
+          <span class="mono" style="width:42px;height:42px;background:var(--tint)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.4"/><circle cx="6" cy="18" r="2.4"/><path d="M8 7.5L20 18M8 16.5L20 6"/></svg></span>
+          <div style="flex:1"><div style="font-family:var(--ui);font-size:14.5px;font-weight:700">Corte + Barba <span style="font-family:var(--ui);font-size:10px;font-weight:800;color:#fff;background:var(--vermelho);padding:2px 7px;border-radius:999px;vertical-align:middle">−20%</span></div><div style="font-family:var(--serif);font-style:italic;font-size:12px;color:var(--muted)">50 min</div></div>
+          <div style="text-align:right"><span style="font-family:var(--ui);font-size:11px;color:var(--muted);text-decoration:line-through">R$ 80</span><div style="font-family:var(--ui);font-size:15px;font-weight:800">R$ 64</div></div>
+        </div>
+      </div>
+
+      <div class="subh">BarberCard · BarbershopCard · PromoCard</div>
+      <div class="grid3">
+        <div class="mcard" style="padding:16px;text-align:center">
+          <span class="mono" style="width:60px;height:60px;font-size:24px;background:var(--navy);margin:0 auto 11px;box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--dourado)">JJ</span>
+          <div style="font-family:var(--ui);font-size:15px;font-weight:700">Jajá</div>
+          <div style="font-family:var(--serif);font-style:italic;font-size:12px;color:var(--muted)">degradê &amp; barba</div>
+          <div style="display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-family:var(--ui);font-size:12.5px;font-weight:700"><svg width="13" height="13" viewBox="0 0 24 24" fill="var(--dourado)"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 21l1.4-6.8L2.2 9.6l6.9-.7z"/></svg>4,8</div>
+        </div>
+        <div class="mcard">
+          <div style="height:66px;background:linear-gradient(135deg,#1a365d,#12243d);position:relative"><div style="position:absolute;inset:0;opacity:.12;background:repeating-linear-gradient(-45deg,#fff 0 8px,transparent 8px 18px)"></div></div>
+          <div style="padding:13px"><div style="font-family:var(--ui);font-size:14px;font-weight:700">Barbearia do Jajá</div><div style="font-family:var(--serif);font-style:italic;font-size:11.5px;color:var(--muted)">Vila Mariana · 1,2 km</div><div style="display:flex;gap:8px;margin-top:7px;font-family:var(--ui);font-size:11.5px;color:var(--muted)"><span>★ 4,8</span><span>·</span><span>aberto até 20h</span></div></div>
+        </div>
+        <div style="border-radius:var(--r-lg);background:var(--vermelho);color:#fff;padding:16px;position:relative;overflow:hidden">
+          <div style="position:absolute;inset:0;opacity:.1;background:repeating-linear-gradient(-45deg,#fff 0 12px,transparent 12px 28px)"></div>
+          <div style="position:absolute;right:-18px;top:-18px;width:72px;height:72px;border-radius:50%;border:10px solid rgba(255,255,255,.18)"></div>
+          <span style="position:relative;display:inline-block;font-family:var(--ui);font-size:9.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;background:#fff;color:var(--vermelho);padding:3px 8px;border-radius:999px">até domingo</span>
+          <div style="position:relative;font-family:var(--display);font-size:34px;line-height:.85;margin-top:10px">30% OFF</div>
+          <div style="position:relative;font-family:var(--ui);font-size:13px;font-weight:700;margin-top:6px">Corte + Barba</div>
+        </div>
+      </div>
+
+      <div class="subh">BookingPendingCard · barbeiro</div>
+      <div class="mcard" style="padding:14px;max-width:440px;border:1px solid color-mix(in srgb,#F59E0B 40%,var(--line))">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="mono" style="width:42px;height:42px;font-size:18px;background:#7a5a2f">ML</span>
+          <div style="flex:1"><div style="font-family:var(--ui);font-size:14.5px;font-weight:700">Maria Lopes</div><div style="font-family:var(--serif);font-style:italic;font-size:12px;color:var(--muted)">Corte + Sobrancelha</div><div style="display:flex;align-items:center;gap:8px;margin-top:5px"><span style="font-family:var(--ui);font-size:11.5px;font-weight:600;color:#9a6608">amanhã · 10:00</span><span style="color:var(--line2)">·</span><span style="font-family:var(--ui);font-size:11.5px;font-weight:700;color:var(--green)">+ R$ 65</span></div></div>
+        </div>
+        <div style="display:flex;gap:9px;margin-top:13px">
+          <button class="btn btn-ghost sm" style="flex:1;border:1.4px solid var(--line2)">Recusar</button>
+          <button class="btn sm" style="flex:1.4;background:var(--green);color:#fff">✓ Confirmar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAYMENT -->
+    <section class="sec" id="pagamento">
+      <div class="sec-h"><h2>PAGAMENTO</h2><span class="tag">&lt;PaymentMethodSelector&gt;</span></div>
+      <p class="sec-desc">Seleção de método no checkout. Pix recomendado (sem taxa, padrão), cartão com parcelamento.</p>
+      <div class="demo grid2">
+        <button style="text-align:left;cursor:pointer;display:flex;align-items:center;gap:13px;padding:15px;border-radius:var(--r-md);background:color-mix(in srgb,var(--green) 8%,transparent);border:1.8px solid var(--green)">
+          <span class="mono" style="width:40px;height:40px;background:color-mix(in srgb,var(--green) 16%,transparent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2l3.5 3.5a3 3 0 0 0 4.2 0M12 20.8l3.5-3.5a3 3 0 0 1 4.2 0M12 3.2L8.5 6.7a3 3 0 0 1-4.2 0M12 20.8l-3.5-3.5a3 3 0 0 0-4.2 0"/><rect x="9" y="9" width="6" height="6" rx="1.4" transform="rotate(45 12 12)"/></svg></span>
+          <div style="flex:1"><div style="font-family:var(--ui);font-size:14.5px;font-weight:700">Pix <span style="font-family:var(--ui);font-size:10px;font-weight:800;color:#fff;background:var(--green);padding:2px 7px;border-radius:999px">SEM TAXA</span></div><div style="font-family:var(--serif);font-style:italic;font-size:12px;color:var(--muted)">Confirmação na hora</div></div>
+          <span style="width:22px;height:22px;border-radius:50%;border:2px solid var(--green);display:flex;align-items:center;justify-content:center"><span style="width:11px;height:11px;border-radius:50%;background:var(--green)"></span></span>
+        </button>
+        <button style="text-align:left;cursor:pointer;display:flex;align-items:center;gap:13px;padding:15px;border-radius:var(--r-md);background:var(--card);border:1.8px solid var(--line2)">
+          <span class="mono" style="width:40px;height:40px;background:var(--tint)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy-ink)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></svg></span>
+          <div style="flex:1"><div style="font-family:var(--ui);font-size:14.5px;font-weight:700">Cartão de crédito</div><div style="font-family:var(--serif);font-style:italic;font-size:12px;color:var(--muted)">Até 12x · parcelamento</div></div>
+          <span style="width:22px;height:22px;border-radius:50%;border:2px solid var(--line2)"></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- NAV -->
+    <section class="sec" id="navegacao">
+      <div class="sec-h"><h2>NAVEGAÇÃO</h2><span class="tag">TopAppBar · BottomTabBar · SocialButton</span></div>
+      <p class="sec-desc">Barras de topo e de baixo do mobile, e botões sociais de login.</p>
+      <div class="subh">TopAppBar</div>
+      <div class="appbar" style="max-width:440px;border-radius:var(--r-lg)">
+        <span class="iconbtn"><svg width="11" height="18" viewBox="0 0 12 20" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2L2 10l8 8"/></svg></span>
+        <span style="flex:1;font-family:var(--display);font-size:22px;letter-spacing:1px">AGENDAMENTO</span>
+        <span class="iconbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8"><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></span>
+      </div>
+
+      <div class="grid2" style="margin-top:18px">
+        <div>
+          <div class="subh" style="margin-top:0">BottomTabBar · cliente (5)</div>
+          <div class="mcard"><div class="tabbar" id="tab-cli"></div></div>
+        </div>
+        <div>
+          <div class="subh" style="margin-top:0">BottomTabBar · barbeiro (4)</div>
+          <div class="mcard"><div class="tabbar" id="tab-bar"></div></div>
+        </div>
+      </div>
+
+      <div class="subh">SocialButton</div>
+      <div class="row" id="social-row"></div>
+    </section>
+
+    <!-- STATES -->
+    <section class="sec" id="estados">
+      <div class="sec-h"><h2>ESTADOS</h2><span class="tag">Empty · Error · Skeleton</span></div>
+      <p class="sec-desc">O que a tela mostra quando não há dados, quando algo falha, e enquanto carrega.</p>
+      <div class="grid3">
+        <div class="demo" style="text-align:center;padding:30px 22px">
+          <span class="mono" style="width:60px;height:60px;background:var(--tint);margin:0 auto 14px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg></span>
+          <div style="font-family:var(--display);font-size:22px;letter-spacing:.4px">SEM AGENDAMENTOS</div>
+          <div style="font-family:var(--serif);font-style:italic;font-size:13px;color:var(--muted);margin:6px 0 14px">Você ainda não marcou nada.</div>
+          <button class="btn btn-primary sm">Agendar agora</button>
+        </div>
+        <div class="demo" style="text-align:center;padding:30px 22px">
+          <span class="mono" style="width:60px;height:60px;background:color-mix(in srgb,var(--vermelho) 12%,transparent);margin:0 auto 14px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--vermelho)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v5M12 16h.01"/></svg></span>
+          <div style="font-family:var(--display);font-size:22px;letter-spacing:.4px">DEU RUIM</div>
+          <div style="font-family:var(--serif);font-style:italic;font-size:13px;color:var(--muted);margin:6px 0 14px">Sem conexão. Tente de novo.</div>
+          <button class="btn btn-secondary sm">↻ Tentar de novo</button>
+        </div>
+        <div class="demo" style="padding:20px">
+          <div class="lbl">SkeletonLoader</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;align-items:center;gap:11px"><div class="skel" style="width:44px;height:44px;border-radius:50%"></div><div style="flex:1"><div class="skel" style="height:11px;width:70%"></div><div class="skel" style="height:9px;width:45%;margin-top:8px"></div></div></div>
+            <div style="display:flex;align-items:center;gap:11px"><div class="skel" style="width:44px;height:44px;border-radius:50%"></div><div style="flex:1"><div class="skel" style="height:11px;width:60%"></div><div class="skel" style="height:9px;width:40%;margin-top:8px"></div></div></div>
+            <div style="display:flex;align-items:center;gap:11px"><div class="skel" style="width:44px;height:44px;border-radius:50%"></div><div style="flex:1"><div class="skel" style="height:11px;width:75%"></div><div class="skel" style="height:9px;width:50%;margin-top:8px"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- OVERLAYS -->
+    <section class="sec" id="overlays">
+      <div class="sec-h"><h2>OVERLAYS &amp; STEPPER</h2><span class="tag">Modal · BottomSheet · Stepper</span></div>
+      <p class="sec-desc">Sobreposições para confirmações e formulários, e o indicador de passo dos wizards.</p>
+      <div class="subh">Stepper</div>
+      <div class="demo">
+        <div class="stepper" style="max-width:440px">
+          <span class="dot" style="background:var(--dourado);color:#1c1917">✓</span>
+          <span class="bar" style="background:var(--dourado)"></span>
+          <span class="dot" style="background:var(--dourado);color:#1c1917">✓</span>
+          <span class="bar" style="background:var(--navy)"></span>
+          <span class="dot" style="background:rgba(26,54,93,.14);color:var(--navy-ink);border:1.5px solid var(--navy)">3</span>
+          <span class="bar" style="background:var(--line2)"></span>
+          <span class="dot" style="background:var(--tint);color:var(--muted)">4</span>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div>
+          <div class="subh">Modal</div>
+          <div class="modal-demo">
+            <div class="scrim"></div>
+            <div class="modal-card">
+              <div style="font-family:var(--display);font-size:24px;letter-spacing:.4px">CANCELAR CORTE?</div>
+              <div style="font-family:var(--serif);font-style:italic;font-size:13.5px;color:var(--muted);margin:8px 0 18px">Você está dentro do prazo gratuito. Sem cobrança.</div>
+              <div class="row" style="gap:10px"><button class="btn btn-ghost sm" style="flex:1;border:1.4px solid var(--line2)">Voltar</button><button class="btn btn-destructive sm" style="flex:1">Cancelar</button></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="subh">BottomSheet</div>
+          <div class="sheet-demo">
+            <div class="scrim" style="position:absolute;inset:0;background:rgba(28,25,23,.28)"></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div style="font-family:var(--display);font-size:22px;letter-spacing:.4px;margin-bottom:12px">FORMA DE PAGAMENTO</div>
+              <div style="display:flex;align-items:center;gap:11px;padding:12px;border-radius:11px;border:1.6px solid var(--green);background:color-mix(in srgb,var(--green) 8%,transparent);margin-bottom:9px"><span class="mono" style="width:32px;height:32px;background:color-mix(in srgb,var(--green) 16%,transparent);font-size:13px"></span><span style="flex:1;font-family:var(--ui);font-size:13.5px;font-weight:700">Pix · sem taxa</span><span style="width:18px;height:18px;border-radius:50%;background:var(--green)"></span></div>
+              <button class="btn btn-primary" style="width:100%">Confirmar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="ds-data.js"></script>
+</body>
+</html>

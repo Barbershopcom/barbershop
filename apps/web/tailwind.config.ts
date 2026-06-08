@@ -56,6 +56,13 @@ const config: Config = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      // Fontes NAVALHA via next/font (CSS vars setadas no RootLayout).
+      // Sobrescreve o preset (que usa nomes literais, válidos só no mobile).
+      fontFamily: {
+        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-bebas)', 'var(--font-inter)', 'sans-serif'],
+        serif: ['var(--font-lora)', 'Georgia', 'serif'],
+      },
       keyframes: {
         'accordion-down': {
           from: { height: '0' },

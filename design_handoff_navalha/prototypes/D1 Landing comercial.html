@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NAVALHA · Software para barbearias</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Lora:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --navy: #1a365d; --vermelho: #bf212f; --dourado: #c5a059; --papel: #fffcf5; --tinta: #1c1917;
+    --ui: 'Inter', system-ui, sans-serif; --display: 'Bebas Neue', 'Inter', sans-serif; --serif: 'Lora', Georgia, serif;
+    --ink: #1c1917; --muted: #74695b; --card: #fffefb; --tint: #f3ebda; --line: rgba(28,25,23,.1); --line2: rgba(28,25,23,.2);
+    --navy-ink: #1a365d; --vermelho-ink: #a31b28; --dourado-ink: #9b7a3a; --green: #1f8a5b;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--ui); color: var(--ink); background: var(--papel); -webkit-font-smoothing: antialiased; line-height: 1.5; }
+  h1, h2, h3 { margin: 0; }
+  a { color: inherit; text-decoration: none; }
+  img { max-width: 100%; }
+  ::selection { background: var(--dourado); color: #1c1917; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
+  .pole { display: inline-block; border-radius: 999px; border: 1.5px solid var(--dourado); overflow: hidden; background: repeating-linear-gradient(-45deg, var(--vermelho) 0 6px, var(--papel) 6px 12px, #2a5a8f 12px 18px, var(--papel) 18px 24px); }
+  .btn { display: inline-flex; align-items: center; gap: 9px; height: 50px; padding: 0 24px; border-radius: 13px; font-family: var(--ui); font-size: 15px; font-weight: 700; cursor: pointer; border: 1.6px solid transparent; transition: transform .14s ease, box-shadow .14s ease; white-space: nowrap; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn-primary { background: var(--vermelho); color: #fff; box-shadow: 0 10px 24px rgba(191,33,47,.26); }
+  .btn-navy { background: var(--navy); color: #fff; box-shadow: 0 10px 24px rgba(26,54,93,.24); }
+  .btn-gold { background: var(--dourado); color: #1c1917; box-shadow: 0 10px 24px rgba(197,160,89,.3); }
+  .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line2); }
+  .btn-sm { height: 42px; padding: 0 18px; font-size: 14px; border-radius: 11px; }
+  .eyebrow { font-family: var(--ui); font-size: 12px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; color: var(--vermelho-ink); }
+  .stripe { height: 7px; background: repeating-linear-gradient(-45deg, var(--vermelho) 0 13px, var(--papel) 13px 26px, var(--navy) 26px 39px, var(--papel) 39px 52px); }
+
+  /* ── nav ── */
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(255,252,245,.86); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  .nav-in { display: flex; align-items: center; gap: 26px; height: 70px; }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand .seal { width: 38px; height: 38px; border-radius: 50%; background: var(--navy); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .brand .seal .pole { width: 11px; height: 22px; }
+  .brand b { font-family: var(--display); font-size: 26px; letter-spacing: 1.5px; line-height: 1; }
+  .nav-links { display: flex; gap: 26px; margin-left: 14px; }
+  .nav-links a { font-size: 14.5px; font-weight: 500; color: var(--muted); }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+
+  /* ── hero ── */
+  .hero { position: relative; overflow: hidden; padding: 70px 0 40px; }
+  .hero::before { content: ''; position: absolute; right: -200px; top: -160px; width: 560px; height: 560px; border-radius: 50%; background: radial-gradient(circle, rgba(197,160,89,.18), transparent 65%); }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center; position: relative; }
+  .hero h1 { font-family: var(--display); font-size: 74px; line-height: .98; letter-spacing: 1px; margin: 18px 0 0; }
+  .hero h1 .red { color: var(--vermelho); }
+  .hero .sub { font-family: var(--serif); font-size: 20px; font-style: italic; color: var(--muted); margin: 20px 0 30px; max-width: 480px; line-height: 1.55; }
+  .hero-cta { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .hero-note { display: flex; align-items: center; gap: 8px; margin-top: 18px; font-size: 13px; color: var(--muted); }
+  .hero-note svg { color: var(--green); }
+
+  /* phone mockups */
+  .mock { position: relative; display: flex; justify-content: center; align-items: flex-end; gap: 18px; height: 460px; }
+  .phone { width: 215px; height: 440px; border-radius: 34px; background: #14110f; padding: 9px; box-shadow: 0 30px 60px rgba(28,25,23,.3); flex: 0 0 auto; }
+  .phone.back { transform: scale(.86) translateX(28px) rotate(4deg); opacity: .96; }
+  .phone.front { transform: translateY(-8px) rotate(-3deg); z-index: 2; }
+  .screen { width: 100%; height: 100%; border-radius: 26px; background: var(--papel); overflow: hidden; position: relative; }
+
+  /* ── trust strip ── */
+  .trust { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--tint); }
+  .trust-in { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 26px 0; flex-wrap: wrap; }
+  .stat b { font-family: var(--display); font-size: 40px; line-height: 1; color: var(--navy); display: block; margin-bottom: 3px; }
+  .stat span { font-size: 13px; color: var(--muted); font-weight: 500; }
+
+  /* ── section ── */
+  section.block { padding: 84px 0; }
+  .sec-head { text-align: center; max-width: 640px; margin: 0 auto 52px; }
+  .sec-head h2 { font-family: var(--display); font-size: 52px; letter-spacing: .6px; line-height: 1; margin: 14px 0 0; }
+  .sec-head p { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--muted); margin: 14px 0 0; }
+
+  /* features */
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feat { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 26px; transition: transform .15s, box-shadow .15s; }
+  .feat:hover { transform: translateY(-4px); box-shadow: 0 16px 36px rgba(28,25,23,.1); }
+  .feat .fic { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+  .feat h3 { font-family: var(--ui); font-size: 19px; font-weight: 700; }
+  .feat p { font-size: 14.5px; color: var(--muted); margin: 9px 0 0; line-height: 1.55; }
+
+  /* app showcase */
+  .showcase { background: var(--navy); color: var(--papel); border-radius: 28px; overflow: hidden; position: relative; }
+  .showcase::before { content: ''; position: absolute; inset: 0; opacity: .07; background: repeating-linear-gradient(-45deg, #fff 0 16px, transparent 16px 36px); }
+  .showcase-in { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: center; padding: 50px; position: relative; }
+  .showcase h2 { font-family: var(--display); font-size: 46px; letter-spacing: .5px; line-height: 1; }
+  .showcase .sub { font-family: var(--serif); font-style: italic; font-size: 16px; color: rgba(255,252,245,.78); margin: 14px 0 22px; }
+  .showcase ul { list-style: none; padding: 0; margin: 0 0 26px; display: flex; flex-direction: column; gap: 12px; }
+  .showcase li { display: flex; align-items: center; gap: 11px; font-size: 15px; }
+  .showcase li .ck { width: 22px; height: 22px; border-radius: 50%; background: rgba(197,160,89,.2); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .admin-mock { border-radius: 14px; overflow: hidden; box-shadow: 0 24px 50px rgba(0,0,0,.36); border: 1px solid rgba(255,255,255,.12); }
+
+  /* testimonials */
+  .quotes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .quote { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 26px; display: flex; flex-direction: column; }
+  .quote .stars { display: flex; gap: 3px; margin-bottom: 14px; }
+  .quote p { font-family: var(--serif); font-size: 16px; color: var(--ink); line-height: 1.6; flex: 1; }
+  .quote .who { display: flex; align-items: center; gap: 11px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .quote .who .av { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 16px; color: #fff; flex: 0 0 auto; }
+  .quote .who b { font-size: 14px; font-weight: 700; display: block; }
+  .quote .who span { font-size: 12.5px; color: var(--muted); }
+
+  /* pricing */
+  .toggle { display: inline-flex; align-items: center; gap: 0; background: var(--tint); border-radius: 999px; padding: 4px; margin: 18px auto 0; }
+  .toggle button { border: none; background: transparent; cursor: pointer; font-family: var(--ui); font-size: 13.5px; font-weight: 700; color: var(--muted); padding: 9px 18px; border-radius: 999px; transition: all .15s; }
+  .toggle button.on { background: var(--navy); color: #fff; }
+  .toggle .save { font-size: 11px; font-weight: 800; color: var(--green); margin-left: 4px; }
+  .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: stretch; }
+  .plan { background: var(--card); border: 1.5px solid var(--line); border-radius: 22px; padding: 30px 26px; display: flex; flex-direction: column; position: relative; }
+  .plan.pop { border-color: var(--navy); box-shadow: 0 20px 50px rgba(26,54,93,.18); }
+  .plan .tag { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: var(--vermelho); color: #fff; font-family: var(--ui); font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; padding: 5px 14px; border-radius: 999px; box-shadow: 0 6px 16px rgba(191,33,47,.3); }
+  .plan h3 { font-family: var(--display); font-size: 30px; letter-spacing: .6px; }
+  .plan .pdesc { font-size: 13px; color: var(--muted); margin: 4px 0 18px; min-height: 36px; }
+  .plan .price { display: flex; align-items: flex-end; gap: 4px; }
+  .plan .price .amt { font-family: var(--display); font-size: 56px; line-height: .9; color: var(--ink); }
+  .plan .price .per { font-size: 13px; color: var(--muted); margin-bottom: 7px; }
+  .plan .feats { list-style: none; padding: 0; margin: 22px 0; display: flex; flex-direction: column; gap: 11px; flex: 1; }
+  .plan .feats li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--ink); }
+  .plan .feats li svg { flex: 0 0 auto; margin-top: 2px; }
+  .plan .feats li.off { color: var(--muted); opacity: .7; }
+
+  /* faq */
+  .faq { max-width: 760px; margin: 0 auto; }
+  .qa { border-bottom: 1px solid var(--line); }
+  .qa button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: none; border: none; cursor: pointer; text-align: left; padding: 22px 4px; font-family: var(--ui); font-size: 17px; font-weight: 600; color: var(--ink); }
+  .qa .ans { max-height: 0; overflow: hidden; transition: max-height .28s ease; }
+  .qa .ans p { font-family: var(--serif); font-size: 15.5px; color: var(--muted); line-height: 1.6; padding: 0 4px 22px; margin: 0; }
+  .qa.open .ans { max-height: 220px; }
+  .qa .chev { transition: transform .25s; flex: 0 0 auto; }
+  .qa.open .chev { transform: rotate(180deg); }
+
+  /* final cta */
+  .final { text-align: center; background: var(--tint); border-radius: 28px; padding: 64px 28px; position: relative; overflow: hidden; }
+  .final h2 { font-family: var(--display); font-size: 60px; letter-spacing: .6px; line-height: 1; }
+  .final p { font-family: var(--serif); font-style: italic; font-size: 18px; color: var(--muted); margin: 14px 0 28px; }
+
+  /* footer */
+  footer { background: var(--tinta); color: rgba(255,252,245,.7); padding: 56px 0 30px; margin-top: 84px; }
+  .foot-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 30px; padding-bottom: 36px; border-bottom: 1px solid rgba(255,252,245,.12); }
+  footer .brand b { color: var(--papel); }
+  footer .brand .seal { background: rgba(255,252,245,.08); }
+  .foot-about { font-size: 13.5px; line-height: 1.6; margin: 16px 0 0; max-width: 260px; }
+  .foot-col h4 { font-family: var(--ui); font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--dourado); margin: 0 0 14px; }
+  .foot-col a { display: block; font-size: 14px; margin-bottom: 10px; color: rgba(255,252,245,.7); }
+  .foot-col a:hover { color: var(--papel); }
+  .foot-bottom { display: flex; align-items: center; justify-content: space-between; padding-top: 22px; font-size: 12.5px; flex-wrap: wrap; gap: 12px; }
+
+  @media (max-width: 920px) {
+    .hero-grid, .showcase-in { grid-template-columns: 1fr; }
+    .mock { display: none; }
+    .features, .quotes, .plans { grid-template-columns: 1fr; }
+    .foot-grid { grid-template-columns: 1fr 1fr; }
+    .nav-links { display: none; }
+    .hero h1 { font-size: 64px; }
+  }
+</style>
+</head>
+<body>
+  <!-- NAV -->
+  <nav>
+    <div class="wrap nav-in">
+      <a class="brand" href="#top">
+        <span class="seal"><span class="pole"></span></span>
+        <b>NAVALHA</b>
+      </a>
+      <div class="nav-links">
+        <a href="#recursos">Recursos</a>
+        <a href="#apps">Os apps</a>
+        <a href="#planos">Planos</a>
+        <a href="#faq">Dúvidas</a>
+      </div>
+      <div class="nav-cta">
+        <a class="btn btn-ghost btn-sm" href="#">Entrar</a>
+        <a class="btn btn-primary btn-sm" href="D3 Signup.html">Teste grátis</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero" id="top">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow">Software para barbearias</span>
+        <h1>SUA BARBEARIA<br />NO <span class="red">PILOTO</span><br />AUTOMÁTICO.</h1>
+        <p class="sub">Agenda online, pagamento no Pix, lembretes automáticos e controle de toda a equipe — num sistema feito sob medida pra barbearia brasileira.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="D3 Signup.html">Teste grátis por 14 dias
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="#apps">Ver os apps</a>
+        </div>
+        <div class="hero-note">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+          Sem cartão pra começar · cancele quando quiser
+        </div>
+      </div>
+      <div class="mock">
+        <div class="phone back"><div class="screen" id="mock-admin"></div></div>
+        <div class="phone front"><div class="screen" id="mock-home"></div></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- TRUST -->
+  <div class="trust">
+    <div class="wrap trust-in">
+      <div class="stat"><b>1.200+</b><span>barbearias usando</span></div>
+      <div class="stat"><b>480 mil</b><span>cortes agendados</span></div>
+      <div class="stat"><b>R$ 0</b><span>de taxa no Pix</span></div>
+      <div class="stat"><b>4,9 ★</b><span>avaliação dos donos</span></div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="block" id="recursos">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Por que NAVALHA</span>
+        <h2>TUDO QUE A CADEIRA PRECISA</h2>
+        <p>Da primeira mensagem do cliente ao repasse no fim do mês — sem papel, sem caderninho, sem dor de cabeça.</p>
+      </div>
+      <div class="features" id="feat-grid"></div>
+    </div>
+  </section>
+
+  <!-- APP SHOWCASE -->
+  <section class="block" id="apps" style="padding-top:0">
+    <div class="wrap">
+      <div class="showcase">
+        <div class="showcase-in">
+          <div>
+            <span class="eyebrow" style="color:var(--dourado)">App do cliente + do barbeiro</span>
+            <h2>DOIS APPS,<br />UMA BARBEARIA AFIADA.</h2>
+            <p class="sub">O cliente agenda e paga sozinho. O barbeiro vê a agenda e confirma na hora. Você acompanha tudo pelo painel web.</p>
+            <ul>
+              <li><span class="ck"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c5a059" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>Agendamento 24h, direto do celular</li>
+              <li><span class="ck"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c5a059" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>Pix com confirmação instantânea</li>
+              <li><span class="ck"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c5a059" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>Lembretes que derrubam o no-show</li>
+            </ul>
+            <a class="btn btn-gold" href="NAVALHA - Apresentação.html">Explorar os protótipos
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+          </div>
+          <div class="admin-mock" id="mock-showcase"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="block" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Quem já passou a régua</span>
+        <h2>DONOS QUE NÃO VOLTAM ATRÁS</h2>
+      </div>
+      <div class="quotes" id="quote-grid"></div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="block" id="planos" style="background:var(--tint)">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Planos</span>
+        <h2>COMECE DE GRAÇA. CRESÇA QUANDO QUISER.</h2>
+        <div class="toggle">
+          <button id="t-mensal" class="on" onclick="setCycle('mensal')">Mensal</button>
+          <button id="t-anual" onclick="setCycle('anual')">Anual<span class="save">−20%</span></button>
+        </div>
+      </div>
+      <div class="plans" id="plan-grid"></div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="block" id="faq">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Dúvidas</span>
+        <h2>PERGUNTAS NA CADEIRA</h2>
+      </div>
+      <div class="faq" id="faq-list"></div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="wrap">
+    <div class="final">
+      <div class="stripe" style="position:absolute;top:0;left:0;right:0"></div>
+      <span class="eyebrow">Bora afiar?</span>
+      <h2>SUA AGENDA LOTADA<br />COMEÇA HOJE.</h2>
+      <p>14 dias grátis. Configuração em 5 minutos. Sem fidelidade.</p>
+      <a class="btn btn-primary" href="D3 Signup.html" style="height:56px;font-size:16px">Criar minha barbearia
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="wrap">
+      <div class="foot-grid">
+        <div>
+          <div class="brand"><span class="seal"><span class="pole"></span></span><b>NAVALHA</b></div>
+          <p class="foot-about">O sistema de gestão e agendamento feito pra barbearia brasileira. Do balcão ao Pix, tudo numa navalha só.</p>
+        </div>
+        <div class="foot-col"><h4>Produto</h4><a href="#recursos">Recursos</a><a href="#planos">Planos</a><a href="#apps">Os apps</a><a href="Admin - Painel da barbearia.html">Painel admin</a></div>
+        <div class="foot-col"><h4>Empresa</h4><a href="#">Sobre</a><a href="#">Blog</a><a href="#">Contato</a><a href="#">Trabalhe conosco</a></div>
+        <div class="foot-col"><h4>Suporte</h4><a href="#faq">Central de ajuda</a><a href="#">WhatsApp</a><a href="#">Termos</a><a href="#">Privacidade</a></div>
+      </div>
+      <div class="foot-bottom">
+        <span>© 2026 NAVALHA Tecnologia · CNPJ 00.000.000/0001-00</span>
+        <span>Feito com 🪒 no Brasil</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="landing-data.js"></script>
+</body>
+</html>

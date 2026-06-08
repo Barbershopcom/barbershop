@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Protótipo navegável · NAVALHA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Lora:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --navy: #1a365d; --vermelho: #bf212f; --dourado: #c5a059; --papel: #fffcf5; --tinta: #1c1917;
+    --ui: 'Inter', system-ui, sans-serif;
+    --display: 'Bebas Neue', 'Inter', sans-serif;
+    --serif: 'Lora', Georgia, serif;
+  }
+  [data-theme="light"] {
+    --bg: #fffcf5; --card: #fffefb; --tint: #f6f0e4; --ink: #1c1917; --muted: #8a8073;
+    --frame: #1a365d; --frame-ink: #1a365d; --dourado-ink: #9b7a3a; --green: #1f8a5b; --vermelho-ink: #a31b28;
+    --hairline: rgba(28,25,23,.12); --hairline-strong: rgba(28,25,23,.26);
+    --amber: #d9a441; --amber-bg: #fbf3df; --amber-ink: #8a6313; --red-bg: #fdeceb; --navy-bg: #e9eef5;
+  }
+  [data-theme="dark"] {
+    --bg: #1c1917; --card: #262019; --tint: #322a20; --ink: #fffcf5; --muted: #a89c8a;
+    --frame: #c5a059; --frame-ink: #d8b878; --dourado-ink: #d8b878; --green: #4cc38a; --vermelho-ink: #f08a8a;
+    --hairline: rgba(255,252,245,.14); --hairline-strong: rgba(255,252,245,.32);
+    --amber: #d9a441; --amber-bg: rgba(217,164,65,.16); --amber-ink: #e3bd72; --red-bg: rgba(191,33,47,.18); --navy-bg: rgba(197,160,89,.16);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; }
+  body {
+    background: radial-gradient(1200px 700px at 50% -8%, #efe7d6 0%, transparent 60%), #e8e2d6;
+    font-family: var(--ui); -webkit-font-smoothing: antialiased;
+    display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 28px 16px;
+  }
+  @keyframes cspin { to { transform: rotate(360deg); } }
+  @keyframes cfade { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+  @keyframes checkPop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+  @keyframes ringPop { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.5); opacity: 0; } }
+  @keyframes cping { 0% { transform: scale(1); opacity: .55; } 80%, 100% { transform: scale(2.6); opacity: 0; } }
+  @keyframes confFall { 0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(620px) translateX(var(--drift)) rotate(var(--rot)); opacity: 0; } }
+  @keyframes routeIn { from { opacity: 0; } to { opacity: 1; } }
+  .route { height: 100%; animation: routeIn .22s ease; }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="onboarding.jsx?v=8"></script>
+  <script type="text/babel" src="login.jsx?v=8"></script>
+  <script type="text/babel" src="home.jsx?v=8"></script>
+  <script type="text/babel" src="search.jsx?v=8"></script>
+  <script type="text/babel" src="barbershop.jsx?v=8"></script>
+  <script type="text/babel" src="booking-wizard.jsx?v=8"></script>
+  <script type="text/babel" src="vintage-checkout.jsx?v=8"></script>
+  <script type="text/babel" src="pix-payment.jsx?v=8"></script>
+  <script type="text/babel" src="success-screen.jsx?v=8"></script>
+  <script type="text/babel" src="appointments.jsx?v=8"></script>
+  <script type="text/babel" src="appointment-detail.jsx?v=8"></script>
+  <script type="text/babel" src="profile.jsx?v=8"></script>
+  <script type="text/babel" src="notifications.jsx?v=8"></script>
+  <script type="text/babel" src="edit-profile.jsx?v=8"></script>
+  <script type="text/babel" src="promos.jsx?v=8"></script>
+  <script type="text/babel">
+    const { useState, useRef } = React;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "dark": false
+    }/*EDITMODE-END*/;
+
+    function App() {
+      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      const [route, setRoute] = useState('splash');
+      const stack = useRef([]);
+
+      const nav = (r) => {
+        if (r === '__back') {
+          setRoute((cur) => { const prev = stack.current.pop(); return prev || cur; });
+          return;
+        }
+        stack.current.push(route);
+        setRoute(r);
+      };
+      const dark = t.dark;
+
+      const screen = (() => {
+        switch (route) {
+          case 'splash':    return <OnboardingFlow tweaks={{ dark, start: 'splash' }} nav={nav} />;
+          case 'onboarding': return <OnboardingFlow tweaks={{ dark, start: 'onboarding' }} nav={nav} />;
+          case 'login':     return <LoginScreen tweaks={{ dark, simulate: 'sucesso' }} nav={nav} />;
+          case 'home':      return <HomeScreen tweaks={{ dark, periodo: 'Boa noite', empty: false }} nav={nav} />;
+          case 'busca':     return <SearchScreen tweaks={{ dark, empty: false }} nav={nav} />;
+          case 'barbearia': return <BarbershopPage tweaks={{ dark, tab: 'Serviços' }} nav={nav} />;
+          case 'agendar':   return <BookingWizard tweaks={{ dark, start: 0, forceEmptyDay: false }} nav={nav} />;
+          case 'checkout':  return <VintageCheckout tweaks={{ dark, ctaColor: 'var(--vermelho)', highlightPix: true, showFee: true, simulate: 'sucesso' }} nav={nav} />;
+          case 'pix':       return <PixPayment tweaks={{ dark, simulate: 'pago', fast: true }} nav={nav} />;
+          case 'sucesso':   return <SuccessScreen tweaks={{ dark, status: 'pendente', confetti: true }} nav={nav} />;
+          case 'historico': return <AppointmentsList tweaks={{ dark, empty: false }} nav={nav} />;
+          case 'detalhe':   return <AppointmentDetail tweaks={{ dark, status: 'confirmado', soon: false }} nav={nav} />;
+          case 'perfil':    return <ProfileScreen tweaks={{ dark }} nav={nav} />;
+          case 'notificacoes': return <NotificationsScreen tweaks={{ dark, empty: false }} nav={nav} />;
+          case 'editar':    return <EditProfileScreen tweaks={{ dark }} nav={nav} />;
+          case 'promocoes': return <PromosScreen tweaks={{ dark }} nav={nav} />;
+          default:          return <HomeScreen tweaks={{ dark }} nav={nav} />;
+        }
+      })();
+
+      const STEPS = [
+        ['splash', 'Splash'], ['onboarding', 'Onboarding'], ['login', 'Login'], ['home', 'Home'], ['busca', 'Busca'], ['barbearia', 'Barbearia'], ['agendar', 'Agendar'],
+        ['checkout', 'Pagar'], ['pix', 'Pix'], ['sucesso', 'Sucesso'], ['historico', 'Histórico'], ['detalhe', 'Detalhe'],
+        ['perfil', 'Perfil'], ['editar', 'Editar perfil'], ['notificacoes', 'Notificações'], ['promocoes', 'Promoções'],
+      ];
+
+      return (
+        <React.Fragment>
+          <IOSDevice dark={dark} width={390} height={844}>
+            <div key={route} className="route">{screen}</div>
+          </IOSDevice>
+
+          <TweaksPanel title="Tweaks">
+            <TweakSection label="Aparência" />
+            <TweakToggle label="Tema escuro (couro)" value={t.dark} onChange={(v) => setTweak('dark', v)} />
+
+            <TweakSection label="Navegação (pular pra)" />
+            <TweakSelect label="Tela" value={route}
+              options={STEPS.map(([v, l]) => ({ label: l, value: v }))}
+              onChange={(v) => { stack.current = []; setRoute(v); }} />
+            <TweakButton label="↺ Reiniciar (splash)" onClick={() => { stack.current = []; setRoute('splash'); }} />
+          </TweaksPanel>
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

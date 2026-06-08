@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Barbeiro · Protótipo navegável</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Lora:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --navy: #1a365d; --vermelho: #bf212f; --dourado: #c5a059; --papel: #fffcf5; --tinta: #1c1917;
+    --ui: 'Inter', system-ui, sans-serif; --display: 'Bebas Neue', 'Inter', sans-serif; --serif: 'Lora', Georgia, serif;
+  }
+  [data-theme="light"] {
+    --bg: #fffcf5; --card: #fffefb; --tint: #f6f0e4; --ink: #1c1917; --muted: #8a8073;
+    --frame: #1a365d; --frame-ink: #1a365d; --dourado-ink: #9b7a3a; --green: #1f8a5b; --vermelho-ink: #a31b28;
+    --hairline: rgba(28,25,23,.12); --hairline-strong: rgba(28,25,23,.26);
+    --amber: #d9a441; --amber-bg: #fbf3df; --amber-ink: #8a6313; --red-bg: #fdeceb;
+  }
+  [data-theme="dark"] {
+    --bg: #1c1917; --card: #262019; --tint: #322a20; --ink: #fffcf5; --muted: #a89c8a;
+    --frame: #c5a059; --frame-ink: #d8b878; --dourado-ink: #d8b878; --green: #4cc38a; --vermelho-ink: #f08a8a;
+    --hairline: rgba(255,252,245,.14); --hairline-strong: rgba(255,252,245,.32);
+    --amber: #d9a441; --amber-bg: rgba(217,164,65,.16); --amber-ink: #e3bd72; --red-bg: rgba(191,33,47,.18);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body { background: radial-gradient(1200px 700px at 50% -8%, #efe7d6 0%, transparent 60%), #e8e2d6; font-family: var(--ui); -webkit-font-smoothing: antialiased; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 28px 16px; }
+  @keyframes cspin { to { transform: rotate(360deg); } }
+  @keyframes cfade { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+  .route { height: 100%; animation: cfade .22s ease; }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="barber-kit.jsx?v=1"></script>
+  <script type="text/babel" src="login.jsx?v=9"></script>
+  <script type="text/babel" src="notifications.jsx?v=9"></script>
+  <script type="text/babel" src="edit-profile.jsx?v=9"></script>
+  <script type="text/babel" src="barber-screens-1.jsx?v=1"></script>
+  <script type="text/babel" src="barber-screens-2.jsx?v=1"></script>
+  <script type="text/babel">
+    const { useState, useRef } = React;
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{ "dark": false }/*EDITMODE-END*/;
+
+    function App() {
+      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      const [route, setRoute] = useState('login');
+      const stack = useRef([]);
+      const nav = (r) => {
+        if (r === '__back') { setRoute((cur) => { const prev = stack.current.pop(); return prev || cur; }); return; }
+        stack.current.push(route); setRoute(r);
+      };
+      const dark = t.dark;
+
+      const screen = (() => {
+        switch (route) {
+          case 'login':            return <LoginScreen tweaks={{ dark, simulate: 'sucesso' }} nav={(r) => nav(r === 'home' ? 'dash' : r)} />;
+          case 'dash':             return <BarberDashboard tweaks={{ dark }} nav={nav} />;
+          case 'pendentes':        return <BarberPending tweaks={{ dark }} nav={nav} />;
+          case 'bdetalhe':         return <BarberBookingDetail tweaks={{ dark, status: 'confirmado' }} nav={nav} />;
+          case 'agenda':           return <BarberAgenda tweaks={{ dark }} nav={nav} />;
+          case 'ajustes':          return <BarberAjustes tweaks={{ dark }} nav={nav} />;
+          case 'bservicos':        return <BarberServices tweaks={{ dark }} nav={nav} />;
+          case 'bdisponibilidade': return <BarberAvailability tweaks={{ dark }} nav={nav} />;
+          case 'bfolgas':          return <BarberTimeOff tweaks={{ dark }} nav={nav} />;
+          case 'bconfig':          return <BarberSettings tweaks={{ dark }} nav={nav} />;
+          case 'perfil':           return <BarberProfile tweaks={{ dark }} nav={nav} />;
+          case 'editar':           return <EditProfileScreen tweaks={{ dark }} nav={nav} />;
+          case 'notificacoes':     return <NotificationsScreen tweaks={{ dark, empty: false }} nav={nav} />;
+          default:                 return <BarberDashboard tweaks={{ dark }} nav={nav} />;
+        }
+      })();
+
+      const STEPS = [
+        ['login', 'Login'], ['dash', 'Dashboard'], ['pendentes', 'Pendentes'], ['bdetalhe', 'Detalhe booking'], ['agenda', 'Agenda'],
+        ['ajustes', 'Ajustes'], ['bservicos', 'Meus serviços'], ['bdisponibilidade', 'Disponibilidade'], ['bfolgas', 'Folgas'],
+        ['perfil', 'Perfil'], ['bconfig', 'Configurações'], ['notificacoes', 'Notificações'],
+      ];
+
+      return (
+        <React.Fragment>
+          <IOSDevice dark={dark} width={390} height={844}>
+            <div key={route} className="route">{screen}</div>
+          </IOSDevice>
+          <TweaksPanel title="Tweaks">
+            <TweakSection label="Aparência" />
+            <TweakToggle label="Tema escuro (couro)" value={t.dark} onChange={(v) => setTweak('dark', v)} />
+            <TweakSection label="Navegação (pular pra)" />
+            <TweakSelect label="Tela" value={route} options={STEPS.map(([v, l]) => ({ label: l, value: v }))} onChange={(v) => { stack.current = []; setRoute(v); }} />
+            <TweakButton label="↺ Reiniciar no login" onClick={() => { stack.current = []; setRoute('login'); }} />
+          </TweaksPanel>
+        </React.Fragment>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

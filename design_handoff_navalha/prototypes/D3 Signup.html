@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NAVALHA · Criar minha barbearia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Lora:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --navy: #1a365d; --vermelho: #bf212f; --dourado: #c5a059; --papel: #fffcf5; --tinta: #1c1917;
+    --ui: 'Inter', system-ui, sans-serif; --display: 'Bebas Neue', 'Inter', sans-serif; --serif: 'Lora', Georgia, serif;
+    --bg: #fffcf5; --card: #fffefb; --tint: #f3ebda; --ink: #1c1917; --muted: #74695b;
+    --navy-ink: #1a365d; --vermelho-ink: #a31b28; --dourado-ink: #9b7a3a; --green: #1f8a5b;
+    --line: rgba(28,25,23,.1); --line2: rgba(28,25,23,.2);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body { background: #d8d1c4; font-family: var(--ui); -webkit-font-smoothing: antialiased; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  @keyframes ofade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  .oroute { height: 636px; }
+  .ostep { animation: ofade .25s ease; }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(28,25,23,.18); border-radius: 99px; border: 3px solid transparent; background-clip: content-box; }
+  input::placeholder { color: var(--muted); opacity: .65; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="browser-window.jsx"></script>
+  <script type="text/babel" src="owner-flow.jsx?v=1"></script>
+  <script type="text/babel">
+    const { useState } = React;
+    function App() {
+      const nav = (where) => {
+        if (where === 'landing') window.location.href = 'D1 Landing comercial.html';
+        if (where === 'done') window.location.href = 'Admin - Painel da barbearia.html';
+      };
+      return (
+        <ChromeWindow width={1080} height={720} url="navalha.app/criar-conta" tabs={[{ title: 'NAVALHA · Criar conta' }]} activeIndex={0}>
+          <div className="oroute"><OwnerFlow nav={nav} /></div>
+        </ChromeWindow>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

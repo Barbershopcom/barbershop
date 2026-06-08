@@ -1,80 +1,169 @@
+import type { DiscoverItem } from '@barbearia/schemas';
 import { useRouter } from 'expo-router';
-import { Scissors } from 'lucide-react-native';
-import { useState } from 'react';
+import { MapPin, Scissors, Search, Star } from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
+  ActivityIndicator,
+  FlatList,
   Pressable,
+  RefreshControl,
   Text,
   TextInput,
   View,
 } from 'react-native';
 
+import { api, ApiError } from '@/lib/api';
+
 /**
- * Tela inicial do app. Cliente chega aqui via deeplink (ignora essa
- * tela e abre direto na barbearia) ou abre o app sem link e busca
- * pelo slug.
- *
- * Sem marketplace nessa sprint — só search por slug (ADR-010 §2).
+ * Home de descoberta (ADR-020 §3). Lista barbearias públicas com nota,
+ * busca por nome. Deeplink por slug continua abrindo /b/[slug] direto.
  */
 export default function PublicHome() {
   const router = useRouter();
-  const [slug, setSlug] = useState('');
+  const [query, setQuery] = useState('');
+  const [items, setItems] = useState<DiscoverItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  function handleSubmit() {
-    const cleaned = slug.trim().toLowerCase();
-    if (!cleaned) return;
-    router.push(`/b/${encodeURIComponent(cleaned)}`);
+  const load = useCallback(async (q: string) => {
+    setError(null);
+    try {
+      const search = q.trim();
+      const path = search
+        ? `/public/discover?q=${encodeURIComponent(search)}`
+        : '/public/discover';
+      const data = await api.get<DiscoverItem[]>(path);
+      setItems(data);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Erro ao buscar barbearias');
+      setItems([]);
+    }
+  }, []);
+
+  // Busca com debounce de 350ms ao digitar.
+  useEffect(() => {
+    const t = setTimeout(() => void load(query), 350);
+    return () => clearTimeout(t);
+  }, [query, load]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await load(query);
+    setRefreshing(false);
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      className="flex-1 bg-white"
-    >
-      <View className="flex-1 justify-center px-6">
-        <View className="items-center gap-3 pb-10">
-          <Scissors size={48} color="#1a365d" strokeWidth={1.5} />
-          <Text className="text-3xl font-bold text-slate-900">Barbearia</Text>
-          <Text className="text-center text-base text-slate-500">
-            Encontre sua barbearia favorita pelo nome único.
-          </Text>
+    <View className="flex-1 bg-white">
+      <View className="gap-4 px-6 pb-4 pt-16">
+        <View className="flex-row items-center gap-3">
+          <Scissors size={28} color="#1a365d" strokeWidth={1.5} />
+          <Text className="text-2xl font-bold text-slate-900">Barbearia</Text>
         </View>
 
-        <View className="gap-3">
-          <Text className="text-sm font-medium text-slate-700">
-            Nome da barbearia
-          </Text>
+        <View className="flex-row items-center gap-2 rounded-md border border-slate-300 bg-white px-3">
+          <Search size={18} color="#94a3b8" />
           <TextInput
-            value={slug}
-            onChangeText={setSlug}
+            value={query}
+            onChangeText={setQuery}
             autoCapitalize="none"
             autoCorrect={false}
-            placeholder="ex: barbearia-do-jaja"
+            placeholder="Buscar barbearia pelo nome"
             placeholderTextColor="#94a3b8"
             returnKeyType="search"
-            onSubmitEditing={handleSubmit}
-            className="rounded-md border border-slate-300 bg-white px-3 py-3 text-base text-slate-900"
+            className="flex-1 py-3 text-base text-slate-900"
           />
-          <Pressable
-            onPress={handleSubmit}
-            className="mt-2 items-center justify-center rounded-md bg-slate-900 px-4 py-3 active:opacity-80"
-          >
-            <Text className="text-base font-semibold text-white">
-              Continuar
-            </Text>
-          </Pressable>
         </View>
-
-        <Pressable
-          onPress={() => router.push('/login')}
-          className="mt-8 items-center"
-        >
-          <Text className="text-sm text-slate-500 underline">
-            Já é cliente? Entrar e ver histórico
-          </Text>
-        </Pressable>
       </View>
-    </KeyboardAvoidingView>
+
+      {items === null ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color="#1a365d" />
+        </View>
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(it) => it.slug}
+          contentContainerClassName="px-6 pb-12 gap-3"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#1a365d" />
+          }
+          renderItem={({ item }) => (
+            <BarbershopCard
+              item={item}
+              onPress={() => router.push(`/b/${encodeURIComponent(item.slug)}`)}
+            />
+          )}
+          ListEmptyComponent={
+            <View className="items-center gap-2 py-16">
+              <Scissors size={32} color="#cbd5e1" strokeWidth={1.5} />
+              <Text className="text-center text-sm text-slate-500">
+                {error
+                  ? error
+                  : query.trim()
+                    ? 'Nenhuma barbearia encontrada para essa busca.'
+                    : 'Nenhuma barbearia disponível ainda.'}
+              </Text>
+            </View>
+          }
+          ListFooterComponent={
+            <Pressable onPress={() => router.push('/login')} className="mt-6 items-center">
+              <Text className="text-sm text-slate-500 underline">
+                Já é cliente? Entrar e ver histórico
+              </Text>
+            </Pressable>
+          }
+        />
+      )}
+    </View>
+  );
+}
+
+function formatPriceBRL(cents: number): string {
+  return (cents / 100).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+  });
+}
+
+function BarbershopCard({ item, onPress }: { item: DiscoverItem; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="gap-2 rounded-lg border border-slate-200 bg-white p-4 active:opacity-70"
+    >
+      <View className="flex-row items-start justify-between gap-3">
+        <Text className="flex-1 text-base font-semibold text-slate-900">{item.name}</Text>
+        {item.ratingCount > 0 && item.ratingAvg !== null ? (
+          <View className="flex-row items-center gap-1">
+            <Star size={14} color="#f59e0b" fill="#f59e0b" />
+            <Text className="text-sm font-medium text-slate-700">
+              {item.ratingAvg.toFixed(1)}
+            </Text>
+            <Text className="text-xs text-slate-400">({item.ratingCount})</Text>
+          </View>
+        ) : (
+          <Text className="text-xs text-slate-400">Sem avaliações</Text>
+        )}
+      </View>
+
+      {item.addressLine ? (
+        <View className="flex-row items-center gap-1.5">
+          <MapPin size={13} color="#94a3b8" />
+          <Text className="flex-1 text-xs text-slate-500" numberOfLines={1}>
+            {item.addressLine}
+          </Text>
+        </View>
+      ) : null}
+
+      {item.priceFromCents !== null ? (
+        <Text className="text-xs text-slate-500">
+          A partir de{' '}
+          <Text className="font-semibold text-slate-900">
+            {formatPriceBRL(item.priceFromCents)}
+          </Text>
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }

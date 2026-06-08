@@ -1,4 +1,4 @@
-import type { PublicServiceDto, PublicTenantDto } from '@barbearia/schemas';
+import type { DiscoverItem, PublicServiceDto, PublicTenantDto } from '@barbearia/schemas';
 
 /**
  * Cliente server-side pra rotas públicas (`/public/tenants/:slug/...`).
@@ -39,6 +39,12 @@ export async function getPublicServices(slug: string): Promise<PublicServiceDto[
   return publicFetch<PublicServiceDto[]>(
     `/public/tenants/${encodeURIComponent(slug)}/services`,
   );
+}
+
+export async function getDiscover(q?: string): Promise<DiscoverItem[]> {
+  const search = q?.trim();
+  const path = search ? `/public/discover?q=${encodeURIComponent(search)}` : '/public/discover';
+  return publicFetch<DiscoverItem[]>(path, 60);
 }
 
 export function formatPriceBRL(cents: number): string {

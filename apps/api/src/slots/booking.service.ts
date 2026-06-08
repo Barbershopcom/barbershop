@@ -2,18 +2,22 @@ import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
-import type {
-  AdminCreateAppointmentInput,
-  BookAppointmentInput,
-  BookedAppointment,
+import {
+  type AdminCreateAppointmentInput,
+  type BookAppointmentInput,
+  type BookedAppointment,
+  couponReasonLabel,
 } from '@barbearia/schemas';
 
+import { CouponsService } from '../coupons/coupons.service';
 import { EmailService } from '../email/email.service';
 import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { JobsService } from '../jobs/jobs.service';
@@ -47,6 +51,8 @@ export class BookingService {
     private readonly email: EmailService,
     private readonly config: ConfigService,
     private readonly jobs: JobsService,
+    @Inject(forwardRef(() => CouponsService))
+    private readonly coupons: CouponsService,
   ) {}
 
   async book(args: {
@@ -140,6 +146,36 @@ export class BookingService {
       });
     }
 
+    // 3.5. Cupom (ADR-021 §4). Reserva ANTES de criar (guard atômico);
+    //      libera a reserva se a criação falhar. priceCents já sai com desconto.
+    let priceCents = service.basePriceCents;
+    let reservedCoupon: { id: string; discountCents: number } | null = null;
+    if (body.couponCode) {
+      const v = await this.coupons.validateByCode(
+        tenant.id,
+        body.couponCode,
+        service.basePriceCents,
+        new Date(),
+      );
+      if (!v.valid || v.couponId === undefined) {
+        throw new UnprocessableEntityException({
+          message: couponReasonLabel(v.reason ?? 'not_found'),
+          code: 'coupon_invalid',
+          reason: v.reason ?? 'not_found',
+        });
+      }
+      const reserved = await this.coupons.tryReserve(v.couponId);
+      if (!reserved) {
+        throw new UnprocessableEntityException({
+          message: couponReasonLabel('exhausted'),
+          code: 'coupon_invalid',
+          reason: 'exhausted',
+        });
+      }
+      priceCents = v.finalPriceCents ?? service.basePriceCents;
+      reservedCoupon = { id: v.couponId, discountCents: v.discountCents ?? 0 };
+    }
+
     // 4. INSERT atômico. EXCLUDE constraint pega race condition.
     let created;
     try {
@@ -157,10 +193,12 @@ export class BookingService {
           // Booking público nasce aguardando pagamento (ADR-016 §3).
           // PaymentService move pra 'pending' ao aprovar.
           status: 'awaiting_payment',
-          priceCents: service.basePriceCents,
+          priceCents,
         },
       });
     } catch (err) {
+      // Criação falhou: devolve a reserva do cupom pra não vazar resgate.
+      if (reservedCoupon) await this.coupons.releaseReservation(reservedCoupon.id);
       if (
         err instanceof Prisma.PrismaClientUnknownRequestError ||
         err instanceof Prisma.PrismaClientKnownRequestError
@@ -177,6 +215,17 @@ export class BookingService {
         }
       }
       throw err;
+    }
+
+    // Registra o resgate do cupom (appointment_id unique blinda replay).
+    if (reservedCoupon) {
+      await this.coupons.recordRedemption({
+        tenantId: tenant.id,
+        couponId: reservedCoupon.id,
+        appointmentId: created.id,
+        customerEmail: body.customerEmail ?? null,
+        discountCents: reservedCoupon.discountCents,
+      });
     }
 
     const response: BookedAppointment = {
@@ -231,7 +280,8 @@ export class BookingService {
         tenant,
         serviceName: service.name,
         serviceDurationMin: service.durationMin,
-        servicePriceCents: service.basePriceCents,
+        // Preço já com desconto do cupom, se houver (ADR-021 §4).
+        servicePriceCents: priceCents,
         barberName: barberWithCap.displayName,
       });
     }

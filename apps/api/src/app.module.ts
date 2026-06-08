@@ -9,6 +9,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { AuthModule } from './auth/auth.module';
 import { BarbershopHoursModule } from './barbershop-hours/barbershop-hours.module';
 import { loadEnv } from './config/env';
+import { CouponsModule } from './coupons/coupons.module';
 import { DiscoverModule } from './discover/discover.module';
 import { EmailModule } from './email/email.module';
 import { EmployeesModule } from './employees/employees.module';
@@ -53,6 +54,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     AppointmentsModule,
     ReviewsModule,
     DiscoverModule,
+    CouponsModule,
   ],
   providers: [
     {

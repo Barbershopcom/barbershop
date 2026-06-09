@@ -3,69 +3,72 @@
 @tailwind utilities;
 
 /*
- * Tokens semânticos do shadcn convertidos pra HSL (canal H S L sem hsl(...)).
- * Fonte: @barbearia/design-tokens (paleta Figma do app barbeiro).
+ * Tokens semânticos do shadcn em HSL (canal H S L sem hsl(...)), re-skinados
+ * pra paleta NAVALHA "papel & couro". Fonte: design_handoff_navalha/README.
  *
- *   #FFFFFF → 0 0% 100%
- *   #F7F8FD → 230 56% 98%
- *   #202026 → 240 9% 14%
- *   #434A57 → 218 13% 30%
- *   #727B8E → 220 12% 50%
- *   #ECEDF0 → 220 10% 93%
- *   #357BE4 → 215 76% 55%
- *   #F27508 →  28 94% 49%
- *   #DC2626 →   0 71% 51%
+ *   papel    #fffcf5 → 45 71% 98%
+ *   card     #fffefb → 50 60% 99%
+ *   tinta    #1c1917 → 24 10% 10%
+ *   tint     #f6f0e4 → 40 40% 93%
+ *   muted    #8a8073 → 34 10% 50%
+ *   navy     #1a365d → 215 56% 23%
+ *   vermelho #bf212f → 355 71% 44%
+ *   dourado  #c5a059 →  39 48% 56%
+ *   hairline #ece5d6 → 41 33% 88%
+ *   — tema escuro "couro" —
+ *   bg       #1c1917 · card #262019 · tint #322a20 · ink #fffcf5
+ *   dourado vira a primária no escuro · green #4cc38a
  */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 9% 14%;
+    --background: 45 71% 98%; /* papel */
+    --foreground: 24 10% 10%; /* tinta */
 
-    --card: 0 0% 100%;
-    --card-foreground: 240 9% 14%;
+    --card: 50 60% 99%;
+    --card-foreground: 24 10% 10%;
 
-    --primary: 215 76% 55%; /* brand blue #357BE4 */
-    --primary-foreground: 0 0% 100%;
+    --primary: 215 56% 23%; /* navy */
+    --primary-foreground: 45 71% 98%; /* papel */
 
-    --secondary: 230 56% 98%; /* muted bg #F7F8FD */
-    --secondary-foreground: 218 13% 30%; /* labels #434A57 */
+    --secondary: 40 40% 93%; /* tint quente */
+    --secondary-foreground: 24 10% 10%;
 
-    --muted: 230 56% 98%;
-    --muted-foreground: 220 12% 50%; /* #727B8E */
+    --muted: 40 40% 93%;
+    --muted-foreground: 34 10% 50%; /* muted couro */
 
-    --accent: 230 56% 98%; /* hover bg (shadcn convention) */
-    --accent-foreground: 218 13% 30%;
+    --accent: 40 40% 93%; /* hover/realce sutil (shadcn) */
+    --accent-foreground: 24 10% 10%;
 
-    --destructive: 0 71% 51%;
+    --destructive: 355 71% 44%; /* vermelho */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 10% 93%; /* #ECEDF0 */
-    --input: 220 10% 93%;
-    --ring: 215 76% 55%; /* matches primary */
+    --border: 41 33% 88%; /* hairline */
+    --input: 41 33% 88%;
+    --ring: 215 56% 23%; /* navy */
 
-    --radius: 0.5rem; /* 8px — radius padrão do Figma (botões, cards) */
+    --radius: 0.75rem; /* 12px — raio padrão NAVALHA (botões/inputs) */
   }
 
   .dark {
-    /* Dark mode: aproximações; refinar quando entrar em escopo. */
-    --background: 240 9% 14%;
-    --foreground: 0 0% 100%;
-    --card: 240 9% 14%;
-    --card-foreground: 0 0% 100%;
-    --primary: 215 76% 65%;
-    --primary-foreground: 240 9% 14%;
-    --secondary: 218 13% 20%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 218 13% 20%;
-    --muted-foreground: 220 12% 65%;
-    --accent: 218 13% 20%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 71% 41%;
+    /* Tema "couro": dourado vira a primária. */
+    --background: 24 10% 10%; /* tinta */
+    --foreground: 45 71% 98%; /* papel */
+    --card: 30 13% 13%; /* #262019 */
+    --card-foreground: 45 71% 98%;
+    --primary: 39 48% 56%; /* dourado */
+    --primary-foreground: 24 10% 10%;
+    --secondary: 30 21% 16%; /* #322a20 */
+    --secondary-foreground: 45 71% 98%;
+    --muted: 30 21% 16%;
+    --muted-foreground: 36 13% 60%; /* #a89c8a */
+    --accent: 30 21% 16%;
+    --accent-foreground: 45 71% 98%;
+    --destructive: 355 71% 60%; /* vermelho clareado p/ contraste */
     --destructive-foreground: 0 0% 100%;
-    --border: 218 13% 20%;
-    --input: 218 13% 20%;
-    --ring: 215 76% 55%;
+    --border: 30 13% 20%;
+    --input: 30 13% 20%;
+    --ring: 39 48% 56%; /* dourado */
   }
 }
 

@@ -1,11 +1,13 @@
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
+import { Seal } from '@/components/ui/seal';
 
 export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-6 py-16">
       <div className="flex flex-col items-center gap-4 text-center">
+        <Seal size={56} />
         <span className="rounded-full border border-accent/60 bg-secondary px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">
           Beta
         </span>

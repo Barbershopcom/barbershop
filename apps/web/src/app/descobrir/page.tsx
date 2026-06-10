@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MapPin, Scissors, Search, Star } from 'lucide-react';
 
+import { EmptyState } from '@/components/ui/empty-state';
 import { formatPriceBRL, getDiscover } from '@/lib/public-api';
 
 interface PageProps {
@@ -27,10 +28,10 @@ export default async function DescobrirPage({ searchParams }: PageProps) {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 md:px-6 md:py-16">
       <header className="mb-8 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+        <h1 className="font-display text-4xl uppercase tracking-wide text-primary md:text-5xl">
           Descubra barbearias
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 font-serif text-base italic text-muted-foreground">
           Busque pelo nome, veja avaliações e agende online.
         </p>
       </header>
@@ -55,11 +56,15 @@ export default async function DescobrirPage({ searchParams }: PageProps) {
       </form>
 
       {items.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-muted/40 p-8 text-center text-sm text-muted-foreground">
-          {q?.trim()
-            ? `Nenhuma barbearia encontrada para "${q.trim()}".`
-            : 'Nenhuma barbearia disponível ainda.'}
-        </div>
+        <EmptyState
+          icon={<Scissors className="h-7 w-7" />}
+          title="Nada por aqui"
+          description={
+            q?.trim()
+              ? `Nenhuma barbearia encontrada para "${q.trim()}".`
+              : 'Nenhuma barbearia disponível ainda.'
+          }
+        />
       ) : (
         <ul className="space-y-3">
           {items.map((it) => (

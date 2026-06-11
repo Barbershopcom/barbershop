@@ -136,7 +136,7 @@ export default function BookingFlow() {
   if (boot.kind === 'error') {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-background px-6">
-        <Text className="text-base text-red-600">{boot.message}</Text>
+        <Text className="text-base text-destructive">{boot.message}</Text>
       </View>
     );
   }
@@ -577,7 +577,7 @@ function BookingForm({
           {applied ? (
             <View className="flex-row items-center justify-between rounded-md border border-green-300 bg-green-50 px-3 py-2.5">
               <View className="flex-row items-center gap-2">
-                <Tag size={16} color="#15803d" />
+                <Tag size={16} color="#1f8a5b" />
                 <Text className="text-sm font-semibold text-green-800">{applied.code}</Text>
               </View>
               <Pressable
@@ -586,7 +586,7 @@ function BookingForm({
                 hitSlop={8}
                 accessibilityLabel="Remover cupom"
               >
-                <X size={16} color="#15803d" />
+                <X size={16} color="#1f8a5b" />
               </Pressable>
             </View>
           ) : (
@@ -607,14 +607,14 @@ function BookingForm({
                 className="items-center justify-center rounded-md border border-primary px-4 disabled:opacity-50"
               >
                 {couponBusy ? (
-                  <ActivityIndicator color="#0f172a" size="small" />
+                  <ActivityIndicator color="#1c1917" size="small" />
                 ) : (
                   <Text className="text-sm font-semibold text-foreground">Aplicar</Text>
                 )}
               </Pressable>
             </View>
           )}
-          {couponMsg ? <Text className="text-xs text-red-600">{couponMsg}</Text> : null}
+          {couponMsg ? <Text className="text-xs text-destructive">{couponMsg}</Text> : null}
         </View>
 
         {/* Resumo de preço */}

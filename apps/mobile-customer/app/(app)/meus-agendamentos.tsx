@@ -95,18 +95,18 @@ export default function MyAppointmentsScreen() {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-6 pt-12 pb-4">
         <Pressable onPress={() => router.back()} className="flex-row items-center gap-1">
-          <ChevronLeft size={16} color="#64748b" />
-          <Text className="text-sm text-slate-500">Voltar</Text>
+          <ChevronLeft size={16} color="#8a8073" />
+          <Text className="text-sm text-foreground-muted">Voltar</Text>
         </Pressable>
         <Pressable onPress={() => void signOut()}>
-          <Text className="text-sm text-slate-500">Sair</Text>
+          <Text className="text-sm text-foreground-muted">Sair</Text>
         </Pressable>
       </View>
 
-      <Text className="px-6 pb-3 text-2xl font-bold text-slate-900">
+      <Text className="px-6 pb-3 text-2xl font-bold text-foreground">
         Meus agendamentos
       </Text>
 
@@ -115,12 +115,12 @@ export default function MyAppointmentsScreen() {
         <Pressable
           onPress={() => setTab('upcoming')}
           className={`flex-1 items-center rounded-md py-2 ${
-            tab === 'upcoming' ? 'bg-slate-900' : 'bg-slate-100'
+            tab === 'upcoming' ? 'bg-primary' : 'bg-background-muted'
           }`}
         >
           <Text
             className={`text-sm font-semibold ${
-              tab === 'upcoming' ? 'text-white' : 'text-slate-600'
+              tab === 'upcoming' ? 'text-white' : 'text-foreground-muted'
             }`}
           >
             Próximos
@@ -129,12 +129,12 @@ export default function MyAppointmentsScreen() {
         <Pressable
           onPress={() => setTab('history')}
           className={`flex-1 items-center rounded-md py-2 ${
-            tab === 'history' ? 'bg-slate-900' : 'bg-slate-100'
+            tab === 'history' ? 'bg-primary' : 'bg-background-muted'
           }`}
         >
           <Text
             className={`text-sm font-semibold ${
-              tab === 'history' ? 'text-white' : 'text-slate-600'
+              tab === 'history' ? 'text-white' : 'text-foreground-muted'
             }`}
           >
             Histórico
@@ -148,10 +148,10 @@ export default function MyAppointmentsScreen() {
         </View>
       ) : state.kind === 'error' ? (
         <View className="flex-1 items-center justify-center gap-3 px-6">
-          <Text className="text-sm text-red-600">{state.message}</Text>
+          <Text className="text-sm text-destructive">{state.message}</Text>
           <Pressable
             onPress={() => void load()}
-            className="mt-2 rounded-md bg-slate-900 px-4 py-2"
+            className="mt-2 rounded-md bg-primary px-4 py-2"
           >
             <Text className="text-sm font-semibold text-white">Tentar de novo</Text>
           </Pressable>
@@ -173,8 +173,8 @@ export default function MyAppointmentsScreen() {
           if (filtered.length === 0) {
             return (
               <View className="flex-1 items-center justify-center gap-3 px-6">
-                <Calendar size={48} color="#cbd5e1" strokeWidth={1.5} />
-                <Text className="text-center text-base text-slate-500">
+                <Calendar size={48} color="#8a8073" strokeWidth={1.5} />
+                <Text className="text-center text-base text-foreground-muted">
                   {tab === 'upcoming'
                     ? 'Nenhum agendamento ativo.'
                     : 'Nada no histórico ainda.'}
@@ -182,7 +182,7 @@ export default function MyAppointmentsScreen() {
                 {tab === 'upcoming' ? (
                   <Pressable
                     onPress={() => router.replace('/')}
-                    className="mt-4 rounded-md bg-slate-900 px-4 py-2"
+                    className="mt-4 rounded-md bg-primary px-4 py-2"
                   >
                     <Text className="text-sm font-semibold text-white">
                       Encontrar uma barbearia
@@ -240,7 +240,7 @@ function CutCounterBanner({ items }: { items: MyCustomerAppointmentItem[] }) {
   const count = items.filter((it) => it.status === 'completed').length;
   if (count === 0) return null;
   return (
-    <View className="mx-6 mb-3 flex-row items-center gap-3 rounded-lg bg-slate-900 px-4 py-3">
+    <View className="mx-6 mb-3 flex-row items-center gap-3 rounded-lg bg-primary px-4 py-3">
       <Scissors size={20} color="#fff" strokeWidth={1.5} />
       <Text className="text-sm font-semibold text-white">
         {count} {count === 1 ? 'corte concluído' : 'cortes concluídos'}
@@ -299,14 +299,14 @@ function AppointmentCard({
         <Pressable
           onPress={onCancel}
           disabled={busy}
-          className="mt-3 flex-row items-center justify-center gap-1.5 rounded-md border border-slate-300 py-2 disabled:opacity-50"
+          className="mt-3 flex-row items-center justify-center gap-1.5 rounded-md border border-border py-2 disabled:opacity-50"
         >
           {busy ? (
-            <ActivityIndicator size="small" color="#475569" />
+            <ActivityIndicator size="small" color="#8a8073" />
           ) : (
             <>
-              <X size={14} color="#475569" />
-              <Text className="text-sm font-medium text-slate-700">
+              <X size={14} color="#8a8073" />
+              <Text className="text-sm font-medium text-foreground">
                 Cancelar agendamento
               </Text>
             </>
@@ -325,7 +325,7 @@ function AppointmentCard({
       ) : item.status === 'completed' && item.hasReview ? (
         <View className="mt-3 flex-row items-center justify-center gap-1.5">
           <Star size={13} color="#f59e0b" fill="#f59e0b" />
-          <Text className="text-xs font-medium text-slate-500">Você avaliou este corte</Text>
+          <Text className="text-xs font-medium text-foreground-muted">Você avaliou este corte</Text>
         </View>
       ) : null}
     </View>
@@ -406,15 +406,15 @@ function ReviewModal({
       onRequestClose={onClose}
     >
       <View className="flex-1 justify-end bg-black/40">
-        <View className="rounded-t-3xl bg-white px-6 pb-10 pt-5">
+        <View className="rounded-t-3xl bg-card px-6 pb-10 pt-5">
           <View className="mb-1 flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-slate-900">Avaliar atendimento</Text>
+            <Text className="text-lg font-bold text-foreground">Avaliar atendimento</Text>
             <Pressable onPress={onClose} hitSlop={8}>
-              <X size={22} color="#64748b" />
+              <X size={22} color="#8a8073" />
             </Pressable>
           </View>
           {item ? (
-            <Text className="mb-5 text-sm text-slate-500">
+            <Text className="mb-5 text-sm text-foreground-muted">
               {item.service.name} com {item.barber.displayName} · {item.tenant.name}
             </Text>
           ) : null}
@@ -425,17 +425,17 @@ function ReviewModal({
             value={comment}
             onChangeText={setComment}
             placeholder="Conte como foi (opcional)"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#8a8073"
             multiline
             maxLength={1000}
-            className="mt-5 min-h-20 rounded-lg border border-slate-200 px-3 py-3 text-sm text-slate-900"
+            className="mt-5 min-h-20 rounded-lg border border-border px-3 py-3 text-sm text-foreground"
             style={{ textAlignVertical: 'top' }}
           />
 
           <Pressable
             onPress={submit}
             disabled={rating < 1 || submitting}
-            className="mt-5 items-center justify-center rounded-lg bg-slate-900 py-3.5 disabled:opacity-40"
+            className="mt-5 items-center justify-center rounded-lg bg-primary py-3.5 disabled:opacity-40"
           >
             {submitting ? (
               <ActivityIndicator color="#fff" />

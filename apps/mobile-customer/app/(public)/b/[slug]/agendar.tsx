@@ -103,15 +103,15 @@ export default function BookingFlow() {
 
   if (!slug || !serviceId) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <Text className="text-sm text-slate-500">Link inválido.</Text>
+      <View className="flex-1 items-center justify-center bg-background">
+        <Text className="text-sm text-foreground-muted">Link inválido.</Text>
       </View>
     );
   }
 
   if (boot.kind === 'loading') {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
+      <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color="#1a365d" />
       </View>
     );
@@ -119,13 +119,13 @@ export default function BookingFlow() {
 
   if (boot.kind === 'not_found') {
     return (
-      <View className="flex-1 items-center justify-center gap-3 bg-white px-6">
-        <Text className="text-xl font-bold text-slate-900">Serviço não encontrado</Text>
+      <View className="flex-1 items-center justify-center gap-3 bg-background px-6">
+        <Text className="text-xl font-bold text-foreground">Serviço não encontrado</Text>
         <Pressable
           onPress={() => router.replace(`/b/${encodeURIComponent(slug)}`)}
           className="mt-2"
         >
-          <Text className="text-sm font-medium text-blue-600 underline">
+          <Text className="text-sm font-medium text-navy underline">
             Voltar à barbearia
           </Text>
         </Pressable>
@@ -135,7 +135,7 @@ export default function BookingFlow() {
 
   if (boot.kind === 'error') {
     return (
-      <View className="flex-1 items-center justify-center gap-3 bg-white px-6">
+      <View className="flex-1 items-center justify-center gap-3 bg-background px-6">
         <Text className="text-base text-red-600">{boot.message}</Text>
       </View>
     );
@@ -144,31 +144,31 @@ export default function BookingFlow() {
   const { tenant, service } = boot.data;
 
   return (
-    <ScrollView className="flex-1 bg-white" contentContainerStyle={{ paddingBottom: 64 }}>
+    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingBottom: 64 }}>
       <View className="px-6 pt-12">
         <Pressable
           onPress={() => router.back()}
           className="mb-4 flex-row items-center gap-1"
         >
-          <ChevronLeft size={16} color="#64748b" />
-          <Text className="text-sm text-slate-500">Trocar serviço</Text>
+          <ChevronLeft size={16} color="#8a8073" />
+          <Text className="text-sm text-foreground-muted">Trocar serviço</Text>
         </Pressable>
 
-        <Text className="text-xs uppercase tracking-widest text-slate-400">
+        <Text className="text-xs uppercase tracking-widest text-foreground-muted">
           {tenant.name}
         </Text>
-        <Text className="mt-1 text-2xl font-bold text-slate-900">{service.name}</Text>
+        <Text className="mt-1 text-2xl font-bold text-foreground">{service.name}</Text>
         <View className="mt-2 flex-row items-center gap-3">
-          <Text className="text-sm text-slate-500">
+          <Text className="text-sm text-foreground-muted">
             {formatDurationLabel(service.durationMin)}
           </Text>
-          <Text className="text-slate-300">·</Text>
-          <Text className="text-sm font-semibold text-blue-700">
+          <Text className="text-foreground-muted">·</Text>
+          <Text className="text-sm font-semibold text-navy">
             {formatPriceBRL(service.basePriceCents)}
           </Text>
         </View>
         {service.description ? (
-          <Text className="mt-3 text-sm text-slate-500">{service.description}</Text>
+          <Text className="mt-3 text-sm text-foreground-muted">{service.description}</Text>
         ) : null}
       </View>
 
@@ -306,15 +306,15 @@ function SlotPicker({ tenant, service, initialBarberId, onSelect }: SlotPickerPr
         {loading ? (
           <View className="items-center py-10">
             <ActivityIndicator color="#1a365d" />
-            <Text className="mt-2 text-xs text-slate-500">Buscando horários...</Text>
+            <Text className="mt-2 text-xs text-foreground-muted">Buscando horários...</Text>
           </View>
         ) : error ? (
           <Text className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </Text>
         ) : slots.length === 0 ? (
-          <View className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-8">
-            <Text className="text-center text-sm text-slate-500">
+          <View className="rounded-lg border border-dashed border-border bg-background-muted py-8">
+            <Text className="text-center text-sm text-foreground-muted">
               Sem horários disponíveis nesse dia.
             </Text>
           </View>
@@ -324,14 +324,14 @@ function SlotPicker({ tenant, service, initialBarberId, onSelect }: SlotPickerPr
               <Pressable
                 key={`${slot.startAt}-${slot.barberId}`}
                 onPress={() => onSelect(slot)}
-                className="min-w-[88px] flex-1 items-center gap-0.5 rounded-md border border-slate-300 bg-white px-3 py-2 active:border-blue-700 active:bg-blue-50"
+                className="min-w-[88px] flex-1 items-center gap-0.5 rounded-md border border-border bg-card px-3 py-2 active:border-navy active:opacity-70"
                 style={{ flexBasis: '30%', maxWidth: '32%' }}
               >
-                <Text className="text-base font-semibold text-slate-900">
+                <Text className="text-base font-semibold text-foreground">
                   {formatTimeInTz(slot.startAt, tenant.timezone)}
                 </Text>
                 {barbersInResults.length > 1 ? (
-                  <Text className="text-[10px] text-slate-500" numberOfLines={1}>
+                  <Text className="text-[10px] text-foreground-muted" numberOfLines={1}>
                     {slot.barberName}
                   </Text>
                 ) : null}
@@ -358,15 +358,15 @@ function FilterPill({
       onPress={onPress}
       className={
         active
-          ? 'rounded-full bg-slate-900 px-3 py-1.5'
-          : 'rounded-full border border-slate-300 bg-white px-3 py-1.5'
+          ? 'rounded-full bg-primary px-3 py-1.5'
+          : 'rounded-full border border-border bg-card px-3 py-1.5'
       }
     >
       <Text
         className={
           active
             ? 'text-xs font-semibold text-white'
-            : 'text-xs font-medium text-slate-700'
+            : 'text-xs font-medium text-foreground'
         }
       >
         {label}
@@ -512,32 +512,32 @@ function BookingForm({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       className="mt-6 px-6"
     >
-      <View className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <Text className="text-xs uppercase tracking-widest text-slate-400">
+      <View className="rounded-lg border border-border bg-background-muted p-4">
+        <Text className="text-xs uppercase tracking-widest text-foreground-muted">
           Horário escolhido
         </Text>
-        <Text className="mt-1 text-base font-bold text-slate-900">
+        <Text className="mt-1 text-base font-bold text-foreground">
           {formatSlotLabel(startAtIso, tenant.timezone)}
         </Text>
       </View>
 
       <View className="mt-4 gap-3">
         <View className="gap-1.5">
-          <Text className="text-sm font-medium text-slate-700">Seu nome</Text>
+          <Text className="text-sm font-medium text-foreground">Seu nome</Text>
           <TextInput
             value={name}
             onChangeText={setName}
             autoCapitalize="words"
             autoComplete="name"
             placeholder="João da Silva"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#8a8073"
             editable={!busy}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900"
+            className="rounded-md border border-border bg-card px-3 py-2.5 text-base text-foreground"
           />
         </View>
 
         <View className="gap-1.5">
-          <Text className="text-sm font-medium text-slate-700">
+          <Text className="text-sm font-medium text-foreground">
             Telefone (WhatsApp)
           </Text>
           <TextInput
@@ -546,15 +546,15 @@ function BookingForm({
             keyboardType="phone-pad"
             autoComplete="tel"
             placeholder="(11) 99999-9999"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#8a8073"
             editable={!busy}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900"
+            className="rounded-md border border-border bg-card px-3 py-2.5 text-base text-foreground"
           />
         </View>
 
         <View className="gap-1.5">
-          <Text className="text-sm font-medium text-slate-700">
-            Email <Text className="text-xs text-slate-400">(opcional)</Text>
+          <Text className="text-sm font-medium text-foreground">
+            Email <Text className="text-xs text-foreground-muted">(opcional)</Text>
           </Text>
           <TextInput
             value={email}
@@ -563,16 +563,16 @@ function BookingForm({
             autoCapitalize="none"
             autoComplete="email"
             placeholder="voce@email.com"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#8a8073"
             editable={!busy}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900"
+            className="rounded-md border border-border bg-card px-3 py-2.5 text-base text-foreground"
           />
         </View>
 
         {/* Cupom de desconto */}
         <View className="gap-1.5">
-          <Text className="text-sm font-medium text-slate-700">
-            Cupom <Text className="text-xs text-slate-400">(opcional)</Text>
+          <Text className="text-sm font-medium text-foreground">
+            Cupom <Text className="text-xs text-foreground-muted">(opcional)</Text>
           </Text>
           {applied ? (
             <View className="flex-row items-center justify-between rounded-md border border-green-300 bg-green-50 px-3 py-2.5">
@@ -597,19 +597,19 @@ function BookingForm({
                 autoCapitalize="characters"
                 autoCorrect={false}
                 placeholder="DESCONTO10"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor="#8a8073"
                 editable={!busy && !couponBusy}
-                className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900"
+                className="flex-1 rounded-md border border-border bg-card px-3 py-2.5 text-base text-foreground"
               />
               <Pressable
                 onPress={applyCoupon}
                 disabled={busy || couponBusy}
-                className="items-center justify-center rounded-md border border-slate-900 px-4 disabled:opacity-50"
+                className="items-center justify-center rounded-md border border-primary px-4 disabled:opacity-50"
               >
                 {couponBusy ? (
                   <ActivityIndicator color="#0f172a" size="small" />
                 ) : (
-                  <Text className="text-sm font-semibold text-slate-900">Aplicar</Text>
+                  <Text className="text-sm font-semibold text-foreground">Aplicar</Text>
                 )}
               </Pressable>
             </View>
@@ -618,10 +618,10 @@ function BookingForm({
         </View>
 
         {/* Resumo de preço */}
-        <View className="gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+        <View className="gap-1 rounded-md border border-border bg-background-muted px-3 py-2.5">
           <View className="flex-row justify-between">
-            <Text className="text-sm text-slate-500">Serviço</Text>
-            <Text className="text-sm text-slate-700">
+            <Text className="text-sm text-foreground-muted">Serviço</Text>
+            <Text className="text-sm text-foreground">
               {formatPriceBRL(service.basePriceCents)}
             </Text>
           </View>
@@ -633,9 +633,9 @@ function BookingForm({
               </Text>
             </View>
           ) : null}
-          <View className="mt-0.5 flex-row justify-between border-t border-slate-200 pt-1.5">
-            <Text className="text-sm font-semibold text-slate-900">Total</Text>
-            <Text className="text-base font-bold text-slate-900">
+          <View className="mt-0.5 flex-row justify-between border-t border-border pt-1.5">
+            <Text className="text-sm font-semibold text-foreground">Total</Text>
+            <Text className="text-base font-bold text-foreground">
               {formatPriceBRL(
                 applied?.finalPriceCents ?? service.basePriceCents,
               )}
@@ -652,7 +652,7 @@ function BookingForm({
         <Pressable
           onPress={handleSubmit}
           disabled={busy}
-          className="mt-2 items-center justify-center rounded-md bg-slate-900 px-4 py-3 disabled:opacity-60"
+          className="mt-2 items-center justify-center rounded-md bg-primary px-4 py-3 disabled:opacity-60"
         >
           {busy ? (
             <ActivityIndicator color="white" />
@@ -664,7 +664,7 @@ function BookingForm({
         </Pressable>
 
         <Pressable onPress={onChange} disabled={busy} className="mt-1 items-center">
-          <Text className="text-sm text-slate-500">Trocar horário</Text>
+          <Text className="text-sm text-foreground-muted">Trocar horário</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>

@@ -53,24 +53,24 @@ export default function PublicHome() {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-background">
       <View className="gap-4 px-6 pb-4 pt-16">
         <View className="flex-row items-center gap-3">
           <Scissors size={28} color="#1a365d" strokeWidth={1.5} />
-          <Text className="text-2xl font-bold text-slate-900">Barbearia</Text>
+          <Text className="font-display text-3xl tracking-wide text-navy">NAVALHA</Text>
         </View>
 
-        <View className="flex-row items-center gap-2 rounded-md border border-slate-300 bg-white px-3">
-          <Search size={18} color="#94a3b8" />
+        <View className="flex-row items-center gap-2 rounded-md border border-border bg-card px-3">
+          <Search size={18} color="#8a8073" />
           <TextInput
             value={query}
             onChangeText={setQuery}
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="Buscar barbearia pelo nome"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#8a8073"
             returnKeyType="search"
-            className="flex-1 py-3 text-base text-slate-900"
+            className="flex-1 py-3 text-base text-foreground"
           />
         </View>
       </View>
@@ -95,8 +95,8 @@ export default function PublicHome() {
           )}
           ListEmptyComponent={
             <View className="items-center gap-2 py-16">
-              <Scissors size={32} color="#cbd5e1" strokeWidth={1.5} />
-              <Text className="text-center text-sm text-slate-500">
+              <Scissors size={32} color="#c5a059" strokeWidth={1.5} />
+              <Text className="text-center font-serif text-sm italic text-foreground-muted">
                 {error
                   ? error
                   : query.trim()
@@ -107,7 +107,7 @@ export default function PublicHome() {
           }
           ListFooterComponent={
             <Pressable onPress={() => router.push('/login')} className="mt-6 items-center">
-              <Text className="text-sm text-slate-500 underline">
+              <Text className="text-sm text-foreground-muted underline">
                 Já é cliente? Entrar e ver histórico
               </Text>
             </Pressable>
@@ -130,36 +130,36 @@ function BarbershopCard({ item, onPress }: { item: DiscoverItem; onPress: () => 
   return (
     <Pressable
       onPress={onPress}
-      className="gap-2 rounded-lg border border-slate-200 bg-white p-4 active:opacity-70"
+      className="gap-2 rounded-lg border border-border bg-card p-4 active:opacity-70"
     >
       <View className="flex-row items-start justify-between gap-3">
-        <Text className="flex-1 text-base font-semibold text-slate-900">{item.name}</Text>
+        <Text className="flex-1 text-base font-semibold text-foreground">{item.name}</Text>
         {item.ratingCount > 0 && item.ratingAvg !== null ? (
           <View className="flex-row items-center gap-1">
-            <Star size={14} color="#f59e0b" fill="#f59e0b" />
-            <Text className="text-sm font-medium text-slate-700">
+            <Star size={14} color="#c5a059" fill="#c5a059" />
+            <Text className="text-sm font-medium text-foreground">
               {item.ratingAvg.toFixed(1)}
             </Text>
-            <Text className="text-xs text-slate-400">({item.ratingCount})</Text>
+            <Text className="text-xs text-foreground-muted">({item.ratingCount})</Text>
           </View>
         ) : (
-          <Text className="text-xs text-slate-400">Sem avaliações</Text>
+          <Text className="text-xs text-foreground-muted">Sem avaliações</Text>
         )}
       </View>
 
       {item.addressLine ? (
         <View className="flex-row items-center gap-1.5">
-          <MapPin size={13} color="#94a3b8" />
-          <Text className="flex-1 text-xs text-slate-500" numberOfLines={1}>
+          <MapPin size={13} color="#8a8073" />
+          <Text className="flex-1 font-serif text-xs italic text-foreground-muted" numberOfLines={1}>
             {item.addressLine}
           </Text>
         </View>
       ) : null}
 
       {item.priceFromCents !== null ? (
-        <Text className="text-xs text-slate-500">
+        <Text className="text-xs text-foreground-muted">
           A partir de{' '}
-          <Text className="font-semibold text-slate-900">
+          <Text className="font-semibold text-foreground">
             {formatPriceBRL(item.priceFromCents)}
           </Text>
         </Text>

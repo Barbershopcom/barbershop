@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 
+import { StatusBadge } from '@/components/StatusBadge';
 import { api, ApiError } from '@/lib/api';
 import { formatSlotInTz } from '@/lib/format';
 import { useSession } from '@/lib/session';
@@ -259,8 +260,6 @@ function AppointmentCard({
   onCancel: () => void;
   onReview: () => void;
 }) {
-  const statusBg = statusBgColor(item.status);
-  const statusText = statusLabel(item.status);
   // Cancelável enquanto ativo (ocupa slot): aguardando pgto / pendente / confirmado.
   const canCancel =
     item.status === 'awaiting_payment' ||
@@ -270,32 +269,28 @@ function AppointmentCard({
   const canReview = item.status === 'completed' && !item.hasReview;
 
   return (
-    <View className="rounded-lg border border-slate-200 bg-white p-4">
-      <View className="flex-row items-start justify-between">
+    <View className="rounded-lg border border-border bg-card p-4">
+      <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1">
-          <Text className="text-xs uppercase tracking-widest text-slate-400">
+          <Text className="text-xs uppercase tracking-widest text-foreground-muted">
             {item.tenant.name}
           </Text>
-          <Text className="mt-1 text-base font-semibold text-slate-900">
+          <Text className="mt-1 text-base font-semibold text-foreground">
             {item.service.name}
           </Text>
-          <Text className="mt-0.5 text-xs text-slate-500">
+          <Text className="mt-0.5 font-serif text-xs italic text-foreground-muted">
             com {item.barber.displayName}
           </Text>
         </View>
-        <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: statusBg }}>
-          <Text className="text-[10px] font-bold uppercase text-white">
-            {statusText}
-          </Text>
-        </View>
+        <StatusBadge status={item.status} />
       </View>
 
-      <Text className="mt-3 text-sm font-medium text-slate-900">
+      <Text className="mt-3 text-sm font-medium text-foreground">
         {formatSlotInTz(item.startAt, item.tenant.timezone)}
       </Text>
 
       {item.cancelReason ? (
-        <Text className="mt-2 text-xs italic text-slate-500" numberOfLines={2}>
+        <Text className="mt-2 font-serif text-xs italic text-foreground-muted" numberOfLines={2}>
           Motivo: {item.cancelReason}
         </Text>
       ) : null}
@@ -454,40 +449,3 @@ function ReviewModal({
   );
 }
 
-function statusBgColor(status: MyCustomerAppointmentItem['status']): string {
-  switch (status) {
-    case 'awaiting_payment':
-      return '#d97706'; // âmbar escuro — falta pagar
-    case 'pending':
-      return '#f59e0b'; // amarelo — aguardando barbeiro
-    case 'confirmed':
-      return '#1a365d'; // navy — confirmado
-    case 'completed':
-      return '#10b981'; // verde
-    case 'cancelled':
-      return '#94a3b8'; // cinza
-    case 'expired':
-      return '#bf212f'; // vermelho
-    case 'no_show':
-      return '#d97706'; // âmbar
-  }
-}
-
-function statusLabel(status: MyCustomerAppointmentItem['status']): string {
-  switch (status) {
-    case 'awaiting_payment':
-      return 'Aguardando pagamento';
-    case 'pending':
-      return 'Aguardando confirmação';
-    case 'confirmed':
-      return 'Confirmado';
-    case 'completed':
-      return 'Concluído';
-    case 'cancelled':
-      return 'Cancelado';
-    case 'expired':
-      return 'Expirado';
-    case 'no_show':
-      return 'Faltou';
-  }
-}

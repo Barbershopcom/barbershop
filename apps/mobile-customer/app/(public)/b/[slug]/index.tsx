@@ -57,7 +57,7 @@ export default function TenantLanding() {
 
   if (state.kind === 'loading') {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
+      <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color="#1a365d" />
       </View>
     );
@@ -65,13 +65,15 @@ export default function TenantLanding() {
 
   if (state.kind === 'not_found') {
     return (
-      <View className="flex-1 items-center justify-center gap-3 bg-white px-6">
-        <Text className="text-xl font-bold text-slate-900">Barbearia não encontrada</Text>
-        <Text className="text-center text-sm text-slate-500">
+      <View className="flex-1 items-center justify-center gap-3 bg-background px-6">
+        <Text className="font-display text-2xl uppercase tracking-wide text-foreground">
+          Barbearia não encontrada
+        </Text>
+        <Text className="text-center font-serif text-sm italic text-foreground-muted">
           Confirme o nome com quem te enviou o link.
         </Text>
         <Pressable onPress={() => router.back()} className="mt-4">
-          <Text className="text-sm font-medium text-blue-600 underline">Voltar</Text>
+          <Text className="text-sm font-medium text-navy underline">Voltar</Text>
         </Pressable>
       </View>
     );
@@ -79,13 +81,13 @@ export default function TenantLanding() {
 
   if (state.kind === 'error') {
     return (
-      <View className="flex-1 items-center justify-center gap-3 bg-white px-6">
-        <Text className="text-base text-red-600">{state.message}</Text>
+      <View className="flex-1 items-center justify-center gap-3 bg-background px-6">
+        <Text className="text-base text-destructive">{state.message}</Text>
         <Pressable
           onPress={() => router.replace(`/b/${encodeURIComponent(slug)}`)}
-          className="mt-2 rounded-md bg-slate-900 px-4 py-2"
+          className="mt-2 rounded-md bg-primary px-4 py-2"
         >
-          <Text className="text-sm font-semibold text-white">Tentar de novo</Text>
+          <Text className="text-sm font-semibold text-primary-foreground">Tentar de novo</Text>
         </Pressable>
       </View>
     );
@@ -96,20 +98,22 @@ export default function TenantLanding() {
   const hasContact = tenant.phoneE164 || tenant.addressLine || tenant.instagramHandle;
 
   return (
-    <ScrollView className="flex-1 bg-white" contentContainerStyle={{ paddingBottom: 48 }}>
+    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingBottom: 48 }}>
       <View className="px-6 pb-4 pt-12">
-        <Text className="text-3xl font-bold text-slate-900">{tenant.name}</Text>
-        <Text className="mt-1 text-sm text-slate-500">
+        <Text className="font-display text-4xl uppercase tracking-wide text-navy">
+          {tenant.name}
+        </Text>
+        <Text className="mt-1 font-serif text-sm italic text-foreground-muted">
           Escolha um serviço para começar.
         </Text>
       </View>
 
       {hasContact ? (
-        <View className="mx-6 mb-4 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <View className="mx-6 mb-4 gap-2 rounded-lg border border-border bg-background-muted p-4">
           {tenant.addressLine ? (
             <View className="flex-row items-center gap-2">
-              <MapPin size={14} color="#64748b" />
-              <Text className="flex-1 text-sm text-slate-600">
+              <MapPin size={14} color="#8a8073" />
+              <Text className="flex-1 text-sm text-foreground-muted">
                 {tenant.addressLine}
               </Text>
             </View>
@@ -121,8 +125,8 @@ export default function TenantLanding() {
               }
               className="flex-row items-center gap-2 active:opacity-70"
             >
-              <Instagram size={14} color="#64748b" />
-              <Text className="text-sm text-slate-600">@{tenant.instagramHandle}</Text>
+              <Instagram size={14} color="#8a8073" />
+              <Text className="text-sm text-foreground-muted">@{tenant.instagramHandle}</Text>
             </Pressable>
           ) : null}
           {tenant.phoneE164 ? (
@@ -140,8 +144,8 @@ export default function TenantLanding() {
       ) : null}
 
       {services.length === 0 ? (
-        <View className="mx-6 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6">
-          <Text className="text-center text-sm text-slate-500">
+        <View className="mx-6 rounded-lg border border-dashed border-border bg-background-muted p-6">
+          <Text className="text-center font-serif text-sm italic text-foreground-muted">
             Esta barbearia ainda não disponibilizou serviços para agendamento.
           </Text>
         </View>
@@ -155,24 +159,24 @@ export default function TenantLanding() {
                   `/b/${encodeURIComponent(tenant.slug)}/agendar?s=${encodeURIComponent(s.id)}`,
                 )
               }
-              className="flex-row items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 active:bg-slate-50"
+              className="flex-row items-center gap-3 rounded-lg border border-border bg-card p-4 active:opacity-70"
             >
               <View className="flex-1 gap-1">
-                <Text className="text-base font-semibold text-slate-900">{s.name}</Text>
+                <Text className="text-base font-semibold text-foreground">{s.name}</Text>
                 {s.description ? (
-                  <Text className="text-xs text-slate-500" numberOfLines={2}>
+                  <Text className="text-xs text-foreground-muted" numberOfLines={2}>
                     {s.description}
                   </Text>
                 ) : null}
-                <Text className="text-xs text-slate-500">
+                <Text className="font-serif text-xs italic text-foreground-muted">
                   {formatDurationLabel(s.durationMin)}
                 </Text>
               </View>
               <View className="items-end gap-1">
-                <Text className="text-base font-bold text-blue-700">
+                <Text className="text-base font-bold text-navy">
                   {formatPriceBRL(s.basePriceCents)}
                 </Text>
-                <ChevronRight size={16} color="#94a3b8" />
+                <ChevronRight size={16} color="#8a8073" />
               </View>
             </Pressable>
           ))}

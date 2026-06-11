@@ -23,21 +23,21 @@ export default function SucessoScreen() {
       : null;
 
   return (
-    <ScrollView className="flex-1 bg-white" contentContainerStyle={{ padding: 24 }}>
+    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 24 }}>
       <View className="items-center pt-10">
         <CheckCircle2 size={64} color="#1a365d" strokeWidth={1.5} />
-        <Text className="mt-4 text-center text-2xl font-bold text-slate-900">
+        <Text className="mt-4 text-center font-display text-3xl uppercase tracking-wide text-foreground">
           Agendamento confirmado!
         </Text>
         {params.tenantName ? (
-          <Text className="mt-1 text-center text-sm text-slate-500">
+          <Text className="mt-1 text-center font-serif text-sm italic text-foreground-muted">
             {params.tenantName}
           </Text>
         ) : null}
       </View>
 
       {slotLabel || params.serviceName || params.customerName ? (
-        <View className="mt-8 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <View className="mt-8 rounded-lg border border-border bg-card p-4">
           {params.serviceName ? <Row label="Serviço" value={params.serviceName} /> : null}
           {slotLabel ? <Row label="Data e hora" value={slotLabel} /> : null}
           {params.customerName ? <Row label="Cliente" value={params.customerName} /> : null}
@@ -46,12 +46,12 @@ export default function SucessoScreen() {
       ) : null}
 
       {params.customerEmail ? (
-        <Text className="mt-6 text-center text-xs text-slate-500">
+        <Text className="mt-6 text-center text-xs text-foreground-muted">
           Confirmação e link de cancelamento enviados para{' '}
-          <Text className="font-semibold">{params.customerEmail}</Text>.
+          <Text className="font-semibold text-foreground">{params.customerEmail}</Text>.
         </Text>
       ) : (
-        <Text className="mt-6 text-center text-xs text-slate-500">
+        <Text className="mt-6 text-center text-xs text-foreground-muted">
           Anote o horário ou tire um print dessa tela.
         </Text>
       )}
@@ -62,9 +62,9 @@ export default function SucessoScreen() {
             ? router.replace(`/b/${encodeURIComponent(params.tenantSlug)}`)
             : router.replace('/')
         }
-        className="mt-8 items-center justify-center rounded-md bg-slate-900 px-4 py-3"
+        className="mt-8 items-center justify-center rounded-md bg-primary px-4 py-3 active:opacity-80"
       >
-        <Text className="text-base font-semibold text-white">
+        <Text className="text-base font-semibold text-primary-foreground">
           Voltar à barbearia
         </Text>
       </Pressable>
@@ -74,11 +74,11 @@ export default function SucessoScreen() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <View className="flex-row justify-between gap-3 py-1.5">
-      <Text className="text-xs uppercase tracking-widest text-slate-400">
+    <View className="flex-row justify-between gap-3 border-b border-dashed border-border py-2 last:border-0">
+      <Text className="text-xs uppercase tracking-widest text-foreground-muted">
         {label}
       </Text>
-      <Text className="flex-1 text-right text-sm font-medium text-slate-900">
+      <Text className="flex-1 text-right text-sm font-medium text-foreground">
         {value}
       </Text>
     </View>

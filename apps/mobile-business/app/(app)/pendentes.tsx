@@ -98,18 +98,18 @@ export default function PendentesScreen() {
         className="flex-1 rounded-t-3xl bg-background"
         contentContainerClassName="p-6 pb-12 gap-3"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#357BE4" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#1a365d" />
         }
       >
         {error ? (
           <Text className="text-sm text-destructive">{error}</Text>
         ) : items === null ? (
           <View className="items-center py-12">
-            <ActivityIndicator color="#357BE4" />
+            <ActivityIndicator color="#1a365d" />
           </View>
         ) : items.length === 0 ? (
           <View className="items-center gap-2 py-16">
-            <Check size={40} color="#727B8E" strokeWidth={1.5} />
+            <Check size={40} color="#8a8073" strokeWidth={1.5} />
             <Text className="text-base font-medium text-foreground">Nenhum pendente</Text>
             <Text className="text-center text-xs text-foreground-muted">
               Quando um cliente reservar e pagar, aparece aqui pra você confirmar.
@@ -157,7 +157,7 @@ function PendingCard({
 
       {item.confirmDeadline ? (
         <View className="flex-row items-center gap-1.5">
-          <Clock size={13} color="#F27508" />
+          <Clock size={13} color="#c5a059" />
           <Text className="text-xs text-brand-orange">
             Confirme até {formatDeadline(item.confirmDeadline)}
           </Text>
@@ -170,7 +170,7 @@ function PendingCard({
           disabled={busy}
           className="flex-1 flex-row items-center justify-center gap-1.5 rounded-md border border-border py-2.5 active:opacity-60 disabled:opacity-40"
         >
-          <X size={16} color="#727B8E" />
+          <X size={16} color="#8a8073" />
           <Text className="text-sm font-medium text-foreground-muted">Recusar</Text>
         </Pressable>
         <Pressable

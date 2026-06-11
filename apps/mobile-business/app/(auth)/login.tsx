@@ -70,7 +70,7 @@ export default function LoginScreen() {
               keyboardType="email-address"
               editable={!submitting}
               placeholder="exemple@gmail.com"
-              placeholderTextColor="#727B8E"
+              placeholderTextColor="#8a8073"
               className="rounded-md border border-border bg-background px-4 py-3 text-base text-foreground"
             />
           </View>
@@ -84,7 +84,7 @@ export default function LoginScreen() {
               autoComplete="current-password"
               editable={!submitting}
               placeholder="••••••••"
-              placeholderTextColor="#727B8E"
+              placeholderTextColor="#8a8073"
               className="rounded-md border border-border bg-background px-4 py-3 text-base text-foreground"
             />
           </View>

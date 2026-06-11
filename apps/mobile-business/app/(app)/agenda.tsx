@@ -64,7 +64,7 @@ function TimeInput({
         }
       }}
       placeholder="HH:MM"
-      placeholderTextColor="#727B8E"
+      placeholderTextColor="#8a8073"
       editable={!disabled}
       keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'numeric'}
       maxLength={5}
@@ -193,7 +193,7 @@ export default function AgendaScreen() {
           <Text className="text-sm text-destructive">{loadError}</Text>
         ) : !loaded ? (
           <View className="items-center py-12">
-            <ActivityIndicator color="#357BE4" />
+            <ActivityIndicator color="#1a365d" />
           </View>
         ) : (
           <View className="gap-3">
@@ -228,7 +228,7 @@ export default function AgendaScreen() {
                           className="ml-1 h-8 w-8 items-center justify-center rounded-md active:opacity-60"
                           accessibilityLabel="Remover faixa"
                         >
-                          <Trash2 size={16} color="#727B8E" />
+                          <Trash2 size={16} color="#8a8073" />
                         </Pressable>
                       </View>
                     ))}
@@ -239,7 +239,7 @@ export default function AgendaScreen() {
                   disabled={saving}
                   className="mt-2 flex-row items-center gap-1 self-start rounded-md border border-border px-3 py-1.5 active:opacity-60"
                 >
-                  <Plus size={14} color="#727B8E" />
+                  <Plus size={14} color="#8a8073" />
                   <Text className="text-xs text-foreground-muted">Adicionar faixa</Text>
                 </Pressable>
               </View>

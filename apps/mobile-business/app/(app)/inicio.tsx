@@ -155,7 +155,7 @@ export default function InicioScreen() {
         className="flex-1 rounded-t-3xl bg-background"
         contentContainerClassName="p-6 pb-12 gap-5"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#357BE4" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#1a365d" />
         }
       >
         {/* Banner contagem do dia — laranja se >0, neutro se 0 */}
@@ -189,7 +189,7 @@ export default function InicioScreen() {
               Puxe pra baixo pra atualizar.
             </Text>
           </View>
-          <Sparkles size={32} color={count > 0 ? '#F27508' : '#727B8E'} strokeWidth={1.5} />
+          <Sparkles size={32} color={count > 0 ? '#c5a059' : '#8a8073'} strokeWidth={1.5} />
         </View>
 
         {/* Lista do dia */}
@@ -197,7 +197,7 @@ export default function InicioScreen() {
           <Text className="text-sm text-destructive">{error}</Text>
         ) : appointments === null ? (
           <View className="items-center py-6">
-            <ActivityIndicator color="#357BE4" />
+            <ActivityIndicator color="#1a365d" />
           </View>
         ) : appointments.length > 0 ? (
           <View className="gap-2">
@@ -232,38 +232,38 @@ export default function InicioScreen() {
           </Text>
           <MenuRow
             href="/perfil"
-            icon={<UserRound size={20} color="#357BE4" />}
+            icon={<UserRound size={20} color="#1a365d" />}
             title="Meu perfil"
             subtitle="Editar nome de exibição"
           />
           <MenuRow
             href="/servicos"
-            icon={<Scissors size={20} color="#357BE4" />}
+            icon={<Scissors size={20} color="#1a365d" />}
             title="Meus serviços"
             subtitle="Marcar quais serviços do catálogo você atende"
           />
           <MenuRow
             href="/agenda"
-            icon={<CalendarDays size={20} color="#357BE4" />}
+            icon={<CalendarDays size={20} color="#1a365d" />}
             title="Minha agenda"
             subtitle="Defina seus horários de trabalho semanais"
           />
           <MenuRow
             href="/folgas"
-            icon={<CalendarOff size={20} color="#357BE4" />}
+            icon={<CalendarOff size={20} color="#1a365d" />}
             title="Minhas folgas"
             subtitle="Marque períodos em que você não vai atender"
           />
           <MenuRow
             href="/avaliacoes"
-            icon={<Star size={20} color="#357BE4" />}
+            icon={<Star size={20} color="#1a365d" />}
             title="Avaliações"
             subtitle="Veja sua nota e o que os clientes comentaram"
           />
           {isAdmin ? (
             <MenuRow
               href="/cupons"
-              icon={<Ticket size={20} color="#357BE4" />}
+              icon={<Ticket size={20} color="#1a365d" />}
               title="Cupons"
               subtitle="Crie promoções de desconto pros clientes"
             />
@@ -277,10 +277,10 @@ export default function InicioScreen() {
           className="mt-4 flex-row items-center justify-center gap-2 rounded-lg border border-border px-4 py-3 disabled:opacity-60"
         >
           {signingOut ? (
-            <ActivityIndicator color="#727B8E" />
+            <ActivityIndicator color="#8a8073" />
           ) : (
             <>
-              <LogOut size={16} color="#727B8E" />
+              <LogOut size={16} color="#8a8073" />
               <Text className="text-sm font-medium text-foreground-muted">Sair</Text>
             </>
           )}
@@ -327,7 +327,7 @@ function AppointmentRow({
             className="h-10 w-10 items-center justify-center rounded-full bg-primary/10 active:opacity-60"
             accessibilityLabel={`Ligar para ${item.customerName}`}
           >
-            <Phone size={18} color="#357BE4" />
+            <Phone size={18} color="#1a365d" />
           </Pressable>
         ) : null}
       </View>
@@ -339,7 +339,7 @@ function AppointmentRow({
             disabled={busy}
             className="flex-1 flex-row items-center justify-center gap-1.5 rounded-md border border-border py-2.5 active:opacity-60 disabled:opacity-40"
           >
-            <UserX size={15} color="#727B8E" />
+            <UserX size={15} color="#8a8073" />
             <Text className="text-sm font-medium text-foreground-muted">Faltou</Text>
           </Pressable>
           <Pressable
@@ -397,7 +397,7 @@ function MenuRow({
           <Text className="text-sm font-semibold text-foreground">{title}</Text>
           <Text className="mt-0.5 text-xs text-foreground-muted">{subtitle}</Text>
         </View>
-        <ChevronRight size={18} color="#727B8E" />
+        <ChevronRight size={18} color="#8a8073" />
       </Pressable>
     </Link>
   );

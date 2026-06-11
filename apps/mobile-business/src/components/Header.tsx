@@ -30,7 +30,7 @@ export function Header({ caption, title, avatarInitial }: HeaderProps) {
         </View>
       </View>
       <View className="h-9 w-9 items-center justify-center rounded-full">
-        <Bell size={20} color="#434A57" />
+        <Bell size={20} color="#3f3a33" />
       </View>
     </View>
   );

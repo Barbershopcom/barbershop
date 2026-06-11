@@ -162,7 +162,7 @@ export default function FolgasScreen() {
         className="flex-1 rounded-t-3xl bg-background"
         contentContainerClassName="px-6 py-6 pb-32 gap-5"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#357BE4" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#1a365d" />
         }
       >
         <Text className="text-xs text-foreground-muted">
@@ -196,7 +196,7 @@ export default function FolgasScreen() {
               value={reason}
               onChangeText={setReason}
               placeholder="Ex: consulta médica"
-              placeholderTextColor="#727B8E"
+              placeholderTextColor="#8a8073"
               editable={!saving}
               maxLength={500}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
@@ -234,11 +234,11 @@ export default function FolgasScreen() {
             <Text className="text-sm text-destructive">{loadError}</Text>
           ) : items === null ? (
             <View className="items-center py-6">
-              <ActivityIndicator color="#357BE4" />
+              <ActivityIndicator color="#1a365d" />
             </View>
           ) : items.length === 0 ? (
             <View className="items-center gap-2 py-8">
-              <CalendarOff size={28} color="#727B8E" strokeWidth={1.5} />
+              <CalendarOff size={28} color="#8a8073" strokeWidth={1.5} />
               <Text className="text-sm text-foreground-muted">Nenhuma folga marcada.</Text>
             </View>
           ) : (
@@ -260,7 +260,7 @@ export default function FolgasScreen() {
                   className="h-9 w-9 items-center justify-center rounded-md active:opacity-60"
                   accessibilityLabel="Remover folga"
                 >
-                  <Trash2 size={16} color="#727B8E" />
+                  <Trash2 size={16} color="#8a8073" />
                 </Pressable>
               </View>
             ))
@@ -285,7 +285,7 @@ function DateField({
       value={value}
       onChangeText={(v) => onChange(v.replace(/[^0-9-]/g, ''))}
       placeholder="AAAA-MM-DD"
-      placeholderTextColor="#727B8E"
+      placeholderTextColor="#8a8073"
       editable={!disabled}
       keyboardType="numbers-and-punctuation"
       maxLength={10}
@@ -315,7 +315,7 @@ function TimeField({
         }
       }}
       placeholder="HH:MM"
-      placeholderTextColor="#727B8E"
+      placeholderTextColor="#8a8073"
       editable={!disabled}
       keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'numeric'}
       maxLength={5}

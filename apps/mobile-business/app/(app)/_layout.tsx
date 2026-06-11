@@ -6,8 +6,8 @@ import { api } from '@/lib/api';
 import { registerForPushNotificationsAsync } from '@/lib/push';
 import { useSession } from '@/lib/session';
 
-const ACTIVE_COLOR = '#357BE4';
-const INACTIVE_COLOR = '#727B8E';
+const ACTIVE_COLOR = '#1a365d';
+const INACTIVE_COLOR = '#8a8073';
 
 /**
  * Tab layout — só renderiza quando user está linked.
@@ -43,7 +43,7 @@ export default function AppLayout() {
         tabBarInactiveTintColor: INACTIVE_COLOR,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
-          borderTopColor: '#ECEDF0',
+          borderTopColor: '#ece5d6',
           borderTopWidth: 1,
           height: 84,
           paddingTop: 8,

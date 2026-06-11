@@ -99,7 +99,7 @@ export default function ServicosScreen() {
           <Text className="text-sm text-destructive">{loadError}</Text>
         ) : items === null ? (
           <View className="items-center py-12">
-            <ActivityIndicator color="#357BE4" />
+            <ActivityIndicator color="#1a365d" />
           </View>
         ) : items.length === 0 ? (
           <View className="rounded-lg border border-border bg-background-muted p-6">

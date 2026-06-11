@@ -17,7 +17,7 @@ export default function Index() {
   if (state.status === 'loading' || state.status === 'linking') {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#357BE4" />
+        <ActivityIndicator color="#1a365d" />
       </View>
     );
   }

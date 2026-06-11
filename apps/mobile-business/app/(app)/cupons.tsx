@@ -146,7 +146,7 @@ export default function CuponsScreen() {
         className="flex-1 rounded-t-3xl bg-background"
         contentContainerClassName="px-6 py-6 pb-32 gap-5"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#357BE4" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#1a365d" />
         }
       >
         <Text className="text-xs text-foreground-muted">
@@ -165,7 +165,7 @@ export default function CuponsScreen() {
               autoCapitalize="characters"
               autoCorrect={false}
               placeholder="DESCONTO10"
-              placeholderTextColor="#727B8E"
+              placeholderTextColor="#8a8073"
               editable={!saving}
               maxLength={32}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
@@ -190,7 +190,7 @@ export default function CuponsScreen() {
                 onChangeText={setValue}
                 keyboardType="decimal-pad"
                 placeholder={type === 'percent' ? '10' : '15,00'}
-                placeholderTextColor="#727B8E"
+                placeholderTextColor="#8a8073"
                 editable={!saving}
                 className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
               />
@@ -202,7 +202,7 @@ export default function CuponsScreen() {
                 onChangeText={(v) => setMaxRedemptions(v.replace(/[^0-9]/g, ''))}
                 keyboardType="number-pad"
                 placeholder="ilimitado"
-                placeholderTextColor="#727B8E"
+                placeholderTextColor="#8a8073"
                 editable={!saving}
                 className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
               />
@@ -240,11 +240,11 @@ export default function CuponsScreen() {
             <Text className="text-sm text-destructive">{loadError}</Text>
           ) : items === null ? (
             <View className="items-center py-6">
-              <ActivityIndicator color="#357BE4" />
+              <ActivityIndicator color="#1a365d" />
             </View>
           ) : items.length === 0 ? (
             <View className="items-center gap-2 py-8">
-              <Ticket size={28} color="#727B8E" strokeWidth={1.5} />
+              <Ticket size={28} color="#8a8073" strokeWidth={1.5} />
               <Text className="text-sm text-foreground-muted">Nenhum cupom criado.</Text>
             </View>
           ) : (
@@ -254,7 +254,7 @@ export default function CuponsScreen() {
                 className="flex-row items-center gap-3 rounded-lg border border-border bg-background p-4"
               >
                 <View className="h-10 w-10 items-center justify-center rounded-md bg-background-muted">
-                  <Tag size={18} color="#357BE4" />
+                  <Tag size={18} color="#1a365d" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-foreground">{c.code}</Text>
@@ -271,7 +271,7 @@ export default function CuponsScreen() {
                   className="h-9 w-9 items-center justify-center rounded-md active:opacity-60"
                   accessibilityLabel="Remover cupom"
                 >
-                  <Trash2 size={16} color="#727B8E" />
+                  <Trash2 size={16} color="#8a8073" />
                 </Pressable>
               </View>
             ))

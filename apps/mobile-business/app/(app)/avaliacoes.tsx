@@ -86,7 +86,7 @@ export default function AvaliacoesScreen() {
         className="flex-1 rounded-t-3xl bg-background"
         contentContainerClassName="px-6 py-6 pb-12 gap-5"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#357BE4" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#1a365d" />
         }
       >
         {/* Resumo do rating */}
@@ -113,11 +113,11 @@ export default function AvaliacoesScreen() {
           <Text className="text-sm text-destructive">{error}</Text>
         ) : data === null ? (
           <View className="items-center py-6">
-            <ActivityIndicator color="#357BE4" />
+            <ActivityIndicator color="#1a365d" />
           </View>
         ) : data.items.length === 0 ? (
           <View className="items-center gap-2 py-8">
-            <MessageSquare size={28} color="#727B8E" strokeWidth={1.5} />
+            <MessageSquare size={28} color="#8a8073" strokeWidth={1.5} />
             <Text className="text-sm text-foreground-muted">Nenhuma avaliação por aqui.</Text>
           </View>
         ) : (

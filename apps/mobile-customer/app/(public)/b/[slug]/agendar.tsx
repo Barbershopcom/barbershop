@@ -183,9 +183,10 @@ export default function BookingFlow() {
           }
           onSuccess={(booked) =>
             router.replace({
-              pathname: `/b/${encodeURIComponent(slug)}/sucesso`,
+              pathname: `/b/${encodeURIComponent(slug)}/pagamento`,
               params: {
                 id: booked.id,
+                slug,
                 tz: tenant.timezone,
                 tenantName: tenant.name,
                 tenantSlug: tenant.slug,
@@ -193,6 +194,7 @@ export default function BookingFlow() {
                 startAt: booked.startAt,
                 customerName: booked.customerName,
                 customerEmail: booked.customerEmail ?? '',
+                priceCents: String(booked.priceCents),
               },
             })
           }

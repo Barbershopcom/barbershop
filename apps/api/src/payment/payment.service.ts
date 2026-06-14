@@ -13,10 +13,14 @@ import {
 } from '../jobs/jobs-worker.service';
 import { JobsService } from '../jobs/jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MercadoPagoProvider } from './mercadopago.provider';
 import { PAYMENT_PROVIDER, type PaymentProvider } from './payment-provider';
 
 /** Janela de confirmação do barbeiro após o pagamento (ADR-017 §1). */
 const CONFIRM_WINDOW_MS = 60 * 60 * 1000; // 1h
+
+/** Renova o token do vendedor se faltar menos que isto pra expirar (ADR-022 §2). */
+const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000; // 5min
 
 /**
  * Orquestra pagamento de um appointment (ADR-016 §5).
@@ -37,10 +41,54 @@ export class PaymentService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
+    private readonly mp: MercadoPagoProvider,
     private readonly jobs: JobsService,
     @Inject(forwardRef(() => AppointmentNotifier))
     private readonly notifier: AppointmentNotifier,
   ) {}
+
+  /**
+   * Token MP válido do vendedor pro marketplace/split (ADR-022 §2). Se está
+   * perto de expirar e há refresh_token, renova via OAuth e persiste antes de
+   * devolver — evita 401 no meio do charge. Sem conta conectada, devolve
+   * undefined (o provider cai no token da plataforma). Best-effort: se o
+   * refresh falhar, devolve o token atual.
+   */
+  private async getValidSellerToken(tenantId: string): Promise<string | undefined> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { mpAccessToken: true, mpRefreshToken: true, mpTokenExpiresAt: true },
+    });
+    const token = tenant?.mpAccessToken ?? undefined;
+    if (!token) return undefined;
+
+    const expiresAt = tenant?.mpTokenExpiresAt?.getTime();
+    const needsRefresh =
+      expiresAt != null && expiresAt - Date.now() <= TOKEN_REFRESH_BUFFER_MS;
+    if (!needsRefresh || !tenant?.mpRefreshToken) return token;
+
+    try {
+      const refreshed = await this.mp.refreshOAuthToken(tenant.mpRefreshToken);
+      const newExpiresAt = refreshed.expires_in
+        ? new Date(Date.now() + refreshed.expires_in * 1000)
+        : null;
+      await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: {
+          mpAccessToken: refreshed.access_token,
+          mpRefreshToken: refreshed.refresh_token ?? tenant.mpRefreshToken,
+          mpTokenExpiresAt: newExpiresAt,
+        },
+      });
+      PaymentService.logger.log(`Token MP renovado tenant=${tenantId}`);
+      return refreshed.access_token;
+    } catch (err) {
+      PaymentService.logger.warn(
+        `Refresh do token MP falhou tenant=${tenantId}; usando o atual: ${err instanceof Error ? err.message : err}`,
+      );
+      return token;
+    }
+  }
 
   /**
    * Cobra o pagamento de um appointment e, se aprovado, transiciona
@@ -97,10 +145,8 @@ export class PaymentService {
 
     // Marketplace/split (ADR-022 §2): cobra na conta MP do vendedor com
     // application_fee = comissão da plataforma. Mock ignora esses campos.
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: appt.tenantId },
-      select: { mpAccessToken: true },
-    });
+    // Renova o token do vendedor se estiver perto de expirar (evita 401).
+    const sellerAccessToken = await this.getValidSellerToken(appt.tenantId);
 
     // Cobra no provider (mock aprova na hora; MP Pix volta 'pending').
     const charge = await this.provider.charge({
@@ -109,7 +155,7 @@ export class PaymentService {
       amountCents: breakdown.amountCents,
       description: args.description,
       applicationFeeCents: breakdown.platformFeeCents,
-      sellerAccessToken: tenant?.mpAccessToken ?? undefined,
+      sellerAccessToken,
       payerEmail: appt.customerEmail ?? undefined,
     });
 
@@ -293,13 +339,10 @@ export class PaymentService {
     // Estorno no PSP real (mock = no-op). Token do vendedor pro marketplace.
     if (payment.providerPaymentId) {
       try {
-        const tenant = await this.prisma.tenant.findUnique({
-          where: { id: payment.tenantId },
-          select: { mpAccessToken: true },
-        });
+        const sellerAccessToken = await this.getValidSellerToken(payment.tenantId);
         await this.provider.refund({
           providerPaymentId: payment.providerPaymentId,
-          sellerAccessToken: tenant?.mpAccessToken ?? undefined,
+          sellerAccessToken,
         });
       } catch (err) {
         // Não trava o fluxo de cancelamento; loga pra reconciliação manual.

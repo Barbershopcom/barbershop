@@ -13,6 +13,7 @@ const navItems = [
   { href: '/admin/services', label: 'Serviços' },
   { href: '/admin/team', label: 'Equipe' },
   { href: '/admin/hours', label: 'Horários' },
+  { href: '/admin/pagamentos', label: 'Pagamentos' },
   { href: '/admin/perfil', label: 'Perfil' },
 ] as const;
 

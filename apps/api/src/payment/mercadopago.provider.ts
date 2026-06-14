@@ -11,6 +11,14 @@ import type {
 /** 10 minutos pro Pix expirar (ADR-022 §3). */
 const PIX_EXPIRATION_MS = 10 * 60 * 1000;
 
+export interface OAuthTokenResult {
+  access_token: string;
+  refresh_token?: string;
+  user_id?: number | string;
+  expires_in?: number; // segundos
+  [k: string]: unknown;
+}
+
 interface MpPaymentResponse {
   id: number;
   status: string; // approved | pending | in_process | rejected | cancelled | refunded
@@ -123,6 +131,55 @@ export class MercadoPagoProvider implements PaymentProvider {
       `refund_${input.providerPaymentId}`,
     );
     MercadoPagoProvider.logger.log(`Refund MP solicitado pra ${input.providerPaymentId}`);
+  }
+
+  // ── OAuth MP Connect (marketplace) — ADR-022 §2/Fase 4 ──────────────
+
+  /** URL de autorização pra barbearia conectar a conta MP. */
+  getAuthorizationUrl(state: string): string {
+    const clientId = this.config.get<string>('MERCADOPAGO_CLIENT_ID');
+    const redirect = this.config.get<string>('MERCADOPAGO_OAUTH_REDIRECT_URI');
+    const params = new URLSearchParams({
+      client_id: clientId ?? '',
+      response_type: 'code',
+      platform_id: 'mp',
+      state,
+      redirect_uri: redirect ?? '',
+    });
+    return `https://auth.mercadopago.com.br/authorization?${params.toString()}`;
+  }
+
+  /** Troca o `code` do OAuth pelos tokens do vendedor. */
+  async exchangeOAuthCode(code: string): Promise<OAuthTokenResult> {
+    return this.oauthToken({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: this.config.get<string>('MERCADOPAGO_OAUTH_REDIRECT_URI') ?? '',
+    });
+  }
+
+  /** Renova o access_token do vendedor via refresh_token. */
+  async refreshOAuthToken(refreshToken: string): Promise<OAuthTokenResult> {
+    return this.oauthToken({ grant_type: 'refresh_token', refresh_token: refreshToken });
+  }
+
+  private async oauthToken(extra: Record<string, string>): Promise<OAuthTokenResult> {
+    const body = {
+      client_id: this.config.get<string>('MERCADOPAGO_CLIENT_ID'),
+      client_secret: this.config.get<string>('MERCADOPAGO_CLIENT_SECRET'),
+      ...extra,
+    };
+    const res = await fetch(`${this.baseUrl}/oauth/token`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = (await res.json().catch(() => ({}))) as OAuthTokenResult & { message?: string };
+    if (!res.ok || !json.access_token) {
+      MercadoPagoProvider.logger.error(`MP OAuth token → ${res.status}`);
+      throw new Error('Falha ao conectar a conta Mercado Pago.');
+    }
+    return json;
   }
 
   /** Busca um pagamento (usado pelo webhook — fonte de verdade). */

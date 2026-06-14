@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { AppointmentsModule } from '../appointments/appointments.module';
+import { AdminMpController } from './admin-mp.controller';
 import { MercadoPagoWebhookController } from './mercadopago-webhook.controller';
 import { MercadoPagoProvider } from './mercadopago.provider';
 import { MockPaymentProvider } from './mock-payment.provider';
@@ -21,7 +22,7 @@ import { PaymentService } from './payment.service';
  */
 @Module({
   imports: [forwardRef(() => AppointmentsModule)],
-  controllers: [PaymentController, MercadoPagoWebhookController],
+  controllers: [PaymentController, MercadoPagoWebhookController, AdminMpController],
   providers: [
     PaymentService,
     MockPaymentProvider,

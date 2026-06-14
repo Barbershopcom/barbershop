@@ -114,7 +114,17 @@ export class MercadoPagoWebhookController {
     xSignature: string | undefined,
   ): boolean {
     const secret = this.config.get<string>('MERCADOPAGO_WEBHOOK_SECRET');
-    if (!secret) return true; // dev/sandbox sem secret: não bloqueia
+    if (!secret) {
+      // Fail-closed em produção: sem secret, NÃO aceita (evita markPaid forjado).
+      // Em dev/sandbox sem secret configurado, permite pra facilitar o teste.
+      const isProd = this.config.get<string>('NODE_ENV') === 'production';
+      if (isProd) {
+        MercadoPagoWebhookController.logger.error(
+          'MERCADOPAGO_WEBHOOK_SECRET ausente em produção — webhook rejeitado.',
+        );
+      }
+      return !isProd;
+    }
     if (!xSignature) return false;
 
     const parts: Record<string, string> = {};

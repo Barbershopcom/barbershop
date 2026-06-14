@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
   Controller,
   Headers,
@@ -15,6 +14,7 @@ import type { Request } from 'express';
 
 import { Public } from '../auth/auth.decorators';
 import { PrismaService } from '../prisma/prisma.service';
+import { verifyMpWebhookSignature } from './mercadopago-signature';
 import { MercadoPagoProvider } from './mercadopago.provider';
 import { PaymentService } from './payment.service';
 
@@ -125,24 +125,6 @@ export class MercadoPagoWebhookController {
       }
       return !isProd;
     }
-    if (!xSignature) return false;
-
-    const parts: Record<string, string> = {};
-    for (const kv of xSignature.split(',')) {
-      const idx = kv.indexOf('=');
-      if (idx === -1) continue;
-      parts[kv.slice(0, idx).trim()] = kv.slice(idx + 1).trim();
-    }
-    const ts = parts['ts'];
-    const v1 = parts['v1'];
-    if (!ts || !v1) return false;
-
-    const manifest = `id:${dataId};request-id:${xRequestId ?? ''};ts:${ts};`;
-    const expected = createHmac('sha256', secret).update(manifest).digest('hex');
-    try {
-      return timingSafeEqual(Buffer.from(expected), Buffer.from(v1));
-    } catch {
-      return false;
-    }
+    return verifyMpWebhookSignature({ secret, dataId, xRequestId, xSignature });
   }
 }

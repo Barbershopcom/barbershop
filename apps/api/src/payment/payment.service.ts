@@ -210,6 +210,70 @@ export class PaymentService {
   }
 
   /**
+   * Confirma um pagamento via webhook do PSP (ADR-022 §4). Idempotente:
+   * se o Payment já está 'paid', no-op. Senão marca paid + transiciona
+   * awaiting_payment → pending + agenda expiração + avisa o barbeiro.
+   *
+   * É o equivalente, disparado pelo webhook, do caminho `paid` do pay()
+   * (que no mock acontecia na hora). A state machine não muda.
+   */
+  async markPaid(
+    appointmentId: string,
+    providerPayload?: Record<string, unknown>,
+  ): Promise<void> {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      select: {
+        id: true,
+        status: true,
+        startAt: true,
+        payment: { select: { status: true } },
+      },
+    });
+    if (!appt || !appt.payment) return; // desconhecido / sem cobrança
+    if (appt.payment.status === 'paid') return; // idempotente
+
+    const confirmDeadline = new Date(
+      Math.min(Date.now() + CONFIRM_WINDOW_MS, appt.startAt.getTime()),
+    );
+    const wasAwaiting = appt.status === 'awaiting_payment';
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { appointmentId },
+        data: {
+          status: 'paid',
+          paidAt: new Date(),
+          ...(providerPayload
+            ? { providerPayload: providerPayload as Prisma.InputJsonValue }
+            : {}),
+        },
+      });
+      if (wasAwaiting) {
+        await tx.appointment.update({
+          where: { id: appointmentId },
+          data: { status: 'pending', confirmDeadline },
+        });
+      }
+    });
+
+    if (wasAwaiting) {
+      await this.scheduleExpiration(appointmentId, confirmDeadline);
+      void this.notifier.notifyNewPending(appointmentId);
+    }
+    PaymentService.logger.log(`markPaid via webhook appt=${appointmentId}`);
+  }
+
+  /** Pagamento recusado/cancelado no PSP — marca o Payment como failed. */
+  async markFailed(appointmentId: string): Promise<void> {
+    await this.prisma.payment.updateMany({
+      where: { appointmentId, status: 'pending' },
+      data: { status: 'failed' },
+    });
+    PaymentService.logger.log(`markFailed via webhook appt=${appointmentId}`);
+  }
+
+  /**
    * Estorna o pagamento de um appointment (recusa/expiração — ADR-017 §4).
    * Mock: paid → refunded + refundedAt. Não move dinheiro (não há), mas
    * mantém o registro coerente pro PSP real (S21) chamar o refund de verdade.

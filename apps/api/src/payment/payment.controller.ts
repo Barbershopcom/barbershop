@@ -62,6 +62,25 @@ export class PaymentController {
     };
   }
 
+  @Get()
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  @ApiParam({ name: 'id', description: 'UUID do appointment.' })
+  @ApiOkResponse({ description: 'Status do pagamento (pra polling do Pix).' })
+  async status(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ status: string | null; appointmentStatus: string; paidAt: string | null }> {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id },
+      select: { status: true, payment: { select: { status: true, paidAt: true } } },
+    });
+    if (!appt) throw new NotFoundException('Agendamento não encontrado.');
+    return {
+      status: appt.payment?.status ?? null,
+      appointmentStatus: appt.status,
+      paidAt: appt.payment?.paidAt ? appt.payment.paidAt.toISOString() : null,
+    };
+  }
+
   @Post('pay')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })

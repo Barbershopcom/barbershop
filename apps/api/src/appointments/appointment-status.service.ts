@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { slotOccupyingStatuses } from '@barbearia/schemas';
 
 import { PaymentService } from '../payment/payment.service';
@@ -27,6 +27,8 @@ export class AppointmentStatusService {
 
   constructor(
     private readonly prisma: PrismaService,
+    // forwardRef: ciclo status→payment→notifier→status (ADR-017).
+    @Inject(forwardRef(() => PaymentService))
     private readonly payments: PaymentService,
   ) {}
 

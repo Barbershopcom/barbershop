@@ -1,4 +1,4 @@
-import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 
 import { EmailService } from '../email/email.service';
 import { formatPriceBRL, tenantContactVars } from '../email/format';
@@ -31,6 +31,9 @@ export class AppointmentNotifier implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
     private readonly push: PushService,
+    // forwardRef: ciclo de import notifier→status→payment→notifier (ADR-017).
+    // Sem isso o metadata de tipo vem undefined dependendo da ordem de load.
+    @Inject(forwardRef(() => AppointmentStatusService))
     private readonly apptStatus: AppointmentStatusService,
   ) {}
 

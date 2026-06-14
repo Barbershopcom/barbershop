@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 
-import type { ChargeInput, ChargeResult, PaymentProvider } from './payment-provider';
+import type {
+  ChargeInput,
+  ChargeResult,
+  PaymentProvider,
+  RefundInput,
+} from './payment-provider';
 
 /**
  * Provider mock (ADR-016 §5). Aprova TODO pagamento na hora.
@@ -34,5 +39,10 @@ export class MockPaymentProvider implements PaymentProvider {
       result.pixQrCode = `00020126MOCKPIX${providerPaymentId.slice(5, 13)}5204000053039865802BR`;
     }
     return result;
+  }
+
+  async refund(input: RefundInput): Promise<void> {
+    // Mock não move dinheiro — o PaymentService marca 'refunded' no banco.
+    MockPaymentProvider.logger.log(`[MOCK] refund de ${input.providerPaymentId}`);
   }
 }

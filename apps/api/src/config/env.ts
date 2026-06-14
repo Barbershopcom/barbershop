@@ -34,6 +34,19 @@ const schema = z
 
     // Observability (ADR-014). Sem DSN, Sentry vira no-op (OK em dev).
     SENTRY_DSN: z.string().url().optional(),
+
+    // Pagamento (ADR-022). Provider ativo: 'mock' (dev/test) | 'mercadopago'.
+    PAYMENT_PROVIDER: z.enum(['mock', 'mercadopago']).default('mock'),
+    /** Base da API MP (sandbox usa a mesma; troca via credencial de teste). */
+    MERCADOPAGO_BASE_URL: z.string().url().default('https://api.mercadopago.com'),
+    /** Access token da APLICAÇÃO da plataforma (marketplace). Segredo. */
+    MERCADOPAGO_ACCESS_TOKEN: z.string().optional(),
+    /** OAuth do MP Connect (conectar conta do vendedor). Segredos. */
+    MERCADOPAGO_CLIENT_ID: z.string().optional(),
+    MERCADOPAGO_CLIENT_SECRET: z.string().optional(),
+    MERCADOPAGO_OAUTH_REDIRECT_URI: z.string().url().optional(),
+    /** Secret pra verificar a assinatura x-signature do webhook. Segredo. */
+    MERCADOPAGO_WEBHOOK_SECRET: z.string().optional(),
   })
   // Validações extras só em production — evita guard-rails atrapalhando dev.
   .superRefine((env, ctx) => {
@@ -61,6 +74,25 @@ const schema = z
           'CORS_ORIGINS vazio em production bloqueia toda chamada browser. Configure pelo menos a URL do web app.',
         path: ['CORS_ORIGINS'],
       });
+    }
+    // Se o provider real está ativo, as credenciais MP são obrigatórias.
+    if (env.PAYMENT_PROVIDER === 'mercadopago') {
+      const required: [keyof typeof env, string][] = [
+        ['MERCADOPAGO_ACCESS_TOKEN', 'MERCADOPAGO_ACCESS_TOKEN'],
+        ['MERCADOPAGO_CLIENT_ID', 'MERCADOPAGO_CLIENT_ID'],
+        ['MERCADOPAGO_CLIENT_SECRET', 'MERCADOPAGO_CLIENT_SECRET'],
+        ['MERCADOPAGO_OAUTH_REDIRECT_URI', 'MERCADOPAGO_OAUTH_REDIRECT_URI'],
+        ['MERCADOPAGO_WEBHOOK_SECRET', 'MERCADOPAGO_WEBHOOK_SECRET'],
+      ];
+      for (const [key, label] of required) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `${label} é obrigatório quando PAYMENT_PROVIDER=mercadopago.`,
+            path: [key],
+          });
+        }
+      }
     }
   });
 

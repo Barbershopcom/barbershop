@@ -15,6 +15,16 @@ export interface ChargeInput {
   amountCents: number;
   /** Descrição que aparece pro cliente (ex: "Corte — Barbearia do Jaja"). */
   description: string;
+  /** Comissão da plataforma (marketplace `application_fee`). ADR-022 §2. */
+  applicationFeeCents?: number;
+  /** Token MP do vendedor (barbearia) — cobra na conta dele. ADR-022 §2. */
+  sellerAccessToken?: string;
+  /** Email do pagador (MP exige pra Pix). */
+  payerEmail?: string;
+  /** Cartão: token gerado no cliente (MP.js — PCI). */
+  cardToken?: string;
+  /** Cartão: número de parcelas. */
+  installments?: number;
 }
 
 export interface ChargeResult {
@@ -28,9 +38,21 @@ export interface ChargeResult {
   pixQrCode?: string;
 }
 
+export interface RefundInput {
+  /** ID da cobrança no provider (do Payment.providerPaymentId). */
+  providerPaymentId: string;
+  /** Token do vendedor (marketplace) — quem detém a cobrança. */
+  sellerAccessToken?: string;
+}
+
 export interface PaymentProvider {
   readonly name: string;
   charge(input: ChargeInput): Promise<ChargeResult>;
+  /**
+   * Estorna a cobrança no PSP (ADR-022 §5). Mock = no-op. Idempotente:
+   * o PaymentService só chama quando há Payment 'paid'.
+   */
+  refund(input: RefundInput): Promise<void>;
 }
 
 /** Token de injeção do provider ativo. */

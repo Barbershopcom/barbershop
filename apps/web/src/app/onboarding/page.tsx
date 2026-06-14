@@ -34,6 +34,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Seal } from '@/components/ui/seal';
 import { Textarea } from '@/components/ui/textarea';
 import { api, ApiError } from '@/lib/api';
 
@@ -96,15 +97,55 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-12">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Cadastre sua barbearia</h1>
-        <p className="text-sm text-muted-foreground">
-          Algumas informações pra deixar tudo pronto. Você pode ajustar depois.
-        </p>
-      </div>
+    <div className="flex min-h-screen bg-background">
+      {/* Rail navy (desktop) — Seal + passos + stripe barber-pole. */}
+      <aside className="relative hidden w-80 shrink-0 overflow-hidden bg-primary p-10 text-papel lg:flex lg:flex-col">
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{
+            background: 'repeating-linear-gradient(-45deg, #fff 0 16px, transparent 16px 36px)',
+          }}
+        />
+        <div className="relative flex items-center gap-2.5">
+          <Seal size={40} />
+          <b className="font-display text-2xl tracking-wider text-papel">NAVALHA</b>
+        </div>
+        <div className="relative mt-12">
+          <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-dourado">
+            Quase lá
+          </span>
+          <h2 className="mt-3 font-display text-4xl uppercase leading-none tracking-wide">
+            Monte sua barbearia em minutos.
+          </h2>
+          <p className="mt-4 font-serif text-base italic text-papel/75">
+            Preencha os dados abaixo e já saia com a página de agendamento no ar. Dá pra ajustar
+            tudo depois.
+          </p>
+        </div>
+        <div
+          className="relative mt-auto h-[7px] rounded-full"
+          style={{
+            background:
+              'repeating-linear-gradient(-45deg, #bf212f 0 13px, #fffcf5 13px 26px, #1a365d 26px 39px, #fffcf5 39px 52px)',
+          }}
+        />
+      </aside>
 
-      <Form {...form}>
+      {/* Conteúdo */}
+      <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-12">
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-destructive">
+            Cadastro
+          </span>
+          <h1 className="font-display text-4xl uppercase tracking-wide text-foreground">
+            Cadastre sua barbearia
+          </h1>
+          <p className="font-serif text-sm italic text-muted-foreground">
+            Algumas informações pra deixar tudo pronto. Você pode ajustar depois.
+          </p>
+        </div>
+
+        <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit, (errors) => {
             // Surface silent validation failures que poderiam acontecer em
@@ -353,7 +394,8 @@ export default function OnboardingPage() {
             </Button>
           </div>
         </form>
-      </Form>
-    </main>
+        </Form>
+      </main>
+    </div>
   );
 }

@@ -39,6 +39,8 @@ const schema = z
     PAYMENT_PROVIDER: z.enum(['mock', 'mercadopago']).default('mock'),
     /** Base da API MP (sandbox usa a mesma; troca via credencial de teste). */
     MERCADOPAGO_BASE_URL: z.string().url().default('https://api.mercadopago.com'),
+    /** URL pública DESTA API (pro notification_url do webhook MP). */
+    API_PUBLIC_URL: z.string().url().optional(),
     /** Access token da APLICAÇÃO da plataforma (marketplace). Segredo. */
     MERCADOPAGO_ACCESS_TOKEN: z.string().optional(),
     /** OAuth do MP Connect (conectar conta do vendedor). Segredos. */

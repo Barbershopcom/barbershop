@@ -52,7 +52,7 @@ export class PaymentService {
     appointmentId: string;
     method: PaymentMethod;
     description: string;
-  }): Promise<{ payment: PaymentDto; pixQrCode?: string }> {
+  }): Promise<{ payment: PaymentDto; pixQrCode?: string; pixQrCodeBase64?: string }> {
     const appt = await this.prisma.appointment.findUnique({
       where: { id: args.appointmentId },
       select: {
@@ -61,6 +61,7 @@ export class PaymentService {
         status: true,
         priceCents: true,
         startAt: true,
+        customerEmail: true,
         payment: {
           select: {
             id: true,
@@ -94,12 +95,22 @@ export class PaymentService {
 
     const breakdown = computePriceBreakdown(appt.priceCents, args.method);
 
-    // Cobra no provider (mock aprova na hora).
+    // Marketplace/split (ADR-022 §2): cobra na conta MP do vendedor com
+    // application_fee = comissão da plataforma. Mock ignora esses campos.
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: appt.tenantId },
+      select: { mpAccessToken: true },
+    });
+
+    // Cobra no provider (mock aprova na hora; MP Pix volta 'pending').
     const charge = await this.provider.charge({
       appointmentId: appt.id,
       method: args.method,
       amountCents: breakdown.amountCents,
       description: args.description,
+      applicationFeeCents: breakdown.platformFeeCents,
+      sellerAccessToken: tenant?.mpAccessToken ?? undefined,
+      payerEmail: appt.customerEmail ?? undefined,
     });
 
     const paid = charge.status === 'paid';
@@ -174,6 +185,7 @@ export class PaymentService {
     return {
       payment: toDto(payment),
       pixQrCode: charge.pixQrCode,
+      pixQrCodeBase64: charge.pixQrCodeBase64,
     };
   }
 
@@ -208,16 +220,36 @@ export class PaymentService {
   async refund(appointmentId: string): Promise<void> {
     const payment = await this.prisma.payment.findUnique({
       where: { appointmentId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, providerPaymentId: true, tenantId: true },
     });
     if (!payment || payment.status !== 'paid') {
       return; // nada pago ou já estornado — nada a fazer
     }
+
+    // Estorno no PSP real (mock = no-op). Token do vendedor pro marketplace.
+    if (payment.providerPaymentId) {
+      try {
+        const tenant = await this.prisma.tenant.findUnique({
+          where: { id: payment.tenantId },
+          select: { mpAccessToken: true },
+        });
+        await this.provider.refund({
+          providerPaymentId: payment.providerPaymentId,
+          sellerAccessToken: tenant?.mpAccessToken ?? undefined,
+        });
+      } catch (err) {
+        // Não trava o fluxo de cancelamento; loga pra reconciliação manual.
+        PaymentService.logger.error(
+          `Refund no PSP falhou appt=${appointmentId} (${payment.providerPaymentId}): ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+
     await this.prisma.payment.update({
       where: { appointmentId },
       data: { status: 'refunded', refundedAt: new Date() },
     });
-    PaymentService.logger.log(`Pagamento estornado (mock) appt=${appointmentId}`);
+    PaymentService.logger.log(`Pagamento estornado appt=${appointmentId}`);
   }
 }
 

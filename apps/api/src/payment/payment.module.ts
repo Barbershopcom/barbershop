@@ -1,14 +1,16 @@
 import { forwardRef, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { AppointmentsModule } from '../appointments/appointments.module';
+import { MercadoPagoProvider } from './mercadopago.provider';
 import { MockPaymentProvider } from './mock-payment.provider';
 import { PAYMENT_PROVIDER } from './payment-provider';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 
 /**
- * Módulo de pagamento (ADR-016 §5). Hoje só o provider mock.
- * Trocar pelo PSP real (S21) = trocar o useClass do PAYMENT_PROVIDER.
+ * Módulo de pagamento (ADR-016 §5, ADR-022). O provider ativo é escolhido
+ * por env PAYMENT_PROVIDER ('mock' em dev/test, 'mercadopago' em prod).
  *
  * forwardRef(AppointmentsModule): ciclo mútuo — PaymentService chama
  * AppointmentNotifier.notifyNewPending ao pagar; AppointmentsModule usa
@@ -22,8 +24,17 @@ import { PaymentService } from './payment.service';
   providers: [
     PaymentService,
     MockPaymentProvider,
-    { provide: PAYMENT_PROVIDER, useExisting: MockPaymentProvider },
+    MercadoPagoProvider,
+    {
+      provide: PAYMENT_PROVIDER,
+      inject: [ConfigService, MockPaymentProvider, MercadoPagoProvider],
+      useFactory: (
+        config: ConfigService,
+        mock: MockPaymentProvider,
+        mp: MercadoPagoProvider,
+      ) => (config.get<string>('PAYMENT_PROVIDER') === 'mercadopago' ? mp : mock),
+    },
   ],
-  exports: [PaymentService],
+  exports: [PaymentService, MercadoPagoProvider],
 })
 export class PaymentModule {}

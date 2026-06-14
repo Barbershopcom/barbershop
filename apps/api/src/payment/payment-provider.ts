@@ -36,6 +36,8 @@ export interface ChargeResult {
   payload: Record<string, unknown>;
   /** Pix: QR code copia-e-cola (mock devolve fake). */
   pixQrCode?: string;
+  /** Pix: imagem do QR em base64 (PNG) pra UI renderizar direto. */
+  pixQrCodeBase64?: string;
 }
 
 export interface RefundInput {

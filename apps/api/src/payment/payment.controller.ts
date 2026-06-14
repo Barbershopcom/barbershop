@@ -70,7 +70,7 @@ export class PaymentController {
   async pay(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(confirmPaymentSchema)) body: ConfirmPaymentInput,
-  ): Promise<{ payment: PaymentDto; pixQrCode?: string }> {
+  ): Promise<{ payment: PaymentDto; pixQrCode?: string; pixQrCodeBase64?: string }> {
     try {
       return await this.payment.pay({
         appointmentId: id,

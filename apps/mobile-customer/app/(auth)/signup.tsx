@@ -11,12 +11,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Seal } from '@/components/primitives/seal';
 import { useSession } from '@/lib/session';
 
 export default function SignupScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { signUp, signInWithGoogle, signInWithApple } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,7 +50,7 @@ export default function SignupScreen() {
       setError(result.error ?? 'Erro ao criar conta.');
       return;
     }
-    router.replace('/(public)');
+    router.replace('/(public)/home');
   }
 
   return (
@@ -56,145 +58,165 @@ export default function SignupScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-background"
     >
-      <ScrollView className="flex-1" contentContainerClassName="justify-center px-6 py-12">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="pb-6"
+        scrollIndicatorInsets={{ right: 1 }}
+      >
         {/* Logo + Marca */}
-        <View className="mb-8 items-center gap-2">
-          <Seal size={64} />
-          <Text className="font-display text-2xl font-bold uppercase tracking-wide text-foreground">
+        <View
+          className="mb-12 items-center gap-3 px-6"
+          style={{ paddingTop: Math.max(insets.top, 12) + 24 }}
+        >
+          <Seal size={80} />
+          <Text className="font-display text-3xl font-bold uppercase tracking-wide text-foreground">
             NAVALHA
           </Text>
-          <Text className="font-serif text-sm italic text-foreground-muted">seu corte, na hora certa</Text>
-        </View>
-
-        {/* Seção de Signup */}
-        <View className="mb-6">
-          <Text className="mb-1 font-display text-2xl uppercase tracking-wide text-foreground">CRIAR CONTA</Text>
           <Text className="font-serif text-sm italic text-foreground-muted">
-            Junte-se a milhares de clientes
+            seu corte, na hora certa
           </Text>
         </View>
 
-        {/* Email */}
-        <View className="mb-4 gap-1">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">Email</Text>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            editable={!loading}
-            placeholder="cliente@email.com"
-            placeholderTextColor="#8a8073"
-            className="rounded-md border border-border bg-card px-4 py-3 text-base text-foreground"
-          />
-        </View>
-
-        {/* Senha */}
-        <View className="mb-4 gap-1">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">Senha</Text>
-          <View className="relative">
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              editable={!loading}
-              placeholder="Pelo menos 6 caracteres"
-              placeholderTextColor="#8a8073"
-              className="rounded-md border border-border bg-card px-4 py-3 pr-12 text-base text-foreground"
-            />
-            <Pressable
-              onPress={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2"
-            >
-              {showPassword ? (
-                <EyeOff size={18} color="#8a8073" />
-              ) : (
-                <Eye size={18} color="#8a8073" />
-              )}
-            </Pressable>
+        {/* Conteúdo */}
+        <View className="px-6">
+          {/* Seção de Signup */}
+          <View className="mb-8">
+            <Text className="font-display text-2xl font-bold uppercase tracking-wide text-foreground">
+              CRIAR CONTA
+            </Text>
+            <Text className="mt-1 font-serif text-sm italic text-foreground-muted">
+              Junte-se a milhares de clientes
+            </Text>
           </View>
-        </View>
 
-        {/* Confirmar Senha */}
-        <View className="mb-4 gap-1">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">
-            Confirmar Senha
-          </Text>
-          <View className="relative">
+          {/* Email */}
+          <View className="mb-5 gap-2">
+            <Text className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+              EMAIL
+            </Text>
             <TextInput
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirm}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
               editable={!loading}
-              placeholder="Repita a senha"
+              placeholder="cliente@email.com"
               placeholderTextColor="#8a8073"
-              className="rounded-md border border-border bg-card px-4 py-3 pr-12 text-base text-foreground"
+              className="rounded-lg border border-border bg-card px-4 py-3 text-base text-foreground"
             />
-            <Pressable
-              onPress={() => setShowConfirm(!showConfirm)}
-              className="absolute right-3 top-1/2 -translate-y-1/2"
-            >
-              {showConfirm ? (
-                <EyeOff size={18} color="#8a8073" />
-              ) : (
-                <Eye size={18} color="#8a8073" />
-              )}
-            </Pressable>
           </View>
-        </View>
 
-        {/* Erro */}
-        {error ? (
-          <Text className="mb-4 text-sm text-destructive" accessibilityRole="alert">
-            {error}
-          </Text>
-        ) : null}
+          {/* Senha */}
+          <View className="mb-5 gap-2">
+            <Text className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+              SENHA
+            </Text>
+            <View className="relative">
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                editable={!loading}
+                placeholder="Pelo menos 6 caracteres"
+                placeholderTextColor="#8a8073"
+                className="rounded-lg border border-border bg-card px-4 py-3 pr-12 text-base text-foreground"
+              />
+              <Pressable
+                onPress={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2"
+              >
+                {showPassword ? (
+                  <EyeOff size={20} color="#8a8073" />
+                ) : (
+                  <Eye size={20} color="#8a8073" />
+                )}
+              </Pressable>
+            </View>
+          </View>
 
-        {/* Botão Criar Conta */}
-        <Pressable
-          onPress={handleSubmit}
-          disabled={loading}
-          className="mb-3 items-center justify-center rounded-md bg-navy px-4 py-4 disabled:opacity-60"
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="font-display text-base font-bold text-white">Criar Conta</Text>
-          )}
-        </Pressable>
+          {/* Confirmar Senha */}
+          <View className="mb-6 gap-2">
+            <Text className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+              CONFIRMAR SENHA
+            </Text>
+            <View className="relative">
+              <TextInput
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirm}
+                editable={!loading}
+                placeholder="Repita a senha"
+                placeholderTextColor="#8a8073"
+                className="rounded-lg border border-border bg-card px-4 py-3 pr-12 text-base text-foreground"
+              />
+              <Pressable
+                onPress={() => setShowConfirm(!showConfirm)}
+                className="absolute right-3 top-1/2 -translate-y-1/2"
+              >
+                {showConfirm ? (
+                  <EyeOff size={20} color="#8a8073" />
+                ) : (
+                  <Eye size={20} color="#8a8073" />
+                )}
+              </Pressable>
+            </View>
+          </View>
 
-        {/* Divisor */}
-        <View className="mb-3 flex-row items-center gap-3">
-          <View className="flex-1 border-b border-border" />
-          <Text className="text-xs text-foreground-muted">ou continue com</Text>
-          <View className="flex-1 border-b border-border" />
-        </View>
+          {/* Erro */}
+          {error ? (
+            <Text className="mb-4 text-sm text-destructive" accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : null}
 
-        {/* Google OAuth */}
-        <Pressable
-          onPress={() => void signInWithGoogle()}
-          disabled={loading}
-          className="mb-3 flex-row items-center justify-center gap-2 rounded-md border border-border py-3 active:opacity-70 disabled:opacity-60"
-        >
-          <Text className="text-base font-semibold text-foreground">🔵 Continuar com Google</Text>
-        </Pressable>
-
-        {/* Apple OAuth (TODO: requer setup adicional em produção) */}
-        <Pressable
-          onPress={() => void signInWithApple()}
-          disabled={loading}
-          className="mb-6 flex-row items-center justify-center gap-2 rounded-md border border-border bg-black py-3 active:opacity-70 disabled:opacity-60"
-        >
-          <Text className="text-base font-semibold text-white">🍎 Continuar com Apple</Text>
-        </Pressable>
-
-        {/* Já tem conta */}
-        <View className="flex-row items-center justify-center gap-1">
-          <Text className="text-sm text-foreground-muted">Já tem conta?</Text>
-          <Pressable onPress={() => router.push('/(auth)/login')}>
-            <Text className="text-sm font-bold text-navy">Entrar</Text>
+          {/* Botão Criar Conta */}
+          <Pressable
+            onPress={handleSubmit}
+            disabled={loading}
+            className="mb-6 items-center justify-center rounded-lg bg-navy py-4 active:opacity-80 disabled:opacity-60"
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text className="font-display text-base font-bold text-white">Criar Conta</Text>
+            )}
           </Pressable>
+
+          {/* Divisor */}
+          <View className="mb-6 flex-row items-center gap-3">
+            <View className="flex-1 border-b border-border" />
+            <Text className="text-xs text-foreground-muted">ou continue com</Text>
+            <View className="flex-1 border-b border-border" />
+          </View>
+
+          {/* Google OAuth */}
+          <Pressable
+            onPress={() => void signInWithGoogle()}
+            disabled={loading}
+            className="mb-3 flex-row items-center justify-center gap-2 rounded-lg border border-border py-3 active:opacity-70 disabled:opacity-60"
+          >
+            <Text className="text-sm font-semibold text-foreground">Google</Text>
+            <Text className="text-base font-semibold text-foreground">Continuar com Google</Text>
+          </Pressable>
+
+          {/* Apple OAuth */}
+          <Pressable
+            onPress={() => void signInWithApple()}
+            disabled={loading}
+            className="mb-6 flex-row items-center justify-center gap-2 rounded-lg bg-black py-3 active:opacity-70 disabled:opacity-60"
+          >
+            <Text className="text-base font-semibold text-white">🍎</Text>
+            <Text className="text-base font-semibold text-white">Continuar com Apple</Text>
+          </Pressable>
+
+          {/* Já tem conta */}
+          <View className="flex-row items-center justify-center gap-1">
+            <Text className="text-sm text-foreground-muted">Já tem conta?</Text>
+            <Pressable onPress={() => router.push('/(auth)/login')}>
+              <Text className="text-sm font-bold text-navy">Entrar</Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

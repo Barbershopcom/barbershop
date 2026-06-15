@@ -57,13 +57,13 @@ function RootLayoutNav() {
     );
   }
 
-  // 3. App completo → se autenticado
+  // 3. App completo → se autenticado (com tab bar)
   return (
     <>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(public)" />
-        <Stack.Screen name="(app)" />
+        <Stack.Screen name="(main)" />
+        <Stack.Screen name="(public)/agendamento/[slug]" />
       </Stack>
     </>
   );

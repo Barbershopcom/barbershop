@@ -220,6 +220,14 @@ export class AdminEmployeesController {
       throw new Error(valid.error.message);
     }
 
+    // Validate ownership before update (IDOR prevention)
+    const existing = await this.prisma.employee.findFirst({
+      where: { id, tenantId },
+    });
+    if (!existing) {
+      throw new Error('Funcionário não encontrado');
+    }
+
     const employee = await this.prisma.employee.update({
       where: { id },
       data: valid.data,
@@ -256,6 +264,16 @@ export class AdminEmployeesController {
   @ApiOkResponse({ description: 'Deletado com sucesso' })
   @ApiNotFoundResponse({ description: 'Funcionário não encontrado' })
   async delete(@Param('id') id: string): Promise<void> {
+    const tenantId = (this as any).req.tenantId;
+
+    // Validate ownership before delete (IDOR prevention)
+    const existing = await this.prisma.employee.findFirst({
+      where: { id, tenantId },
+    });
+    if (!existing) {
+      throw new Error('Funcionário não encontrado');
+    }
+
     await this.prisma.employee.delete({ where: { id } });
   }
 }

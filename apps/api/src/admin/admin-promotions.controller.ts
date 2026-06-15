@@ -243,6 +243,14 @@ export class AdminPromotionsController {
       throw new Error(valid.error.message);
     }
 
+    // Validate ownership before update (IDOR prevention)
+    const existing = await this.prisma.promotion.findFirst({
+      where: { id, tenantId },
+    });
+    if (!existing) {
+      throw new Error('Promoção não encontrada');
+    }
+
     const promotion = await this.prisma.promotion.update({
       where: { id },
       data: {
@@ -291,6 +299,16 @@ export class AdminPromotionsController {
   @ApiOkResponse({ description: 'Deletado com sucesso' })
   @ApiNotFoundResponse({ description: 'Promoção não encontrada' })
   async delete(@Param('id') id: string): Promise<void> {
+    const tenantId = (this as any).req.tenantId;
+
+    // Validate ownership before delete (IDOR prevention)
+    const existing = await this.prisma.promotion.findFirst({
+      where: { id, tenantId },
+    });
+    if (!existing) {
+      throw new Error('Promoção não encontrada');
+    }
+
     await this.prisma.promotion.delete({ where: { id } });
   }
 }

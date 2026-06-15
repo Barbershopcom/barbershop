@@ -237,6 +237,14 @@ export class AdminServicesController {
       throw new Error(valid.error.message);
     }
 
+    // Validate ownership before update (IDOR prevention)
+    const existing = await this.prisma.service.findFirst({
+      where: { id, tenantId },
+    });
+    if (!existing) {
+      throw new Error('Serviço não encontrado');
+    }
+
     const service = await this.prisma.service.update({
       where: { id },
       data: valid.data,
@@ -273,6 +281,16 @@ export class AdminServicesController {
   @ApiOkResponse({ description: 'Deletado com sucesso' })
   @ApiNotFoundResponse({ description: 'Serviço não encontrado' })
   async delete(@Param('id') id: string): Promise<void> {
+    const tenantId = (this as any).req.tenantId;
+
+    // Validate ownership before delete (IDOR prevention)
+    const existing = await this.prisma.service.findFirst({
+      where: { id, tenantId },
+    });
+    if (!existing) {
+      throw new Error('Serviço não encontrado');
+    }
+
     await this.prisma.service.delete({ where: { id } });
   }
 }

@@ -15,9 +15,20 @@ import { AdminPromotionsController } from './admin-promotions.controller';
   imports: [
     SlotsModule,
     EmailModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'dev-secret',
-      signOptions: { expiresIn: '24h' },
+    JwtModule.registerAsync({
+      useFactory: () => {
+        const secret = process.env.JWT_SECRET;
+        if (!secret || secret.length < 32) {
+          throw new Error(
+            'JWT_SECRET environment variable must be set and at least 32 characters long. ' +
+            'Set it in your .env file for security.',
+          );
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: '24h' },
+        };
+      },
     }),
   ],
   providers: [PrismaService],

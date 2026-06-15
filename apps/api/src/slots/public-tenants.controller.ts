@@ -1,5 +1,5 @@
-import { Controller, Get, Header, Param } from '@nestjs/common';
-import { ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Header, Param, Query } from '@nestjs/common';
+import { ApiOkResponse, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { PublicServiceDto, PublicTenantDto, ReviewItem } from '@barbearia/schemas';
 
@@ -76,5 +76,51 @@ export class PublicTenantsController {
       orderBy: [{ basePriceCents: 'asc' }, { name: 'asc' }],
     });
     return services;
+  }
+
+  @Get('employees')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Header('Cache-Control', 'public, max-age=30')
+  @ApiParam({ name: 'slug', description: 'Slug público da barbearia.' })
+  @ApiQuery({
+    name: 'services',
+    required: false,
+    description: 'Comma-separated list of service IDs to filter employees.',
+  })
+  @ApiOkResponse({ description: 'Barbeiros que fazem os serviços solicitados.' })
+  async listEmployees(
+    @Param('slug') slug: string,
+    @Query('services') services?: string,
+  ): Promise<Array<{ id: string; displayName: string; ratingAvg: number | null; ratingCount: number }>> {
+    const tenant = await this.repo.resolveTenant(slug);
+
+    // Filtro opcional por serviços (comma-separated serviceIds)
+    const serviceIds = services ? services.split(',').filter(Boolean) : [];
+
+    // Se tiver serviços específicos, filtrar barbeiros que fazem TODOS os serviços
+    const employees = await this.prisma.employee.findMany({
+      where: {
+        tenantId: tenant.id,
+        isActive: true,
+        ...(serviceIds.length > 0
+          ? {
+              barberServiceCapability: {
+                some: {
+                  serviceId: { in: serviceIds },
+                },
+              },
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        displayName: true,
+        ratingAvg: true,
+        ratingCount: true,
+      },
+      orderBy: { displayName: 'asc' },
+    });
+
+    return employees;
   }
 }

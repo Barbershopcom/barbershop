@@ -33,11 +33,14 @@ export default function AgendamentoBarbeiroScreen() {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
 
   useEffect(() => {
-    if (!slug || booking.state.selectedServiceIds.size === 0) return;
+    if (!slug || booking.state.selectedServiceIds.size === 0) {
+      setState({ kind: 'loading' });
+      return;
+    }
 
     (async () => {
       try {
-        const serviceIds = Array.from(booking.state.selectedServiceIds).join(',');
+        const serviceIds = Array.from(booking.state.selectedServiceIds).sort().join(',');
         const employees = await api.get<EmployeeDto[]>(
           `/public/tenants/${encodeURIComponent(slug)}/employees?services=${serviceIds}`,
         );
@@ -49,7 +52,7 @@ export default function AgendamentoBarbeiroScreen() {
         });
       }
     })();
-  }, [slug, booking.state.selectedServiceIds]);
+  }, [slug, Array.from(booking.state.selectedServiceIds).sort().join(',')]);
 
   const handleSelectBarber = (id: string, name: string) => {
     booking.setBarber(id, name);

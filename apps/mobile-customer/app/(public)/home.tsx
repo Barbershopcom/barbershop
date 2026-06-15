@@ -31,6 +31,9 @@ interface PromotionDto {
   description: string | null;
   discountType: string;
   discountValue: number;
+  tenantSlug: string;
+  tenantName: string;
+  validUntil: string | null;
 }
 
 export default function HomeScreen() {
@@ -41,6 +44,13 @@ export default function HomeScreen() {
   const { data: barbershops, isLoading } = useQuery<PublicTenantDto[]>({
     queryFn: async () => {
       const res = await api.get<PublicTenantDto[]>('/public/discover');
+      return res;
+    },
+  });
+
+  const { data: promotions, isLoading: promotionsLoading } = useQuery<PromotionDto[]>({
+    queryFn: async () => {
+      const res = await api.get<PromotionDto[]>('/public/promotions');
       return res;
     },
   });
@@ -90,22 +100,71 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      {/* Promoções — atualmente placeholder, serão carregadas por barbershop */}
-      <View className="px-6">
-        <View className="mb-4 flex-row items-center justify-between">
-          <Text className="font-display text-lg font-bold uppercase text-foreground">
-            Promoções da semana
-          </Text>
-          <Pressable onPress={() => router.push('/(public)/promocoes')}>
-            <Text className="text-xs font-semibold text-navy">Ver tudo →</Text>
-          </Pressable>
+      {/* Promoções da semana */}
+      {!promotionsLoading && promotions && promotions.length > 0 && (
+        <View className="px-6">
+          <View className="mb-4 flex-row items-center justify-between">
+            <Text className="font-display text-lg font-bold uppercase text-foreground">
+              Promoções da semana
+            </Text>
+            <Pressable onPress={() => router.push('/(public)/promocoes')}>
+              <Text className="text-xs font-semibold text-navy">Ver tudo →</Text>
+            </Pressable>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="mb-8"
+            contentContainerClassName="gap-3"
+          >
+            {promotions.slice(0, 3).map((promo) => {
+              const discountLabel =
+                promo.discountType === 'percent'
+                  ? `${(promo.discountValue / 100).toFixed(0)}% OFF`
+                  : `${formatPriceBRL(promo.discountValue)} OFF`;
+
+              return (
+                <Pressable
+                  key={promo.id}
+                  onPress={() =>
+                    router.push(`/(public)/b/${encodeURIComponent(promo.tenantSlug)}`)
+                  }
+                  className="w-48 rounded-lg bg-navy px-4 py-6 active:opacity-80"
+                >
+                  <Text className="mb-2 text-xs font-bold uppercase text-gold">
+                    {promo.validUntil
+                      ? `ATÉ ${new Date(promo.validUntil).toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' }).toUpperCase()}`
+                      : 'OFERTA ESPECIAL'}
+                  </Text>
+                  <Text className="font-display text-3xl font-bold text-white">
+                    {discountLabel}
+                  </Text>
+                  <Text className="mt-1 font-serif text-sm italic text-white">
+                    {promo.name}
+                  </Text>
+                  <Text className="mt-2 text-xs text-white/80">{promo.tenantName}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
-        <View className="mb-8 rounded-lg bg-card p-4">
-          <Text className="text-center text-sm text-foreground-muted">
-            Nenhuma promoção disponível no momento
-          </Text>
+      )}
+
+      {/* Placeholder quando não há promoções */}
+      {!promotionsLoading && (!promotions || promotions.length === 0) && (
+        <View className="px-6">
+          <View className="mb-4 flex-row items-center justify-between">
+            <Text className="font-display text-lg font-bold uppercase text-foreground">
+              Promoções da semana
+            </Text>
+          </View>
+          <View className="mb-8 rounded-lg bg-card p-4">
+            <Text className="text-center text-sm text-foreground-muted">
+              Nenhuma promoção disponível no momento
+            </Text>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Seus agendamentos */}
       {state.status === 'authenticated' && (

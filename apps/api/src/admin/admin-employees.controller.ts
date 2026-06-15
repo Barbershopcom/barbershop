@@ -11,8 +11,10 @@ import {
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
 } from '@nestjs/swagger';
+import { JwtService } from '@nestjs/jwt';
 import { z } from 'zod';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import { TenantGuard } from '../auth/tenant.guard';
 import { Auth } from '../auth/auth.decorators';
 
@@ -60,7 +62,11 @@ interface EmployeeResponseDto {
 @UseGuards(TenantGuard)
 @Auth('admin')
 export class AdminEmployeesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly email: EmailService,
+    private readonly jwt: JwtService,
+  ) {}
 
   /**
    * **[GET] Listar funcionários do tenant**
@@ -180,7 +186,25 @@ export class AdminEmployeesController {
       },
     });
 
-    // TODO: Enviar email de convite com link de onboarding
+    // Enviar email de convite se email foi fornecido
+    if (employee.email) {
+      const onboardingToken = this.jwt.sign(
+        { employeeId: employee.id, tenantId, type: 'employee_onboard' },
+        { expiresIn: '7d' },
+      );
+
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { name: true },
+      });
+
+      await this.email.sendEmployeeInvite({
+        to: employee.email,
+        employeeName: employee.displayName,
+        tenantName: tenant?.name ?? 'Barbearia',
+        onboardingToken,
+      });
+    }
 
     return employee;
   }

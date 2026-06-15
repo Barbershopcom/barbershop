@@ -33,7 +33,7 @@ export default function LoginScreen() {
       setError(result.error ?? 'Erro ao entrar.');
       return;
     }
-    router.replace('/meus-agendamentos');
+    router.replace('/(public)/home');
   }
 
   return (

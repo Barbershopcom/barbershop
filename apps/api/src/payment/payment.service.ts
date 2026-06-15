@@ -222,9 +222,11 @@ export class PaymentService {
       `Pagamento ${payment.status} appt=${appt.id} método=${args.method} total=${breakdown.amountCents}c`,
     );
 
-    // Agenda expiração + avisa o barbeiro (best-effort — ADR-017 §2/§5).
+    // Agenda expiração + avisa cliente (pagamento recebido) e barbeiro
+    // (nova reserva). Best-effort — ADR-017 §2/§5.
     if (paid) {
       await this.scheduleExpiration(appt.id, confirmDeadline);
+      void this.notifier.notifyPaymentReceived(appt.id);
       void this.notifier.notifyNewPending(appt.id);
     }
 
@@ -305,6 +307,7 @@ export class PaymentService {
 
     if (wasAwaiting) {
       await this.scheduleExpiration(appointmentId, confirmDeadline);
+      void this.notifier.notifyPaymentReceived(appointmentId);
       void this.notifier.notifyNewPending(appointmentId);
     }
     PaymentService.logger.log(`markPaid via webhook appt=${appointmentId}`);

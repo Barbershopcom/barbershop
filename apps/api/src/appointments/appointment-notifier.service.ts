@@ -1,9 +1,11 @@
 import { forwardRef, Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { EmailService } from '../email/email.service';
 import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
+import { encodeCancelToken } from '../slots/cancel-token';
 import {
   AppointmentStatusService,
   type AppointmentTransitionEvent,
@@ -31,6 +33,7 @@ export class AppointmentNotifier implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
     private readonly push: PushService,
+    private readonly config: ConfigService,
     // forwardRef: ciclo de import notifier→status→payment→notifier (ADR-017).
     // Sem isso o metadata de tipo vem undefined dependendo da ordem de load.
     @Inject(forwardRef(() => AppointmentStatusService))
@@ -57,6 +60,28 @@ export class AppointmentNotifier implements OnModuleInit {
       // rejected | expired — mesma mensagem pro cliente (não foi confirmado)
       await this.notifyClientNotConfirmed(ctx, event);
     }
+  }
+
+  /**
+   * Avisa o CLIENTE que o pagamento foi recebido e o agendamento está
+   * aguardando a confirmação do barbeiro (ADR-016 §3). É o email correto
+   * pós-pagamento — o "agendamento confirmado" só sai quando o barbeiro
+   * aceita (onTransition 'confirmed').
+   */
+  async notifyPaymentReceived(appointmentId: string): Promise<void> {
+    const ctx = await this.loadContext(appointmentId);
+    if (!ctx) return;
+    if (ctx.customerEmail) {
+      void this.email.sendPaymentReceived({
+        to: ctx.customerEmail,
+        vars: { ...this.emailVars(ctx), cancelUrl: this.buildCancelUrl(ctx) },
+      });
+    }
+    await this.pushToCustomer(ctx, {
+      title: 'Pagamento recebido ✅',
+      body: `Recebemos seu pagamento. ${ctx.tenantName} vai confirmar seu horário em breve.`,
+      kind: 'payment_received',
+    });
   }
 
   /** Avisa o barbeiro que tem uma nova reserva pra confirmar (novo pending). */
@@ -123,6 +148,18 @@ export class AppointmentNotifier implements OnModuleInit {
     });
   }
 
+  /** Link de cancelamento assinado (mesmo esquema do booking/reminder). */
+  private buildCancelUrl(ctx: ApptContext): string | undefined {
+    const secret = this.config.get<string>('APPOINTMENT_CANCEL_SECRET');
+    if (!secret) return undefined;
+    const webUrl = this.config.get<string>('PUBLIC_WEB_URL') ?? 'http://localhost:3000';
+    const token = encodeCancelToken(
+      { apptId: ctx.id, exp: Math.floor(ctx.startAt.getTime() / 1000) },
+      secret,
+    );
+    return `${webUrl}/cancel/${token}`;
+  }
+
   private emailVars(ctx: ApptContext) {
     return {
       tenantName: ctx.tenantName,
@@ -181,6 +218,7 @@ export class AppointmentNotifier implements OnModuleInit {
     const tz = tenant.timezone;
     return {
       id: appt.id,
+      startAt: appt.startAt,
       tenantName: tenant.name,
       tenantPhone: tenant.phoneE164,
       tenantAddress: tenant.addressLine,
@@ -231,6 +269,7 @@ export class AppointmentNotifier implements OnModuleInit {
 
 interface ApptContext {
   id: string;
+  startAt: Date;
   tenantName: string;
   tenantPhone: string | null;
   tenantAddress: string | null;

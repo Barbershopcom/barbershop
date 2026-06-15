@@ -7,6 +7,7 @@ import {
   bookingConfirmationTemplate,
   bookingReminderTemplate,
   bookingRescheduledTemplate,
+  paymentReceivedTemplate,
   type BookingTemplateVars,
   type RescheduleTemplateVars,
 } from './templates';
@@ -52,6 +53,18 @@ export class EmailService {
     return this.send({
       to: args.to,
       subject: `Agendamento confirmado — ${args.vars.tenantName}`,
+      html,
+    });
+  }
+
+  async sendPaymentReceived(args: {
+    to: string;
+    vars: BookingTemplateVars;
+  }): Promise<{ ok: boolean; error?: string }> {
+    const html = paymentReceivedTemplate(args.vars);
+    return this.send({
+      to: args.to,
+      subject: `Pagamento recebido — ${args.vars.tenantName}`,
       html,
     });
   }

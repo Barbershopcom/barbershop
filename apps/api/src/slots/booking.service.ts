@@ -268,23 +268,11 @@ export class BookingService {
       );
     }
 
-    // 6. Email de confirmação (best-effort, não trava response).
-    //    Se cliente não informou email, pula. Se Resend falhar, log e segue.
-    if (body.customerEmail) {
-      void this.sendConfirmationEmail({
-        to: body.customerEmail,
-        appointmentId: created.id,
-        startAt: startAtUtc,
-        endAt: endAtUtc,
-        customerName: body.customerName.trim(),
-        tenant,
-        serviceName: service.name,
-        serviceDurationMin: service.durationMin,
-        // Preço já com desconto do cupom, se houver (ADR-021 §4).
-        servicePriceCents: priceCents,
-        barberName: barberWithCap.displayName,
-      });
-    }
+    // 6. Booking público nasce 'awaiting_payment' (ADR-016 §3): NÃO manda
+    //    email de confirmação aqui — isso era prematuro (avisava "confirmado"
+    //    antes do pagamento). O email pós-pagamento ("pagamento recebido /
+    //    aguardando confirmação") sai no PaymentService.markPaid/pay, e o
+    //    "agendamento confirmado" quando o barbeiro aceita (AppointmentNotifier).
 
     // 7. Agenda reminder pra 24h antes (ADR-007 §3).
     //    Skip se appt for em menos de 24h (reminder não faz sentido).

@@ -85,6 +85,29 @@ export function bookingConfirmationTemplate(v: BookingTemplateVars): string {
   });
 }
 
+export function paymentReceivedTemplate(v: BookingTemplateVars): string {
+  return vintageEmailShell({
+    tenantName: v.tenantName,
+    preheader: `Recebemos seu pagamento. ${v.tenantName} vai confirmar seu horário em breve.`,
+    hero: heroBlock({
+      headline: `Pagamento recebido, ${escapeHtml(v.customerName)}! <span style="color:${COLOR_RED};">&#9986;</span>`,
+      subtitle:
+        'Tudo certo com o pagamento. Agora é só aguardar a barbearia confirmar o seu horário — avisamos por aqui assim que isso acontecer.',
+    }),
+    card: appointmentCard({
+      badge: 'AGUARDANDO CONFIRMAÇÃO',
+      badgeColor: COLOR_GOLD,
+      rows: standardCardRows(v),
+    }),
+    contact: contactBlock(v),
+    cta: v.cancelUrl ? cancelButton(v.cancelUrl) : undefined,
+    policies: policiesBlock({
+      primary: 'Você receberá a confirmação assim que a barbearia aceitar o horário.',
+      accent: 'Se precisar, cancele com até 2h de antecedência.',
+    }),
+  });
+}
+
 export function bookingReminderTemplate(v: BookingTemplateVars): string {
   return vintageEmailShell({
     tenantName: v.tenantName,

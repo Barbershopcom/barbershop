@@ -24,6 +24,8 @@ interface SessionContextValue {
   state: AuthState;
   signIn: (email: string, password: string) => Promise<SignInResult>;
   signUp: (email: string, password: string) => Promise<SignInResult>;
+  signInWithGoogle: () => Promise<SignInResult>;
+  signInWithApple: () => Promise<SignInResult>;
   signOut: () => Promise<void>;
 }
 
@@ -102,6 +104,44 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function signInWithGoogle(): Promise<SignInResult> {
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+        },
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Erro ao conectar com Google',
+      };
+    }
+  }
+
+  async function signInWithApple(): Promise<SignInResult> {
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+        },
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Erro ao conectar com Apple',
+      };
+    }
+  }
+
   async function signOut(): Promise<void> {
     try {
       const supabase = getSupabase();
@@ -113,7 +153,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SessionContext.Provider value={{ state, signIn, signUp, signOut }}>
+    <SessionContext.Provider value={{ state, signIn, signUp, signInWithGoogle, signInWithApple, signOut }}>
       {children}
     </SessionContext.Provider>
   );

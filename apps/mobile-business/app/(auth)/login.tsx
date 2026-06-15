@@ -16,7 +16,7 @@ import { Seal } from '@/components/primitives/seal';
 import { useSession } from '@/lib/session';
 
 export default function LoginScreen() {
-  const { state, signIn } = useSession();
+  const { state, signIn, signInWithGoogle, signInWithApple } = useSession();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -141,13 +141,21 @@ export default function LoginScreen() {
           <View className="flex-1 border-b border-border" />
         </View>
 
-        {/* Google (desabilitado) */}
-        <Pressable disabled className="mb-3 flex-row items-center justify-center gap-2 rounded-md border border-border py-3 opacity-50">
+        {/* Google OAuth */}
+        <Pressable
+          onPress={() => void signInWithGoogle()}
+          disabled={submitting}
+          className="mb-3 flex-row items-center justify-center gap-2 rounded-md border border-border py-3 active:opacity-70 disabled:opacity-60"
+        >
           <Text className="text-base font-semibold text-foreground">🔵 Continuar com Google</Text>
         </Pressable>
 
-        {/* Apple (desabilitado) */}
-        <Pressable disabled className="mb-6 flex-row items-center justify-center gap-2 rounded-md border border-border bg-black py-3 opacity-50">
+        {/* Apple OAuth (TODO: requer setup adicional em produção) */}
+        <Pressable
+          onPress={() => void signInWithApple()}
+          disabled={submitting}
+          className="mb-6 flex-row items-center justify-center gap-2 rounded-md border border-border bg-black py-3 active:opacity-70 disabled:opacity-60"
+        >
           <Text className="text-base font-semibold text-white">🍎 Continuar com Apple</Text>
         </Pressable>
 

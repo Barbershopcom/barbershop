@@ -86,13 +86,20 @@ export default function BarbershopDetailScreen() {
 
   const handleContinue = () => {
     if (selected.size === 0 || state.kind !== 'ready') return;
-    const { tenant } = state;
+    const { tenant, services } = state;
     booking.setBarbershop(tenant.id, tenant.name, tenant.slug);
+    // Armazenar todos os serviços disponíveis no contexto
+    booking.setAvailableServices(
+      services.map((s) => ({
+        id: s.id,
+        name: s.name,
+        basePriceCents: s.basePriceCents,
+        durationMin: s.durationMin,
+      })),
+    );
+    // Selecionar os serviços escolhidos
     Array.from(selected).forEach((serviceId) => {
-      const service = state.services.find((s) => s.id === serviceId);
-      if (service) {
-        booking.toggleService(serviceId, service.basePriceCents);
-      }
+      booking.toggleService(serviceId);
     });
     router.push(`/(public)/agendamento/${encodeURIComponent(tenant.slug)}`);
   };

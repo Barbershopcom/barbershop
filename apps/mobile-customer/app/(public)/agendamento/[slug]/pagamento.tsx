@@ -98,15 +98,26 @@ export default function PagamentoScreen() {
         {/* Resumo da comanda */}
         <View className="mb-6 rounded-lg bg-card p-4">
           <Text className="mb-3 text-xs font-semibold uppercase text-foreground-muted">
-            Comanda nº 0427
+            Comanda nº {booking.state.appointmentId?.slice(0, 4).toUpperCase() ?? '—'}
           </Text>
 
           <View className="mb-3 gap-2 border-b border-border pb-3">
-            {/* TODO: fetch service details with prices from booking context or API */}
-            {/* For now, services are in booking.state.selectedServiceIds but we need prices */}
-            <Text className="text-xs text-foreground-muted">
-              ({booking.state.selectedServiceIds.size} serviço{booking.state.selectedServiceIds.size !== 1 ? 's' : ''})
-            </Text>
+            {Array.from(booking.state.selectedServiceIds).map((serviceId) => {
+              const service = booking.state.services.get(serviceId);
+              return (
+                <View key={serviceId} className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text className="text-sm text-foreground">{service?.name ?? 'Serviço'}</Text>
+                    <Text className="text-xs text-foreground-muted">
+                      {service?.durationMin ? `${service.durationMin} min` : ''}
+                    </Text>
+                  </View>
+                  <Text className="text-sm font-semibold text-foreground">
+                    {formatPriceBRL(service?.basePriceCents ?? 0)}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
 
           {/* Barbeiro */}

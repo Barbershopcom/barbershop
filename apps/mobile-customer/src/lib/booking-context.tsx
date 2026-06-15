@@ -1,10 +1,18 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
+export interface ServiceDetail {
+  id: string;
+  name: string;
+  basePriceCents: number;
+  durationMin: number;
+}
+
 export interface BookingState {
   barbershopId: string | null;
   barbershopName: string | null;
   barbershopSlug: string | null;
   selectedServiceIds: Set<string>;
+  services: Map<string, ServiceDetail>; // serviceId -> { name, price, duration }
   selectedBarber: { id: string; displayName: string; ratingAvg?: number } | null;
   selectedDate: Date | null;
   selectedTime: string | null;
@@ -15,7 +23,8 @@ export interface BookingState {
 interface BookingContextValue {
   state: BookingState;
   setBarbershop: (id: string, name: string, slug: string) => void;
-  toggleService: (serviceId: string, price: number) => void;
+  setAvailableServices: (services: ServiceDetail[]) => void;
+  toggleService: (serviceId: string) => void;
   setBarber: (id: string, name: string, ratingAvg?: number) => void;
   setDateTime: (date: Date, time: string) => void;
   setAppointmentId: (id: string) => void;
@@ -37,6 +46,7 @@ const initialState: BookingState = {
   barbershopName: null,
   barbershopSlug: null,
   selectedServiceIds: new Set(),
+  services: new Map(),
   selectedBarber: null,
   selectedDate: null,
   selectedTime: null,
@@ -56,7 +66,15 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const toggleService = (serviceId: string, price: number) => {
+  const setAvailableServices = (services: ServiceDetail[]) => {
+    setState((prev) => {
+      const serviceMap = new Map<string, ServiceDetail>();
+      services.forEach((s) => serviceMap.set(s.id, s));
+      return { ...prev, services: serviceMap };
+    });
+  };
+
+  const toggleService = (serviceId: string) => {
     setState((prev) => {
       const newServices = new Set(prev.selectedServiceIds);
       if (newServices.has(serviceId)) {
@@ -64,17 +82,19 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       } else {
         newServices.add(serviceId);
       }
+      // Calcula totalPrice baseado nos preços reais dos serviços
+      const newTotal = Array.from(newServices).reduce((acc, id) => {
+        const service = prev.services.get(id);
+        return acc + (service?.basePriceCents || 0);
+      }, 0);
       // Quando mudar serviços, reseta barbeiro, data, hora
       return {
         ...prev,
         selectedServiceIds: newServices,
+        totalPrice: newTotal,
         selectedBarber: null,
         selectedDate: null,
         selectedTime: null,
-        totalPrice: Array.from(newServices).reduce((acc, id) => {
-          // Nota: isso é simplificado; em produção você buscaria o preço real do serviço
-          return acc + price;
-        }, 0),
       };
     });
   };
@@ -110,7 +130,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
 
   return (
     <BookingContext.Provider
-      value={{ state, setBarbershop, toggleService, setBarber, setDateTime, setAppointmentId, reset }}
+      value={{ state, setBarbershop, setAvailableServices, toggleService, setBarber, setDateTime, setAppointmentId, reset }}
     >
       {children}
     </BookingContext.Provider>

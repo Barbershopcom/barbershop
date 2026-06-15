@@ -123,4 +123,38 @@ export class PublicTenantsController {
 
     return employees;
   }
+
+  @Get('promotions')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Header('Cache-Control', 'public, max-age=60')
+  @ApiParam({ name: 'slug', description: 'Slug público da barbearia.' })
+  @ApiOkResponse({ description: 'Promoções ativas da semana.' })
+  async listPromotions(
+    @Param('slug') slug: string,
+  ): Promise<Array<{ id: string; name: string; description: string | null; discountType: string; discountValue: number }>> {
+    const tenant = await this.repo.resolveTenant(slug);
+    const now = new Date();
+
+    const promotions = await this.prisma.promotion.findMany({
+      where: {
+        tenantId: tenant.id,
+        isActive: true,
+        // Válido se validFrom é null ou passado E validUntil é null ou futuro
+        AND: [
+          { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+          { OR: [{ validUntil: null }, { validUntil: { gte: now } }] },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        discountType: true,
+        discountValue: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return promotions;
+  }
 }

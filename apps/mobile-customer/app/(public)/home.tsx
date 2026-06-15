@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/session';
 import { api, type ApiError } from '@/lib/api';
 import { useQuery } from '@/lib/use-query';
+import { formatPriceBRL } from '@/lib/format';
 
 interface PublicTenantDto {
   id: string;
@@ -22,6 +23,14 @@ interface PublicTenantDto {
   ratingAvg: number | null;
   ratingCount: number;
   instagramHandle?: string;
+}
+
+interface PromotionDto {
+  id: string;
+  name: string;
+  description: string | null;
+  discountType: string;
+  discountValue: number;
 }
 
 export default function HomeScreen() {
@@ -81,7 +90,7 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      {/* Promoções */}
+      {/* Promoções — atualmente placeholder, serão carregadas por barbershop */}
       <View className="px-6">
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="font-display text-lg font-bold uppercase text-foreground">
@@ -93,7 +102,6 @@ export default function HomeScreen() {
         </View>
         <View className="mb-8 rounded-lg bg-card p-4">
           <Text className="text-center text-sm text-foreground-muted">
-            {/* TODO: buscar promoções reais via API GET /public/promotions */}
             Nenhuma promoção disponível no momento
           </Text>
         </View>

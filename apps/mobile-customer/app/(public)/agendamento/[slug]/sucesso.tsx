@@ -77,15 +77,27 @@ export default function SucessoScreen() {
           </View>
 
           <View className="border-t border-border pt-4">
-            {/* TODO: buscar nomes e preços reais dos serviços via API */}
-            <Text className="text-xs text-foreground-muted">
-              ({booking.state.selectedServiceIds.size} serviço{booking.state.selectedServiceIds.size !== 1 ? 's' : ''})
-            </Text>
-            <View className="mb-3 flex-row items-center justify-between pt-2">
-              <Text className="text-sm text-foreground">Total</Text>
-              <Text className="font-semibold text-foreground">
-                {formatPriceBRL(booking.state.totalPrice || 0)}
-              </Text>
+            <View className="gap-2">
+              {Array.from(booking.state.selectedServiceIds).map((serviceId) => {
+                const service = booking.state.services.get(serviceId);
+                return (
+                  <View key={serviceId} className="flex-row items-center justify-between">
+                    <View className="flex-1">
+                      <Text className="text-sm text-foreground">{service?.name ?? 'Serviço'}</Text>
+                      <Text className="text-xs text-foreground-muted">
+                        {service?.durationMin ? `${service.durationMin} min` : ''}
+                      </Text>
+                    </View>
+                    <Text className="text-sm font-semibold text-foreground">
+                      {formatPriceBRL(service?.basePriceCents ?? 0)}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            <View className="mb-3 flex-row items-center justify-between border-t border-border pt-3 mt-3">
+              <Text className="text-sm font-semibold text-foreground">Total</Text>
+              <Text className="font-bold text-navy">{formatPriceBRL(booking.state.totalPrice || 0)}</Text>
             </View>
           </View>
 

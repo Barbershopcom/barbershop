@@ -5,18 +5,20 @@ export interface BookingState {
   barbershopName: string | null;
   barbershopSlug: string | null;
   selectedServiceIds: Set<string>;
-  selectedBarber: { id: string; displayName: string } | null;
+  selectedBarber: { id: string; displayName: string; ratingAvg?: number } | null;
   selectedDate: Date | null;
   selectedTime: string | null;
   totalPrice: number;
+  appointmentId: string | null;
 }
 
 interface BookingContextValue {
   state: BookingState;
   setBarbershop: (id: string, name: string, slug: string) => void;
   toggleService: (serviceId: string, price: number) => void;
-  setBarber: (id: string, name: string) => void;
+  setBarber: (id: string, name: string, ratingAvg?: number) => void;
   setDateTime: (date: Date, time: string) => void;
+  setAppointmentId: (id: string) => void;
   reset: () => void;
 }
 
@@ -39,6 +41,7 @@ const initialState: BookingState = {
   selectedDate: null,
   selectedTime: null,
   totalPrice: 0,
+  appointmentId: null,
 };
 
 export function BookingProvider({ children }: { children: ReactNode }) {
@@ -76,10 +79,10 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const setBarber = (id: string, name: string) => {
+  const setBarber = (id: string, name: string, ratingAvg?: number) => {
     setState((prev) => ({
       ...prev,
-      selectedBarber: { id, displayName: name },
+      selectedBarber: { id, displayName: name, ratingAvg },
       // Reseta data/hora ao mudar barbeiro
       selectedDate: null,
       selectedTime: null,
@@ -94,13 +97,20 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const setAppointmentId = (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      appointmentId: id,
+    }));
+  };
+
   const reset = () => {
     setState(initialState);
   };
 
   return (
     <BookingContext.Provider
-      value={{ state, setBarbershop, toggleService, setBarber, setDateTime, reset }}
+      value={{ state, setBarbershop, toggleService, setBarber, setDateTime, setAppointmentId, reset }}
     >
       {children}
     </BookingContext.Provider>

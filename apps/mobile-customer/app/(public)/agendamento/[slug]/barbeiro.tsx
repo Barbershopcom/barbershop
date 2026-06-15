@@ -54,8 +54,8 @@ export default function AgendamentoBarbeiroScreen() {
     })();
   }, [slug, Array.from(booking.state.selectedServiceIds).sort().join(',')]);
 
-  const handleSelectBarber = (id: string, name: string) => {
-    booking.setBarber(id, name);
+  const handleSelectBarber = (id: string, name: string, ratingAvg?: number) => {
+    booking.setBarber(id, name, ratingAvg);
     router.push(
       `/(public)/agendamento/${encodeURIComponent(slug)}/data-hora`,
     );
@@ -127,7 +127,7 @@ export default function AgendamentoBarbeiroScreen() {
             {employees.map((employee) => (
               <Pressable
                 key={employee.id}
-                onPress={() => handleSelectBarber(employee.id, employee.displayName)}
+                onPress={() => handleSelectBarber(employee.id, employee.displayName, employee.ratingAvg ?? undefined)}
                 className="flex-row items-center gap-3 rounded-lg border border-border bg-card p-4 active:bg-blue-50"
               >
                 <View className="h-12 w-12 items-center justify-center rounded-full bg-navy">

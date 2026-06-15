@@ -36,13 +36,15 @@ export default function PagamentoScreen() {
       };
 
       const result = await api.post<{ appointmentId: string; paymentId?: string }>(
-        `/appointments`,
+        `/public/tenants/${encodeURIComponent(slug)}/appointments`,
         payload,
       );
 
+      // Armazenar appointmentId no booking context para segurança (pix.tsx o usa)
+      booking.setAppointmentId(result.appointmentId);
+
       // Se for Pix, vai pra tela de status
       if (paymentMethod === 'pix') {
-        // appointmentId fica no booking context (seguro)
         router.push(`/(public)/agendamento/${encodeURIComponent(slug)}/pix`);
       } else {
         // Se for cartão ou outro, vai pro sucesso
@@ -55,8 +57,10 @@ export default function PagamentoScreen() {
     }
   };
 
-  const subtotal = 8000; // Dummy: seria sum dos preços dos serviços
-  const discount = 400; // Dummy: desconto 1º corte
+  // TODO: buscar preços reais dos serviços selecionados via API
+  // Por agora, usar preços do booking context (será implementado em: BookingContext.toggleService)
+  const subtotal = booking.state.totalPrice || 0;
+  const discount = 0; // TODO: implementar validação de cupom
   const taxPix = 0;
   const total = subtotal - discount + taxPix;
 
@@ -98,40 +102,38 @@ export default function PagamentoScreen() {
           </Text>
 
           <View className="mb-3 gap-2 border-b border-border pb-3">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-foreground">Corte clássico</Text>
-              <Text className="text-sm font-semibold text-foreground">
-                {formatPriceBRL(5000)}
-              </Text>
-            </View>
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-foreground-muted">30 min • tesoura</Text>
-            </View>
-
-            <View className="mt-2 flex-row items-center justify-between">
-              <Text className="text-sm text-foreground">Barba</Text>
-              <Text className="text-sm font-semibold text-foreground">
-                {formatPriceBRL(3000)}
-              </Text>
-            </View>
-            <Text className="text-sm text-foreground-muted">20 min • fiolha quente</Text>
+            {/* TODO: fetch service details with prices from booking context or API */}
+            {/* For now, services are in booking.state.selectedServiceIds but we need prices */}
+            <Text className="text-xs text-foreground-muted">
+              ({booking.state.selectedServiceIds.size} serviço{booking.state.selectedServiceIds.size !== 1 ? 's' : ''})
+            </Text>
           </View>
 
           {/* Barbeiro */}
-          <View className="mb-3 flex-row items-center gap-2 border-b border-border pb-3">
-            <View className="h-8 w-8 items-center justify-center rounded-full bg-navy">
-              <Text className="text-xs font-bold text-white">JJ</Text>
+          {booking.state.selectedBarber && (
+            <View className="mb-3 flex-row items-center gap-2 border-b border-border pb-3">
+              <View className="h-8 w-8 items-center justify-center rounded-full bg-navy">
+                <Text className="text-xs font-bold text-white">
+                  {booking.state.selectedBarber.displayName
+                    .split(' ')
+                    .map((w) => w[0])
+                    .join('')
+                    .slice(0, 2)}
+                </Text>
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-foreground">
+                  {booking.state.selectedBarber.displayName}
+                </Text>
+                <Text className="text-xs text-foreground-muted">seu barbeiro</Text>
+              </View>
+              <View className="flex-row items-center gap-1">
+                <Text className="text-xs text-gold">
+                  ⭐ {booking.state.selectedBarber.ratingAvg?.toFixed(1) ?? '—'}
+                </Text>
+              </View>
             </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-foreground">
-                {booking.state.selectedBarber?.displayName || 'Barbeiro'}
-              </Text>
-              <Text className="text-xs text-foreground-muted">seu barbeiro</Text>
-            </View>
-            <View className="flex-row items-center gap-1">
-              <Text className="text-xs text-gold">⭐ 4.8</Text>
-            </View>
-          </View>
+          )}
 
           {/* Totalizador */}
           <View className="gap-2">

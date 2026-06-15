@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fluxo de Agendamento · NAVALHA</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Lora:ital@1&family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --navy:#1a365d; --vermelho:#bf212f; --dourado:#c5a059; --papel:#fffcf5; --tinta:#1c1917; --muted:#8a8073; --line:rgba(28,25,23,.12); }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Inter',sans-serif; color:var(--tinta); background:#efe8da; padding:40px 28px 80px; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  .top { display:flex; align-items:center; gap:20px; }
+  .top img { width:84px; height:84px; }
+  h1 { font-family:'Bebas Neue',sans-serif; font-size:58px; letter-spacing:2px; margin:0; line-height:.9; }
+  .tag { font-family:'Lora',serif; font-style:italic; font-size:17px; color:var(--muted); margin-top:4px; }
+  .stripe { height:7px; border-radius:99px; margin:22px 0 40px; background:repeating-linear-gradient(-45deg,var(--vermelho) 0 13px,var(--papel) 13px 26px,var(--navy) 26px 39px,var(--papel) 39px 52px); }
+  h2 { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.6px; margin:46px 0 18px; padding-bottom:10px; border-bottom:1px solid var(--line); }
+  .shots { display:grid; grid-template-columns:repeat(4,1fr); gap:22px; }
+  .shot { background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:0 8px 22px rgba(28,25,23,.08); }
+  .shot img { width:100%; display:block; background:#efe8da; }
+  .shot .cap { padding:10px 13px; font-size:12.5px; font-weight:700; }
+  .shot .cap span { display:block; font-weight:500; color:var(--muted); font-size:11px; }
+  .icons { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:12px; }
+  .ico { background:#fffefb; border:1px solid var(--line); border-radius:12px; padding:14px 8px; text-align:center; }
+  .ico img { width:26px; height:26px; }
+  .ico span { display:block; margin-top:9px; font-size:10.5px; color:var(--muted); word-break:break-word; }
+  .imgs { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; align-items:start; }
+  .imgcard { background:#fffefb; border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center; }
+  .imgcard img { max-width:100%; }
+  .imgcard span { display:block; margin-top:10px; font-size:11px; color:var(--muted); }
+  .logos { display:flex; gap:26px; align-items:center; flex-wrap:wrap; background:#fffefb; border:1px solid var(--line); border-radius:14px; padding:24px; }
+  @media(max-width:820px){ .shots,.imgs{grid-template-columns:repeat(2,1fr);} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <img src="logo/navalha-selo.svg" alt="NAVALHA" />
+    <div>
+      <h1>FLUXO DE AGENDAMENTO</h1>
+      <div class="tag">App do cliente — todas as telas, ícones, imagens e logo</div>
+    </div>
+  </div>
+  <div class="stripe"></div>
+
+  <h2>Telas do funil</h2>
+  <div class="shots" id="shots"></div>
+
+  <h2>Logo</h2>
+  <div class="logos">
+    <img src="logo/navalha-selo.svg" width="96" height="96" alt="selo" />
+    <img src="logo/barber-pole.svg" height="96" alt="barber pole" />
+    <img src="logo/navalha-lockup.svg" height="86" alt="lockup" />
+  </div>
+
+  <h2>Imagens</h2>
+  <div class="imgs">
+    <div class="imgcard"><img src="images/promo-card.svg" alt="promo" /><span>promo-card.svg</span></div>
+    <div class="imgcard"><img src="images/banner-barbearia.svg" alt="banner" /><span>banner-barbearia.svg</span></div>
+    <div class="imgcard"><img src="images/avatar-monograma.svg" width="100" alt="avatar" /><span>avatar-monograma.svg</span></div>
+    <div class="imgcard"><img src="images/padrao-listras-barber.svg" alt="listras" /><span>padrao-listras-barber.svg</span></div>
+  </div>
+
+  <h2>Ícones</h2>
+  <div class="icons" id="icons"></div>
+</div>
+
+<script>
+  const SHOTS = [
+    ['01-login','01 · Login'],['02-home','02 · Home'],['03-busca','03 · Busca'],['04-barbearia','04 · Barbearia'],
+    ['05-agendar-servicos','05 · Serviços'],['06-agendar-barbeiro','06 · Barbeiro'],['07-agendar-dia-hora','07 · Dia e hora'],
+    ['08-pagamento','08 · Pagamento'],['09-pix','09 · Pix'],['10-sucesso','10 · Sucesso'],['11-historico','11 · Histórico'],['12-detalhe','12 · Detalhe'],
+  ];
+  document.getElementById('shots').innerHTML = SHOTS.map(([f,t])=>{
+    const [n,...r]=t.split(' · ');
+    return `<div class="shot"><img src="screenshots/${f}.png" alt="${t}"/><div class="cap">${n}<span>${r.join(' · ')}</span></div></div>`;
+  }).join('');
+  const ICONS = ['voltar','chevron-direita','chevron-baixo','seta-direita','busca','sino','inicio','calendario','relogio','tesoura','usuario','carteira','mais','check','fechar','pin-mapa','cartao','olho','pix','compartilhar','mais-opcoes','editar','lixeira','cadeado','camera','estrela','whatsapp','check-circulo'];
+  document.getElementById('icons').innerHTML = ICONS.map(n=>`<div class="ico"><img src="icons/${n}.svg" alt="${n}"/><span>${n}</span></div>`).join('');
+</script>
+</body>
+</html>

@@ -31,8 +31,8 @@ export default function PixScreen() {
   const [copied, setCopied] = useState(false);
 
   // Validação: appointmentId deve vir do booking context (pós-checkout),
-  // não da URL. Isso previne IDOR.
-  const appointmentId = booking.state.barbershopId;
+  // não da URL. Isso previne IDOR vulnerability. Servidor valida ownership.
+  const appointmentId = booking.state.appointmentId;
 
   // Polling de status
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function PixScreen() {
       try {
         // Usar appointmentId no path: servidor valida ownership do user autenticado
         const status = await api.get<PaymentStatusDto>(
-          `/appointments/${appointmentId}/payment/status`,
+          `/public/appointments/${appointmentId}/payment`,
         );
         setPaymentStatus(status);
         setLoading(false);
@@ -108,10 +108,10 @@ export default function PixScreen() {
       <ScrollView contentContainerClassName="items-center px-6 py-8 pb-24">
         {/* Valor */}
         <Text className="font-display text-2xl font-bold text-navy">
-          {formatPriceBRL(7600)}
+          {formatPriceBRL(booking.state.totalPrice || 0)}
         </Text>
         <Text className="mt-1 text-xs text-foreground-muted">
-          BARBEARIA DO JAJÁ • COMANDA 0427
+          {booking.state.barbershopName?.toUpperCase() || 'BARBEARIA'} • COMANDA #{appointmentId?.slice(0, 4).toUpperCase()}
         </Text>
 
         {/* Expiração */}

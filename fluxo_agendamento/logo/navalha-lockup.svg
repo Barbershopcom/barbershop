@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="200" viewBox="0 0 420 200">
+  <defs>
+    <pattern id="pole" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="20" height="20" fill="#fffcf5"></rect>
+      <rect width="20" height="5" fill="#bf212f"></rect>
+      <rect y="10" width="20" height="5" fill="#1a365d"></rect>
+    </pattern>
+    
+  </defs>
+  <g transform="translate(40,46)">
+    <circle cx="54" cy="54" r="52" fill="#1a365d"></circle>
+    <circle cx="54" cy="54" r="46" fill="none" stroke="#c5a059" stroke-width="2.2" opacity="0.9"></circle>
+    <circle cx="54" cy="54" r="41" fill="none" stroke="#c5a059" stroke-width="1.1" stroke-dasharray="2 3.5" opacity="0.6"></circle>
+    <rect x="44" y="30" width="20" height="48" rx="10" fill="url(#pole)" stroke="#c5a059" stroke-width="1.8"></rect>
+  </g>
+  <text x="172" y="96" font-family="&#39;Bebas Neue&#39;, sans-serif" font-size="76" letter-spacing="3" fill="#1c1917">NAVALHA</text>
+  <text x="174" y="128" font-family="&#39;Lora&#39;, serif" font-style="italic" font-size="20" fill="#8a8073">seu corte, na hora certa</text>
+</svg>

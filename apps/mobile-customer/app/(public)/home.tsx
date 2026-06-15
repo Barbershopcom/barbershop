@@ -87,24 +87,16 @@ export default function HomeScreen() {
           <Text className="font-display text-lg font-bold uppercase text-foreground">
             Promoções da semana
           </Text>
-          <Pressable>
+          <Pressable onPress={() => router.push('/(public)/promocoes')}>
             <Text className="text-xs font-semibold text-navy">Ver tudo →</Text>
           </Pressable>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="mb-8"
-          contentContainerClassName="gap-3"
-        >
-          {/* Promo card sample */}
-          <View className="w-48 rounded-lg bg-navy px-4 py-6">
-            <Text className="mb-2 text-xs font-bold uppercase text-gold">ATÉ DOMINGO</Text>
-            <Text className="font-display text-3xl font-bold text-white">30% OFF</Text>
-            <Text className="mt-1 font-serif text-sm italic text-white">Corte + Barba</Text>
-            <Text className="mt-2 text-xs text-white/80">Barbearia do Jajá</Text>
-          </View>
-        </ScrollView>
+        <View className="mb-8 rounded-lg bg-card p-4">
+          <Text className="text-center text-sm text-foreground-muted">
+            {/* TODO: buscar promoções reais via API GET /public/promotions */}
+            Nenhuma promoção disponível no momento
+          </Text>
+        </View>
       </View>
 
       {/* Seus agendamentos */}
@@ -114,7 +106,7 @@ export default function HomeScreen() {
             <Text className="font-display text-lg font-bold uppercase text-foreground">
               Seus agendamentos
             </Text>
-            <Pressable onPress={() => router.push('/(app)/meus-agendamentos')}>
+            <Pressable onPress={() => router.push('/(main)/agenda')}>
               <Text className="text-xs font-semibold text-navy">Ver todos →</Text>
             </Pressable>
           </View>

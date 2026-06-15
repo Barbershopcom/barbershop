@@ -21,7 +21,8 @@ export default function SucessoScreen() {
   };
 
   const handleViewAppointments = () => {
-    router.replace('/(app)/meus-agendamentos');
+    booking.reset();
+    router.replace('/(main)/agenda');
   };
 
   return (
@@ -52,7 +53,8 @@ export default function SucessoScreen() {
             <Text className="font-display text-lg font-bold uppercase text-navy">
               {booking.state.barbershopName}
             </Text>
-            <Text className="text-xs text-foreground-muted">Comanda Nº 0427</Text>
+            {/* TODO: adicionar appointmentId ao booking.state após criar appointment */}
+            <Text className="text-xs text-foreground-muted">Comanda confirmada</Text>
           </View>
 
           <View className="border-t border-border pt-4">
@@ -75,17 +77,15 @@ export default function SucessoScreen() {
           </View>
 
           <View className="border-t border-border pt-4">
-            <View className="mb-3 flex-row items-center justify-between">
-              <Text className="text-sm text-foreground">Corte clássico</Text>
-              <Text className="font-semibold text-foreground">{formatPriceBRL(5000)}</Text>
-            </View>
-            <View className="mb-3 flex-row items-center justify-between">
-              <Text className="text-sm text-foreground">Barba</Text>
-              <Text className="font-semibold text-foreground">{formatPriceBRL(3000)}</Text>
-            </View>
-            <View className="mb-3 flex-row items-center justify-between">
-              <Text className="text-sm text-gold">Desconto • 1º corte</Text>
-              <Text className="font-semibold text-gold">− {formatPriceBRL(400)}</Text>
+            {/* TODO: buscar nomes e preços reais dos serviços via API */}
+            <Text className="text-xs text-foreground-muted">
+              ({booking.state.selectedServiceIds.size} serviço{booking.state.selectedServiceIds.size !== 1 ? 's' : ''})
+            </Text>
+            <View className="mb-3 flex-row items-center justify-between pt-2">
+              <Text className="text-sm text-foreground">Total</Text>
+              <Text className="font-semibold text-foreground">
+                {formatPriceBRL(booking.state.totalPrice || 0)}
+              </Text>
             </View>
           </View>
 

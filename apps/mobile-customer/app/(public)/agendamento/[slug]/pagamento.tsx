@@ -41,17 +41,12 @@ export default function PagamentoScreen() {
       );
 
       // Se for Pix, vai pra tela de status
-      if (paymentMethod === 'pix' && result.paymentId) {
-        router.push({
-          pathname: `/(public)/agendamento/${encodeURIComponent(slug)}/pix`,
-          params: { appointmentId: result.appointmentId, paymentId: result.paymentId },
-        });
+      if (paymentMethod === 'pix') {
+        // appointmentId fica no booking context (seguro)
+        router.push(`/(public)/agendamento/${encodeURIComponent(slug)}/pix`);
       } else {
         // Se for cartão ou outro, vai pro sucesso
-        router.push({
-          pathname: `/(public)/agendamento/${encodeURIComponent(slug)}/sucesso`,
-          params: { appointmentId: result.appointmentId },
-        });
+        router.push(`/(public)/agendamento/${encodeURIComponent(slug)}/sucesso`);
       }
     } catch (err) {
       console.error('Erro ao confirmar pagamento:', err);

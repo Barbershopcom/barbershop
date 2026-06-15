@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { api } from '@/lib/api';
+import { useBooking } from '@/lib/booking-context';
 import { formatPriceBRL } from '@/lib/format';
 
 interface PaymentStatusDto {
@@ -23,23 +24,28 @@ interface PaymentStatusDto {
 
 export default function PixScreen() {
   const router = useRouter();
-  const { appointmentId, paymentId } = useLocalSearchParams<{
-    appointmentId?: string;
-    paymentId?: string;
-  }>();
+  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const booking = useBooking();
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatusDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
+  // Validação: appointmentId deve vir do booking context (pós-checkout),
+  // não da URL. Isso previne IDOR.
+  const appointmentId = booking.state.barbershopId;
+
   // Polling de status
   useEffect(() => {
-    if (!paymentId) return;
+    if (!appointmentId || !slug) return;
 
     let pollInterval: NodeJS.Timeout;
 
     const pollPayment = async () => {
       try {
-        const status = await api.get<PaymentStatusDto>(`/payments/${paymentId}/status`);
+        // Usar appointmentId no path: servidor valida ownership do user autenticado
+        const status = await api.get<PaymentStatusDto>(
+          `/appointments/${appointmentId}/payment/status`,
+        );
         setPaymentStatus(status);
         setLoading(false);
 
@@ -48,8 +54,7 @@ export default function PixScreen() {
           clearInterval(pollInterval);
           setTimeout(() => {
             router.replace({
-              pathname: `/(public)/agendamento/:slug/sucesso`,
-              params: { appointmentId: appointmentId || '' },
+              pathname: `/(public)/agendamento/${encodeURIComponent(slug)}/sucesso`,
             });
           }, 1500);
         }
@@ -65,7 +70,7 @@ export default function PixScreen() {
     pollInterval = setInterval(pollPayment, 3000);
 
     return () => clearInterval(pollInterval);
-  }, [paymentId, appointmentId, router]);
+  }, [appointmentId, slug, router]);
 
   const handleCopyPixCode = async () => {
     if (paymentStatus?.copieAndPaste) {

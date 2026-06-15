@@ -15,25 +15,40 @@ import {
 import { Seal } from '@/components/primitives/seal';
 import { useSession } from '@/lib/session';
 
-export default function LoginScreen() {
+export default function SignupScreen() {
   const router = useRouter();
-  const { signIn } = useSession();
+  const { signUp } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit() {
     setError(null);
-    setLoading(true);
-    const result = await signIn(email, password);
-    setLoading(false);
-    if (!result.ok) {
-      setError(result.error ?? 'Erro ao entrar.');
+    if (!email.trim()) {
+      setError('Email é obrigatório.');
       return;
     }
-    router.replace('/meus-agendamentos');
+    if (password.length < 6) {
+      setError('Senha precisa ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem.');
+      return;
+    }
+
+    setLoading(true);
+    const result = await signUp(email, password);
+    setLoading(false);
+    if (!result.ok) {
+      setError(result.error ?? 'Erro ao criar conta.');
+      return;
+    }
+    router.replace('/(auth)/login');
   }
 
   return (
@@ -51,11 +66,11 @@ export default function LoginScreen() {
           <Text className="font-serif text-sm italic text-foreground-muted">seu corte, na hora certa</Text>
         </View>
 
-        {/* Seção de Login */}
+        {/* Seção de Signup */}
         <View className="mb-6">
-          <Text className="mb-1 font-display text-2xl uppercase tracking-wide text-foreground">ENTRAR</Text>
+          <Text className="mb-1 font-display text-2xl uppercase tracking-wide text-foreground">CRIAR CONTA</Text>
           <Text className="font-serif text-sm italic text-foreground-muted">
-            Faça login para continuar
+            Comece a gerenciar seu trabalho
           </Text>
         </View>
 
@@ -69,23 +84,22 @@ export default function LoginScreen() {
             autoComplete="email"
             keyboardType="email-address"
             editable={!loading}
-            placeholder="cliente@email.com"
+            placeholder="barbeiro@email.com"
             placeholderTextColor="#8a8073"
             className="rounded-md border border-border bg-card px-4 py-3 text-base text-foreground"
           />
         </View>
 
         {/* Senha */}
-        <View className="mb-1 gap-1">
+        <View className="mb-4 gap-1">
           <Text className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">Senha</Text>
           <View className="relative">
             <TextInput
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
-              autoComplete="current-password"
               editable={!loading}
-              placeholder="••••••"
+              placeholder="Pelo menos 6 caracteres"
               placeholderTextColor="#8a8073"
               className="rounded-md border border-border bg-card px-4 py-3 pr-12 text-base text-foreground"
             />
@@ -102,10 +116,33 @@ export default function LoginScreen() {
           </View>
         </View>
 
-        {/* Esqueci a senha */}
-        <Pressable className="mb-6 items-end">
-          <Text className="text-xs font-semibold text-navy underline">Esqueci a senha →</Text>
-        </Pressable>
+        {/* Confirmar Senha */}
+        <View className="mb-4 gap-1">
+          <Text className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">
+            Confirmar Senha
+          </Text>
+          <View className="relative">
+            <TextInput
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirm}
+              editable={!loading}
+              placeholder="Repita a senha"
+              placeholderTextColor="#8a8073"
+              className="rounded-md border border-border bg-card px-4 py-3 pr-12 text-base text-foreground"
+            />
+            <Pressable
+              onPress={() => setShowConfirm(!showConfirm)}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+            >
+              {showConfirm ? (
+                <EyeOff size={18} color="#8a8073" />
+              ) : (
+                <Eye size={18} color="#8a8073" />
+              )}
+            </Pressable>
+          </View>
+        </View>
 
         {/* Erro */}
         {error ? (
@@ -114,7 +151,7 @@ export default function LoginScreen() {
           </Text>
         ) : null}
 
-        {/* Botão Entrar */}
+        {/* Botão Criar Conta */}
         <Pressable
           onPress={handleSubmit}
           disabled={loading}
@@ -123,7 +160,7 @@ export default function LoginScreen() {
           {loading ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="font-display text-base font-bold text-white">Entrar</Text>
+            <Text className="font-display text-base font-bold text-white">Criar Conta</Text>
           )}
         </Pressable>
 
@@ -144,11 +181,11 @@ export default function LoginScreen() {
           <Text className="text-base font-semibold text-white">🍎 Continuar com Apple</Text>
         </Pressable>
 
-        {/* Criar conta */}
+        {/* Já tem conta */}
         <View className="flex-row items-center justify-center gap-1">
-          <Text className="text-sm text-foreground-muted">Não tem conta?</Text>
-          <Pressable onPress={() => router.push('/(auth)/signup')}>
-            <Text className="text-sm font-bold text-navy">Criar conta</Text>
+          <Text className="text-sm text-foreground-muted">Já tem conta?</Text>
+          <Pressable onPress={() => router.push('/(auth)/login')}>
+            <Text className="text-sm font-bold text-navy">Entrar</Text>
           </Pressable>
         </View>
       </ScrollView>

@@ -62,6 +62,7 @@ interface SignInResult {
 interface SessionContextValue {
   state: AuthState;
   signIn: (email: string, password: string) => Promise<SignInResult>;
+  signUp: (email: string, password: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
   retryLink: () => Promise<void>;
   /** Re-busca employee+tenant+roles. Útil após mutação no perfil. */
@@ -142,6 +143,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }
 
+  async function signUp(email: string, password: string): Promise<SignInResult> {
+    const supabase = getSupabase();
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) return { ok: false, error: error.message };
+    // onAuthStateChange acima dispara attemptLink automaticamente.
+    return { ok: true };
+  }
+
   async function signOut(): Promise<void> {
     const supabase = getSupabase();
     await supabase.auth.signOut();
@@ -161,7 +170,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SessionContext.Provider value={{ state, signIn, signOut, retryLink, refresh }}>
+    <SessionContext.Provider value={{ state, signIn, signUp, signOut, retryLink, refresh }}>
       {children}
     </SessionContext.Provider>
   );

@@ -23,6 +23,7 @@ interface SignInResult {
 interface SessionContextValue {
   state: AuthState;
   signIn: (email: string, password: string) => Promise<SignInResult>;
+  signUp: (email: string, password: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
 }
 
@@ -87,6 +88,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function signUp(email: string, password: string): Promise<SignInResult> {
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Erro inesperado',
+      };
+    }
+  }
+
   async function signOut(): Promise<void> {
     try {
       const supabase = getSupabase();
@@ -98,7 +113,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SessionContext.Provider value={{ state, signIn, signOut }}>
+    <SessionContext.Provider value={{ state, signIn, signUp, signOut }}>
       {children}
     </SessionContext.Provider>
   );

@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Reanimated, {
   useAnimatedStyle,
   interpolate,
   Extrapolate,
 } from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
 import { PullState } from '@/hooks/use-pull-to-refresh';
 
 interface PullToRefreshIndicatorProps {
@@ -29,41 +30,34 @@ export const PullToRefreshIndicator = React.memo(
   }: PullToRefreshIndicatorProps) => {
     const isRefreshing = pullState === PullState.Refreshing;
 
-    // SVG Icon renderizado como string (sem depender de bibliotecas pesadas)
     const renderIcon = () => {
+      const color = pullState === PullState.Ready ? '#1a365d' : '#8a8073';
+
       if (isRefreshing) {
         return (
-          <View className="h-8 w-8 items-center justify-center">
-            <Reanimated.View
-              style={[
-                {
-                  width: 32,
-                  height: 32,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                },
-                {
-                  transform: [
-                    {
-                      rotate: rotation.value.toString(),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <ArrowDownIcon />
-            </Reanimated.View>
-          </View>
+          <Reanimated.View
+            style={[
+              {
+                width: 32,
+                height: 32,
+                justifyContent: 'center',
+                alignItems: 'center',
+              },
+              {
+                transform: [
+                  {
+                    rotate: rotation.value.toString(),
+                  },
+                ],
+              },
+            ]}
+          >
+            <ArrowDownIcon color={color} />
+          </Reanimated.View>
         );
       }
 
-      return (
-        <View className="h-8 w-8 items-center justify-center">
-          <ArrowDownIcon color={
-            pullState === PullState.Ready ? '#1a365d' : '#8a8073'
-          } />
-        </View>
-      );
+      return <ArrowDownIcon color={color} />;
     };
 
     return (
@@ -83,9 +77,14 @@ export const PullToRefreshIndicator = React.memo(
         ]}
       >
         <View
-          className={`h-12 w-12 items-center justify-center rounded-full ${
-            pullState === PullState.Ready ? 'bg-blue-100' : 'bg-gray-100'
-          }`}
+          style={{
+            width: 48,
+            height: 48,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderRadius: 24,
+            backgroundColor: pullState === PullState.Ready ? '#dbeafe' : '#f3f4f6',
+          }}
         >
           {renderIcon()}
         </View>
@@ -96,20 +95,16 @@ export const PullToRefreshIndicator = React.memo(
 
 PullToRefreshIndicator.displayName = 'PullToRefreshIndicator';
 
-/**
- * SVG Icons inline para evitar depender de bibliotecas pesadas
- * Ícone de seta para baixo com variação de cor
- */
 function ArrowDownIcon({ color = '#8a8073' }: { color?: string }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path
+    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <Path
         d="M12 2v16m0 0l-6-6m6 6l6-6"
         stroke={color}
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-    </svg>
+    </Svg>
   );
 }

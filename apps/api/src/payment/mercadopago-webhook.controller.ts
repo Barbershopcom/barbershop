@@ -63,7 +63,17 @@ export class MercadoPagoWebhookController {
       return { ok: true };
     }
 
-    // Deduplicação: evita reprocessamento se MP re-envia o webhook
+    // 1. Validar assinatura PRIMEIRO (antes de dedup)
+    // Só webhooks autenticados podem ser dedupados.
+    if (!this.verifySignature(dataId, xRequestId, xSignature)) {
+      MercadoPagoWebhookController.logger.warn(
+        `Assinatura inválida no webhook MP (payment ${dataId}) — ignorado.`,
+      );
+      return { ok: true }; // 200 pra não gerar retry infinito de spoof
+    }
+
+    // 2. Deduplicação DEPOIS da signature verification
+    // Evita reprocessamento se MP re-envia webhook autenticado
     if (xRequestId) {
       const isFirst = await this.webhookIdempotency.isFirstProcessing(
         'mercadopago_payment',
@@ -73,13 +83,6 @@ export class MercadoPagoWebhookController {
         // Já processado — responde 200 sem fazer nada
         return { ok: true };
       }
-    }
-
-    if (!this.verifySignature(dataId, xRequestId, xSignature)) {
-      MercadoPagoWebhookController.logger.warn(
-        `Assinatura inválida no webhook MP (payment ${dataId}) — ignorado.`,
-      );
-      return { ok: true }; // 200 pra não gerar retry infinito de spoof
     }
 
     try {

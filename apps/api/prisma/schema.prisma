@@ -133,19 +133,16 @@ model Location {
 
 /// Barbershop = unidade operacional. Tem horários, serviços, funcionários.
 model Barbershop {
-  id             String   @id @default(uuid()) @db.Uuid
-  tenantId       String   @map("tenant_id") @db.Uuid
-  locationId     String   @map("location_id") @db.Uuid
-  name           String
-  description    String?
-  /// Intervalo de slots (minutos entre slots disponíveis). Default 30.
-  /// Future-proofing: permite configuração sem migração schema (ADR-004 extensão).
-  slotIntervalMin Int     @default(30) @map("slot_interval_min")
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  locationId  String   @map("location_id") @db.Uuid
+  name        String
+  description String?
   /// Rating agregado (cache; fonte = tabela reviews). ADR-019 §2.
-  ratingAvg      Float?   @map("rating_avg")
-  ratingCount    Int      @default(0) @map("rating_count")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  ratingAvg   Float?   @map("rating_avg")
+  ratingCount Int      @default(0) @map("rating_count")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   location     Location          @relation(fields: [locationId], references: [id], onDelete: Cascade)
   hours        BarbershopHours[]

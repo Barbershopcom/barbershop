@@ -13,7 +13,12 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-config.watchFolders = [workspaceRoot];
+// Monorepo: include workspace root + keep Expo defaults
+config.watchFolders = [
+  workspaceRoot,
+  // Add Expo's default watch folders
+  ...(config.watchFolders || []),
+];
 
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),

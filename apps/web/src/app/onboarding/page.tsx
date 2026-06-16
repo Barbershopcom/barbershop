@@ -66,6 +66,16 @@ export default function OnboardingPage() {
     mode: 'onBlur',
   });
 
+  function generateSlugFromName(name: string): string {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
   async function handleCepLookup(cep: string) {
     const cleaned = cep.replace(/\D/g, '');
     if (cleaned.length !== 8) return;
@@ -224,7 +234,17 @@ export default function OnboardingPage() {
                           <FormItem>
                             <FormLabel>Nome de fantasia</FormLabel>
                             <FormControl>
-                              <Input placeholder="Barbearia do Zé" {...field} />
+                              <Input
+                                placeholder="Barbearia do Zé"
+                                {...field}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  const slug = generateSlugFromName(e.target.value);
+                                  if (slug) {
+                                    form.setValue('tenant.slug', slug);
+                                  }
+                                }}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

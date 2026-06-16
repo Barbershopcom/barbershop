@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface UseQueryOptions<T> {
   queryFn: () => Promise<T>;
@@ -20,42 +20,48 @@ export function useQuery<T>({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const queryFnRef = useRef(queryFn);
 
-  const fetchData = useCallback(async () => {
+  useEffect(() => {
+    queryFnRef.current = queryFn;
+  }, [queryFn]);
+
+  useEffect(() => {
     if (!enabled) {
       setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const result = await queryFn();
-      setData(result);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-      setData(undefined);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [queryFn, enabled]);
-
-  useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      await fetchData();
+      setIsLoading(true);
+      try {
+        const result = await queryFnRef.current();
+        if (!cancelled) {
+          setData(result);
+          setError(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err : new Error(String(err)));
+          setData(undefined);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [fetchData, refreshKey]);
+  }, [enabled, refreshKey]);
 
-  const refetch = useCallback(async () => {
-    await fetchData();
+  const refetch = async () => {
     setRefreshKey((prev) => prev + 1);
-  }, [fetchData]);
+  };
 
   return { data, isLoading, error, refetch };
 }

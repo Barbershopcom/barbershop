@@ -15,6 +15,7 @@ import {
   type BookAppointmentInput,
   type BookedAppointment,
   couponReasonLabel,
+  slotOccupyingStatuses,
 } from '@barbearia/schemas';
 
 import { CouponsService } from '../coupons/coupons.service';
@@ -464,10 +465,10 @@ export class BookingService {
     if (!appt) {
       throw new BookingRescheduleError('not_found', 'Appointment não encontrado.');
     }
-    if (appt.status !== 'booked') {
+    if (!slotOccupyingStatuses.includes(appt.status as any)) {
       throw new BookingRescheduleError(
         'invalid_status',
-        `Só é possível remarcar appointment 'booked', estado atual: '${appt.status}'.`,
+        `Só é possível remarcar appointment ocupando slot, estado atual: '${appt.status}'.`,
       );
     }
 

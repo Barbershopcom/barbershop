@@ -13,6 +13,7 @@ import { ApiExcludeEndpoint } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { Public } from '../auth/auth.decorators';
+import { IdempotencyWebhookService } from '../common/idempotency-webhook.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { verifyMpWebhookSignature } from './mercadopago-signature';
 import { MercadoPagoProvider } from './mercadopago.provider';
@@ -36,6 +37,7 @@ export class MercadoPagoWebhookController {
     private readonly provider: MercadoPagoProvider,
     private readonly payments: PaymentService,
     private readonly prisma: PrismaService,
+    private readonly webhookIdempotency: IdempotencyWebhookService,
   ) {}
 
   @Post()
@@ -59,6 +61,18 @@ export class MercadoPagoWebhookController {
     // Só nos interessa evento de pagamento.
     if (!dataId || !(eventType?.includes('payment'))) {
       return { ok: true };
+    }
+
+    // Deduplicação: evita reprocessamento se MP re-envia o webhook
+    if (xRequestId) {
+      const isFirst = await this.webhookIdempotency.isFirstProcessing(
+        'mercadopago_payment',
+        xRequestId,
+      );
+      if (!isFirst) {
+        // Já processado — responde 200 sem fazer nada
+        return { ok: true };
+      }
     }
 
     if (!this.verifySignature(dataId, xRequestId, xSignature)) {

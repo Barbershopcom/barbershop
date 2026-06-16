@@ -544,3 +544,18 @@ model EmployeeDevice {
   @@index([appUserId])
   @@map("employee_devices")
 }
+
+/// Deduplicação de webhooks — previne reprocessamento de eventos
+/// re-enviados (network retry, etc). Sem RLS (global).
+/// Cleanup diário via job scheduler.
+model WebhookRequest {
+  id            String   @id @default(uuid()) @db.Uuid
+  webhookType   String   @map("webhook_type") // ex: "mercadopago_payment"
+  requestId     String   @map("request_id") // x-request-id do header
+  processedAt   DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@unique([webhookType, requestId])
+  @@index([webhookType])
+  @@index([processedAt])
+  @@map("webhook_requests")
+}

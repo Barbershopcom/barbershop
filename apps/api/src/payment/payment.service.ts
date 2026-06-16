@@ -169,7 +169,7 @@ export class PaymentService {
 
     // Persiste Payment + transiciona appointment numa transação só.
     const payment = await this.prisma.$transaction(async (tx) => {
-      const p = await tx.payment.upsert({
+      const paymentRecord = await tx.payment.upsert({
         where: { appointmentId: appt.id },
         create: {
           tenantId: appt.tenantId,
@@ -215,7 +215,7 @@ export class PaymentService {
         });
       }
 
-      return p;
+      return paymentRecord;
     });
 
     PaymentService.logger.log(

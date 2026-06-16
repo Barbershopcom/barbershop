@@ -152,20 +152,20 @@ export class BookingService {
     let priceCents = service.basePriceCents;
     let reservedCoupon: { id: string; discountCents: number } | null = null;
     if (body.couponCode) {
-      const v = await this.coupons.validateByCode(
+      const couponValidation = await this.coupons.validateByCode(
         tenant.id,
         body.couponCode,
         service.basePriceCents,
         new Date(),
       );
-      if (!v.valid || v.couponId === undefined) {
+      if (!couponValidation.valid || couponValidation.couponId === undefined) {
         throw new UnprocessableEntityException({
-          message: couponReasonLabel(v.reason ?? 'not_found'),
+          message: couponReasonLabel(couponValidation.reason ?? 'not_found'),
           code: 'coupon_invalid',
-          reason: v.reason ?? 'not_found',
+          reason: couponValidation.reason ?? 'not_found',
         });
       }
-      const reserved = await this.coupons.tryReserve(v.couponId);
+      const reserved = await this.coupons.tryReserve(couponValidation.couponId);
       if (!reserved) {
         throw new UnprocessableEntityException({
           message: couponReasonLabel('exhausted'),

@@ -7,6 +7,13 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "deeplinks": {
+      "enabled": true,
+      "schemes": ["barbeariacustomer", "https"]
+    },
+    "infoPlist": {
+      "NSBonjourServices": ["_http._tcp", "_https._tcp"]
+    },
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",

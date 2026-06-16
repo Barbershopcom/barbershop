@@ -1,6 +1,7 @@
 import '../global.css';
 
-import { Redirect, Stack } from 'expo-router';
+import * as Linking from 'expo-linking';
+import { Redirect, Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -15,14 +16,32 @@ initSentry();
 
 function RootLayoutNav() {
   const { state } = useSession();
+  const router = useRouter();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+
+  // Handle deep links
+  useEffect(() => {
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      const parsed = Linking.parse(url);
+      router.push(parsed.path || '/');
+    });
+
+    return () => subscription.remove();
+  }, [router]);
 
   useEffect(() => {
     (async () => {
       const done = await AsyncStorage.getItem('onboarding_done');
       setOnboardingDone(done === 'true');
+
+      // Handle initial URL if app was launched from link
+      const url = await Linking.getInitialURL();
+      if (url != null) {
+        const parsed = Linking.parse(url);
+        router.push(parsed.path || '/');
+      }
     })();
-  }, []);
+  }, [router]);
 
   // Ainda carregando
   if (onboardingDone === null || state.status === 'loading') {

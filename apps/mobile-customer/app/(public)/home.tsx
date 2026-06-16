@@ -3,6 +3,7 @@ import { Bell, Search } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -84,6 +85,25 @@ export default function HomeScreen() {
     return 'Visitante';
   }, [state]);
 
+  const userInitials = useMemo(() => {
+    if (state.status === 'authenticated') {
+      const name = state.session?.user?.user_metadata?.full_name || state.session?.user?.email || 'User';
+      const parts = name.split(' ');
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      }
+      return name.substring(0, 2).toUpperCase();
+    }
+    return 'V';
+  }, [state]);
+
+  const userPhotoUrl = useMemo(() => {
+    if (state.status === 'authenticated' && state.session?.user?.user_metadata?.avatar_url) {
+      return state.session.user.user_metadata.avatar_url;
+    }
+    return null;
+  }, [state]);
+
   return (
     <ScrollView
       className="flex-1 bg-background"
@@ -100,11 +120,23 @@ export default function HomeScreen() {
       {/* Header */}
       <View className="px-6 pt-3" style={{ paddingTop: insets.top + 12 }}>
         <View className="mb-8 flex-row items-center justify-between">
-          <View>
-            <Text className="text-xs uppercase tracking-wide text-foreground-muted">Bem-vindo,</Text>
-            <Text className="font-display text-xl font-bold uppercase text-foreground">
-              {userName}
-            </Text>
+          <View className="flex-row items-center gap-3">
+            {userPhotoUrl ? (
+              <Image
+                source={{ uri: userPhotoUrl }}
+                className="h-12 w-12 rounded-full bg-navy"
+              />
+            ) : (
+              <View className="h-12 w-12 items-center justify-center rounded-full bg-navy">
+                <Text className="font-bold text-white">{userInitials}</Text>
+              </View>
+            )}
+            <View>
+              <Text className="text-xs uppercase tracking-wide text-foreground-muted">Bem-vindo,</Text>
+              <Text className="font-display text-lg font-bold text-foreground">
+                {userName}
+              </Text>
+            </View>
           </View>
           <Pressable onPress={() => router.push('/(public)/notificacoes')} className="p-2">
             <Bell size={24} color="#1a365d" />

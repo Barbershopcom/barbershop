@@ -35,7 +35,7 @@ import { SlotsService } from './slots.service';
  *   1) Idempotency check  → se key já existe, retorna cache (200 ou 201).
  *   2) Resolve tenant+service+barber. 404 se algum não bater.
  *   3) Revalida slot     → roda SlotsService com janela mínima.
- *   4) INSERT appointment com status='booked'.
+ *   4) INSERT appointment com status='awaiting_payment' (ou 'confirmed' se admin).
  *      EXCLUDE constraint protege contra race condition entre 3 e 4.
  *   5) Cache response em idempotency_keys.
  *

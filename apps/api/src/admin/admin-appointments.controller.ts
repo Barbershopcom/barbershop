@@ -52,9 +52,10 @@ import { Tx } from '../tenancy/tenancy.decorators';
  * tenant. Sprint 4 abre só cancelamento; mais ações (reagendar,
  * mark no-show) entram quando forem pedidas.
  *
- * Cancelar liberar o slot: trigger EXCLUDE constraint só vale pra
- * status='booked', então cancelar permite outro booking no mesmo
- * horário (UX correto: cliente desistiu, vagas ficam disponíveis).
+ * Cancelar liberar o slot: EXCLUDE constraint só protege statuses que
+ * ocupam slot (awaiting_payment|pending|confirmed); cancelar permite
+ * outro booking no mesmo horário (UX correto: cliente desistiu, vagas
+ * ficam disponíveis).
  */
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -103,7 +104,7 @@ export class AdminAppointmentsController {
   @ApiQuery({ name: 'includeAllStatuses', required: false, type: Boolean })
   @ApiOkResponse({
     description:
-      'Lista de appointments do tenant na janela. Default só status=booked; passe includeAllStatuses=true pra ver cancelados/no_show/completed.',
+      'Lista de appointments do tenant na janela. Default só statuses que ocupam slot (awaiting_payment|pending|confirmed); passe includeAllStatuses=true pra ver cancelados/no_show/completed/expired.',
   })
   async list(
     @Tx() ctx: TenantContextValue,

@@ -128,7 +128,7 @@ export interface BarberInput {
   id: string;
   displayName: string;
   schedules: HourRange[];
-  /** Appointments já filtrados a status='booked' e overlap com [from..to]. */
+  /** Appointments já filtrados a status que ocupam slot (awaiting_payment|pending|confirmed) e overlap com [from..to]. */
   appointments: BarberAppointment[];
   /**
    * Períodos de indisponibilidade (BarberTimeOff) que overlap com a janela

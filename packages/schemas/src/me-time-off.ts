@@ -12,6 +12,10 @@ export const createMyTimeOffSchema = z
     endAt: isoDateTimeSchema,
     reason: z.string().trim().max(500).optional(),
   })
+  .refine((q) => new Date(q.startAt) >= new Date(), {
+    message: '`startAt` deve ser no futuro',
+    path: ['startAt'],
+  })
   .refine((q) => new Date(q.startAt) < new Date(q.endAt), {
     message: '`startAt` deve ser antes de `endAt`',
     path: ['startAt'],

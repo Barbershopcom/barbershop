@@ -173,7 +173,7 @@ export default function TeamPage() {
                     <FormItem>
                       <FormLabel>Nome</FormLabel>
                       <FormControl>
-                        <Input placeholder="João Silva" {...field} />
+                        <Input placeholder="Jajá Teste" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

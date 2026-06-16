@@ -218,7 +218,7 @@ export default function OnboardingPage() {
                           <FormItem>
                             <FormLabel>Slug (URL pública)</FormLabel>
                             <FormControl>
-                              <Input placeholder="barbearia-do-ze" {...field} />
+                              <Input placeholder="barbearia-do-jaja" {...field} />
                             </FormControl>
                             <FormDescription>
                               Vai virar barbearia.app/b/{field.value || 'seu-slug'}
@@ -235,7 +235,7 @@ export default function OnboardingPage() {
                             <FormLabel>Nome de fantasia</FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="Barbearia do Zé"
+                                placeholder="Barbearia do Jajá"
                                 {...field}
                                 onChange={(e) => {
                                   field.onChange(e);
@@ -266,7 +266,7 @@ export default function OnboardingPage() {
                           <FormItem>
                             <FormLabel>Nome da marca</FormLabel>
                             <FormControl>
-                              <Input placeholder="Barbearia do Zé" {...field} />
+                              <Input placeholder="Barbearia do Jajá" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -423,7 +423,7 @@ export default function OnboardingPage() {
                           <FormItem>
                             <FormLabel>Nome da barbearia</FormLabel>
                             <FormControl>
-                              <Input placeholder="Barbearia do Zé — Matriz" {...field} />
+                              <Input placeholder="Barbearia do Jajá — Unidade 1" {...field} />
                             </FormControl>
                             <FormDescription>
                               Pode ser igual ao nome da marca se for unidade única.

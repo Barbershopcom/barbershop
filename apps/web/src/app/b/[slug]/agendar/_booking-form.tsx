@@ -175,7 +175,7 @@ function CustomerForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none"
-            placeholder="João da Silva"
+            placeholder="Jajá Teste"
             autoComplete="name"
           />
         </div>

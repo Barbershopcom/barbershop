@@ -29,7 +29,7 @@ export class DiscoverController {
   @Get()
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Header('Cache-Control', 'public, max-age=60')
-  @ApiQuery({ name: 'q', required: false, description: 'Busca por nome/slug.' })
+  @ApiQuery({ name: 'barbearia-do-jaja', required: false, description: 'Busca por nome/slug.' })
   @ApiOkResponse({ description: 'Barbearias públicas, ranqueadas por nota.' })
   async list(
     @Query(new ZodValidationPipe(discoverQuerySchema)) query: DiscoverQuery,

@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
 import { Bell, Search } from 'lucide-react-native';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
@@ -44,20 +45,34 @@ export default function HomeScreen() {
   const router = useRouter();
   const { state } = useSession();
   const insets = useSafeAreaInsets();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data: barbershops, isLoading } = useQuery<DiscoverItem[]>({
+  const { data: barbershops, isLoading, error: barbershopsError } = useQuery<DiscoverItem[]>({
     queryFn: async () => {
       const res = await api.get<DiscoverItem[]>('/public/discover');
       return res;
     },
   });
 
-  const { data: promotions, isLoading: promotionsLoading } = useQuery<PromotionDto[]>({
+  const { data: promotions, isLoading: promotionsLoading, error: promotionsError } = useQuery<PromotionDto[]>({
     queryFn: async () => {
       const res = await api.get<PromotionDto[]>('/public/promotions');
       return res;
     },
   });
+
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        barbershops ? api.get<DiscoverItem[]>('/public/discover') : Promise.resolve([]),
+        promotions ? api.get<PromotionDto[]>('/public/promotions') : Promise.resolve([]),
+      ]);
+    } catch (err) {
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
 
   const userName = useMemo(() => {
     if (state.status === 'authenticated' && state.session?.user?.email) {
@@ -74,6 +89,13 @@ export default function HomeScreen() {
       className="flex-1 bg-background"
       contentContainerClassName="pb-6"
       scrollIndicatorInsets={{ right: 1 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          tintColor="#1a365d"
+        />
+      }
     >
       {/* Header */}
       <View className="px-6 pt-3" style={{ paddingTop: insets.top + 12 }}>
@@ -84,7 +106,7 @@ export default function HomeScreen() {
               {userName}
             </Text>
           </View>
-          <Pressable className="p-2">
+          <Pressable onPress={() => router.push('/(public)/notificacoes')} className="p-2">
             <Bell size={24} color="#1a365d" />
           </Pressable>
         </View>
@@ -189,11 +211,11 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Barbearias destacadas */}
+      {/* Barbeiros em destaque */}
       <View className="px-6">
         <View className="mb-4 flex-row items-center justify-between">
           <Text className="font-display text-lg font-bold uppercase text-foreground">
-            Em destaque
+            Barbeiros em destaque
           </Text>
         </View>
 

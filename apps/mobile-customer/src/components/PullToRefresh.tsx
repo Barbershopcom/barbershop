@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Reanimated, {
-  useAnimatedReaction,
+  useSharedValue,
   runOnJS,
 } from 'react-native-reanimated';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
@@ -73,8 +73,8 @@ export const PullToRefresh = React.memo(
     });
 
     // Track scroll position
-    const scrollOffset = Reanimated.useSharedValue(0);
-    const isAtTop = Reanimated.useSharedValue(false);
+    const scrollOffset = useSharedValue(0);
+    const isAtTop = useSharedValue(false);
 
     const handleScrollBeginDrag = useCallback(
       (event: NativeSyntheticEvent<NativeScrollEvent>) => {

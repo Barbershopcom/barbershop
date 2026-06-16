@@ -123,25 +123,31 @@ export class MercadoPagoWebhookController {
   /**
    * Verifica a assinatura do MP. Header `x-signature: ts=...,v1=...`.
    * Manifesto: `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`.
-   * Sem secret configurado, não valida (dev) — loga e aceita.
+   * Sem secret em produção = falha. Em dev, usa mock token.
    */
   private verifySignature(
     dataId: string,
     xRequestId: string | undefined,
     xSignature: string | undefined,
   ): boolean {
-    const secret = this.config.get<string>('MERCADOPAGO_WEBHOOK_SECRET');
+    let secret = this.config.get<string>('MERCADOPAGO_WEBHOOK_SECRET');
+    const isProd = this.config.get<string>('NODE_ENV') === 'production';
+
     if (!secret) {
-      // Fail-closed em produção: sem secret, NÃO aceita (evita markPaid forjado).
-      // Em dev/sandbox sem secret configurado, permite pra facilitar o teste.
-      const isProd = this.config.get<string>('NODE_ENV') === 'production';
+      // Produção sem secret = rejeita (fail-closed, evita markPaid forjado)
       if (isProd) {
         MercadoPagoWebhookController.logger.error(
           'MERCADOPAGO_WEBHOOK_SECRET ausente em produção — webhook rejeitado.',
         );
+        return false;
       }
-      return !isProd;
+      // Dev/test: usa mock token pra facilitar testes sem fail-open
+      secret = 'mock-webhook-secret-dev-only';
+      MercadoPagoWebhookController.logger.debug(
+        'Usando mock webhook secret em desenvolvimento.',
+      );
     }
+
     return verifyMpWebhookSignature({ secret, dataId, xRequestId, xSignature });
   }
 }

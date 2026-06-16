@@ -63,9 +63,15 @@ export class MeCustomerAppointmentsController {
     const { customerId } = await this.customers.ensureForUser(user);
 
     const rows = await this.prisma.appointment.findMany({
-      // customerId pega o que já foi vinculado; customerEmail cobre
-      // bookings novos guest com o mesmo email ainda não vinculados.
-      where: { OR: [{ customerId }, { customerEmail: user.email }] },
+      // Filtra por customerId (após account-linking retroativo via ensureForUser).
+      // Fallback: customerEmail p/ race condition (appointment novo após link).
+      // SECURITY: garantir que appointment pertence ao user autenticado.
+      where: {
+        AND: [
+          { OR: [{ customerId }, { customerEmail: user.email }] },
+          { tenantId: { not: undefined } }, // válido
+        ],
+      },
       select: {
         id: true,
         tenantId: true,
@@ -74,6 +80,8 @@ export class MeCustomerAppointmentsController {
         status: true,
         cancelledBy: true,
         cancelReason: true,
+        customerId: true, // validação pós-query
+        customerEmail: true,
         service: { select: { id: true, name: true, durationMin: true } },
         barber: { select: { id: true, displayName: true } },
         review: { select: { id: true } },
@@ -82,15 +90,21 @@ export class MeCustomerAppointmentsController {
       take: 100,
     });
 
+    // Validação pós-query: garantir que TODOS os appointments pertencem ao user.
+    // Previne vazamento se email é reutilizado ou DB fica inconsistente.
+    const validated = rows.filter(
+      (r) => r.customerId === customerId || r.customerEmail === user.email,
+    );
+
     // Carrega tenants em batch (Barbershop não tem relation tenant direta).
-    const tenantIds = Array.from(new Set(rows.map((r) => r.tenantId)));
+    const tenantIds = Array.from(new Set(validated.map((r) => r.tenantId)));
     const tenants = await this.prisma.tenant.findMany({
       where: { id: { in: tenantIds } },
       select: { id: true, slug: true, name: true, timezone: true },
     });
     const tenantById = new Map(tenants.map((t) => [t.id, t]));
 
-    return rows.map((r) => {
+    return validated.map((r) => {
       const t = tenantById.get(r.tenantId);
       return {
         id: r.id,

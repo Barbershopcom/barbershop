@@ -119,7 +119,7 @@ export const PullToRefresh = React.memo(
 
     return (
       <GestureDetector gesture={panGesture}>
-        <View className="relative flex-1">
+        <View style={{ flex: 1, position: 'relative' }}>
           {/* Indicador de Pull-to-Refresh */}
           <PullToRefreshIndicator
             pullState={pullState}

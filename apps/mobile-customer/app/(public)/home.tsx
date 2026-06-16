@@ -1,11 +1,9 @@
 import { useRouter } from 'expo-router';
 import { Bell, Search } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Image,
   Pressable,
-  RefreshControl,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -16,6 +14,7 @@ import { useSession } from '@/lib/session';
 import { api, type ApiError } from '@/lib/api';
 import { useQuery } from '@/lib/use-query';
 import { formatPriceBRL } from '@/lib/format';
+import { PullToRefresh } from '@/components/PullToRefresh';
 
 interface DiscoverItem {
   id: string;
@@ -97,18 +96,11 @@ export default function HomeScreen() {
   }, [state]);
 
   return (
-    <ScrollView
+    <PullToRefresh
+      onRefresh={handleRefresh}
       className="flex-1 bg-background"
       contentContainerClassName="pb-6"
       scrollIndicatorInsets={{ right: 1 }}
-      refreshControl={
-        <RefreshControl
-          refreshing={isLoading || promotionsLoading}
-          onRefresh={handleRefresh}
-          tintColor="#1a365d"
-          colors={['#1a365d']}
-        />
-      }
     >
       {/* Header */}
       <View className="px-6 pt-3" style={{ paddingTop: insets.top + 12 }}>
@@ -299,6 +291,6 @@ export default function HomeScreen() {
           </Text>
         )}
       </View>
-    </ScrollView>
+    </PullToRefresh>
   );
 }

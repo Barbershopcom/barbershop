@@ -44,23 +44,8 @@ interface PullToRefreshProps extends Omit<ScrollViewProps, 'onScroll'> {
 const AnimatedScrollView =
   Reanimated.createAnimatedComponent(ScrollView);
 
-/**
- * Componente Pull-to-Refresh customizado e premium
- *
- * Uso:
- * ```tsx
- * <PullToRefresh onRefresh={async () => { await fetchData(); }}>
- *   <View>{/* seu conteúdo */}</View>
- * </PullToRefresh>
- * ```
- *
- * Features:
- * - Animações suaves com Reanimated v3
- * - Estados visuais (idle, pulling, ready, refreshing, finished)
- * - Funciona com ScrollView e FlatList
- * - Zero flicker, performance otimizada
- * - Suporta Safe Area automaticamente
- */
+// Componente Pull-to-Refresh customizado e premium
+// Features: Animações Reanimated v3, estados visuais, ScrollView/FlatList, 60fps, Safe Area
 export const PullToRefresh = React.memo(
   ({
     onRefresh,

@@ -300,7 +300,7 @@ export class PublicTenantsController {
         isActive: true,
         ...(serviceIds.length > 0
           ? {
-              barberServiceCapability: {
+              capabilities: {
                 some: {
                   serviceId: { in: serviceIds },
                 },

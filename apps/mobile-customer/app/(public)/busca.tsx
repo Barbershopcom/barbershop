@@ -13,12 +13,17 @@ import {
 import { api } from '@/lib/api';
 import { useQuery } from '@/lib/use-query';
 
-interface PublicTenantDto {
+interface DiscoverItem {
   id: string;
   slug: string;
   name: string;
   ratingAvg: number | null;
   ratingCount: number;
+  addressLine: string | null;
+  neighborhood: string | null;
+  priceFromCents: number | null;
+  employeeCount: number;
+  hasPromotion: boolean;
 }
 
 export default function SearchScreen() {
@@ -28,9 +33,9 @@ export default function SearchScreen() {
     'proximidade',
   );
 
-  const { data: allBarbershops = [], isLoading } = useQuery<PublicTenantDto[]>({
+  const { data: allBarbershops = [], isLoading } = useQuery<DiscoverItem[]>({
     queryFn: async () => {
-      const res = await api.get<PublicTenantDto[]>('/public/discover');
+      const res = await api.get<DiscoverItem[]>('/public/discover');
       return res;
     },
   });
@@ -41,14 +46,17 @@ export default function SearchScreen() {
     if (searchText.trim()) {
       const query = searchText.toLowerCase();
       results = results.filter(
-        (shop: PublicTenantDto) =>
+        (shop: DiscoverItem) =>
           shop.name.toLowerCase().includes(query) ||
-          shop.slug.toLowerCase().includes(query),
+          shop.slug.toLowerCase().includes(query) ||
+          shop.neighborhood?.toLowerCase().includes(query),
       );
     }
 
     if (filterTab === 'avaliadas') {
-      results = results.sort((a: PublicTenantDto, b: PublicTenantDto) => (b.ratingAvg ?? 0) - (a.ratingAvg ?? 0));
+      results = results.sort((a: DiscoverItem, b: DiscoverItem) => (b.ratingAvg ?? 0) - (a.ratingAvg ?? 0));
+    } else if (filterTab === 'promocoes') {
+      results = results.filter((shop: DiscoverItem) => shop.hasPromotion);
     }
 
     return results;
@@ -109,32 +117,49 @@ export default function SearchScreen() {
           renderItem={({ item: shop }) => (
             <Pressable
               onPress={() => router.push(`/(public)/b/${shop.slug}`)}
-              className="flex-row items-center gap-3 rounded-lg border border-border bg-card p-4 active:bg-blue-50"
+              className="rounded-lg border border-border bg-card p-4 active:bg-blue-50"
             >
-              <View className="h-20 w-20 items-center justify-center rounded-lg bg-navy">
-                <Text className="font-bold text-white">
-                  {shop.name
-                    .split(' ')
-                    .map((w: string) => w[0])
-                    .join('')
-                    .slice(0, 2)}
-                </Text>
-              </View>
-              <View className="flex-1">
-                <Text className="font-semibold text-foreground">{shop.name}</Text>
-                <View className="mt-1 flex-row items-center gap-2">
-                  {shop.ratingAvg ? (
-                    <>
-                      <Text className="text-xs text-gold">⭐ {shop.ratingAvg.toFixed(1)}</Text>
-                      <Text className="text-xs text-foreground-muted">({shop.ratingCount})</Text>
-                    </>
-                  ) : (
-                    <Text className="text-xs text-foreground-muted">Sem avaliações</Text>
-                  )}
+              <View className="flex-row items-start gap-3">
+                <View className="h-16 w-16 items-center justify-center rounded-lg bg-navy">
+                  <Text className="font-bold text-white">
+                    {shop.name
+                      .split(' ')
+                      .map((w: string) => w[0])
+                      .join('')
+                      .slice(0, 2)}
+                  </Text>
                 </View>
-                <Text className="mt-1 text-xs text-foreground-muted">Aberta agora</Text>
+                <View className="flex-1">
+                  <View className="flex-row items-center gap-2">
+                    <Text className="font-semibold text-foreground">{shop.name}</Text>
+                    {shop.hasPromotion && (
+                      <View className="rounded-full bg-gold px-2 py-1">
+                        <Text className="text-xs font-bold text-navy">PROMO</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View className="mt-2 flex-row items-center gap-2">
+                    {shop.ratingAvg ? (
+                      <>
+                        <Text className="text-xs text-gold">⭐ {shop.ratingAvg.toFixed(1)}</Text>
+                        <Text className="text-xs text-foreground-muted">({shop.ratingCount})</Text>
+                      </>
+                    ) : (
+                      <Text className="text-xs text-foreground-muted">Sem avaliações</Text>
+                    )}
+                  </View>
+                  {shop.neighborhood && (
+                    <Text className="mt-1 text-xs text-foreground-muted">
+                      {shop.neighborhood} • {shop.employeeCount} barbeiros
+                    </Text>
+                  )}
+                  <View className="mt-2 flex-row items-center gap-2">
+                    <View className="h-2 w-2 rounded-full bg-green-500" />
+                    <Text className="text-xs font-semibold text-green-500">Aberta agora</Text>
+                  </View>
+                </View>
+                <Text className="text-lg text-foreground-muted">›</Text>
               </View>
-              <Text className="text-lg text-foreground-muted">›</Text>
             </Pressable>
           )}
           ListEmptyComponent={

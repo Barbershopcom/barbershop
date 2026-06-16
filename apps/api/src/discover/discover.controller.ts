@@ -35,6 +35,8 @@ export class DiscoverController {
     @Query(new ZodValidationPipe(discoverQuerySchema)) query: DiscoverQuery,
   ): Promise<DiscoverItem[]> {
     const q = query.q?.trim();
+    const now = new Date();
+
     const tenants = await this.prisma.tenant.findMany({
       where: {
         listedPublicly: true,
@@ -54,8 +56,8 @@ export class DiscoverController {
 
     const tenantIds = tenants.map((t) => t.id);
 
-    // Rating por tenant (agregado das reviews) + menor preço de serviço ativo.
-    const [ratings, prices] = await Promise.all([
+    // Rating por tenant + menor preço + barbeiros ativos + promoções ativas
+    const [ratings, prices, employees, promotions] = await Promise.all([
       this.prisma.review.groupBy({
         by: ['tenantId'],
         where: { tenantId: { in: tenantIds } },
@@ -66,6 +68,22 @@ export class DiscoverController {
         by: ['tenantId'],
         where: { tenantId: { in: tenantIds }, isActive: true },
         _min: { basePriceCents: true },
+      }),
+      this.prisma.employee.groupBy({
+        by: ['tenantId'],
+        where: { tenantId: { in: tenantIds }, isActive: true },
+        _count: { _all: true },
+      }),
+      this.prisma.promotion.findMany({
+        where: {
+          tenantId: { in: tenantIds },
+          isActive: true,
+          AND: [
+            { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+            { OR: [{ validUntil: null }, { validUntil: { gte: now } }] },
+          ],
+        },
+        select: { tenantId: true },
       }),
     ]);
 
@@ -78,16 +96,22 @@ export class DiscoverController {
     const priceByTenant = new Map(
       prices.map((p) => [p.tenantId, p._min.basePriceCents ?? null]),
     );
+    const employeesByTenant = new Map(employees.map((e) => [e.tenantId, e._count._all]));
+    const promotionTenantIds = new Set(promotions.map((p) => p.tenantId));
 
     const items: DiscoverItem[] = tenants.map((t) => {
       const rating = ratingByTenant.get(t.id);
       return {
+        id: t.id,
         slug: t.slug,
         name: t.name,
         ratingAvg: rating?.avg ?? null,
         ratingCount: rating?.count ?? 0,
         addressLine: t.addressLine,
+        neighborhood: t.addressLine?.split('•')[1]?.trim() ?? null,
         priceFromCents: priceByTenant.get(t.id) ?? null,
+        employeeCount: employeesByTenant.get(t.id) ?? 0,
+        hasPromotion: promotionTenantIds.has(t.id),
       };
     });
 

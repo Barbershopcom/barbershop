@@ -12,11 +12,17 @@ export type DiscoverQuery = z.infer<typeof discoverQuerySchema>;
 
 /** Card de barbearia na lista de descoberta. */
 export interface DiscoverItem {
+  id: string;
   slug: string;
   name: string;
   ratingAvg: number | null;
   ratingCount: number;
   addressLine: string | null;
+  neighborhood: string | null;
   /** Menor preço de serviço ativo (centavos), ou null se sem serviços. */
   priceFromCents: number | null;
+  /** Número de barbeiros ativos. */
+  employeeCount: number;
+  /** Se tem promoção ativa no período válido. */
+  hasPromotion: boolean;
 }

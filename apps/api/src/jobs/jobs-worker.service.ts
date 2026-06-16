@@ -216,12 +216,45 @@ export class JobsWorkerService implements OnApplicationBootstrap {
   }
 
   private async handleCleanup(): Promise<void> {
-    // DELETE FROM idempotency_keys WHERE created_at < now() - interval '24h'
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const result = await this.prisma.idempotencyKey.deleteMany({
+
+    // 1. Limpar idempotency_keys antigos (>24h)
+    const idempotencyResult = await this.prisma.idempotencyKey.deleteMany({
       where: { createdAt: { lt: cutoff } },
     });
-    JobsWorkerService.logger.log(`Cleanup: removidas ${result.count} idempotency_keys`);
+    JobsWorkerService.logger.log(
+      `Cleanup: removidas ${idempotencyResult.count} idempotency_keys antigos`,
+    );
+
+    // 2. Monitorar coupon counts: se times_redeemed > redemptions reais,
+    // significa reservas vazaram (booking falhou sem chamar releaseReservation).
+    // Isso é detectado aqui para monitoramento/alertas. A correção deve ser feita
+    // nos handlers de cancelamento de appointment (ADR-021 §7).
+    try {
+      const discrepancies = await this.prisma.$queryRaw<
+        Array<{ coupon_id: string; times_redeemed: number; actual_redemptions: number }>
+      >`
+        SELECT c.id as coupon_id, c.times_redeemed,
+               COALESCE(COUNT(cr.id), 0) as actual_redemptions
+        FROM coupons c
+        LEFT JOIN coupon_redemptions cr ON cr.coupon_id = c.id
+        GROUP BY c.id, c.times_redeemed
+        HAVING c.times_redeemed > COALESCE(COUNT(cr.id), 0)
+      `;
+
+      if (discrepancies.length > 0) {
+        JobsWorkerService.logger.warn(
+          `Cleanup: ${discrepancies.length} coupons com reservas vazadas (times_redeemed > actual_redemptions). ` +
+            `Garanta que releaseReservation() é chamado no cancelamento: ${JSON.stringify(
+              discrepancies.slice(0, 3),
+            )}`,
+        );
+      }
+    } catch (err) {
+      JobsWorkerService.logger.warn(
+        `Cleanup de coupon counts falhou: ${err instanceof Error ? err.message : err}`,
+      );
+    }
   }
 }
 

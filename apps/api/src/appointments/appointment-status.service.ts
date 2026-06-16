@@ -1,6 +1,7 @@
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { slotOccupyingStatuses } from '@barbearia/schemas';
 
+import { CouponsService } from '../coupons/coupons.service';
 import { PaymentService } from '../payment/payment.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -30,6 +31,7 @@ export class AppointmentStatusService {
     // forwardRef: ciclo status→payment→notifier→status (ADR-017).
     @Inject(forwardRef(() => PaymentService))
     private readonly payments: PaymentService,
+    private readonly coupons: CouponsService,
   ) {}
 
   registerNotifier(n: AppointmentTransitionNotifier): void {
@@ -51,6 +53,7 @@ export class AppointmentStatusService {
     });
     if (r.ok) {
       await this.payments.refund(appointmentId);
+      await this.releaseCouponReservation(appointmentId);
       void this.notify('rejected', appointmentId);
     }
     return r;
@@ -64,6 +67,7 @@ export class AppointmentStatusService {
     });
     if (r.ok) {
       await this.payments.refund(appointmentId);
+      await this.releaseCouponReservation(appointmentId);
       void this.notify('expired', appointmentId);
     }
     return r;
@@ -124,6 +128,7 @@ export class AppointmentStatusService {
       return { ok: false, currentStatus: current?.status ?? null };
     }
     await this.payments.refund(appointmentId);
+    await this.releaseCouponReservation(appointmentId);
     void this.notify('rejected', appointmentId);
     AppointmentStatusService.logger.log(`Appt ${appointmentId}: folga → cancelled`);
     return { ok: true, currentStatus: 'cancelled' };
@@ -181,6 +186,22 @@ export class AppointmentStatusService {
     } catch (err) {
       AppointmentStatusService.logger.warn(
         `Notificação ${event} falhou pra ${appointmentId}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+
+  private async releaseCouponReservation(appointmentId: string): Promise<void> {
+    try {
+      const redemption = await this.prisma.couponRedemption.findUnique({
+        where: { appointmentId },
+        select: { couponId: true },
+      });
+      if (redemption) {
+        await this.coupons.releaseReservation(redemption.couponId);
+      }
+    } catch (err) {
+      AppointmentStatusService.logger.warn(
+        `Falha ao liberar coupon reservation no cancelamento de ${appointmentId}: ${err instanceof Error ? err.message : err}`,
       );
     }
   }

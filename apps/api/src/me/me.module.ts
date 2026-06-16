@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 
 import { AppointmentsModule } from '../appointments/appointments.module';
+import { CouponsModule } from '../coupons/coupons.module';
 import { CustomerService } from './customer.service';
 import { MeAppointmentsController } from './me-appointments.controller';
 import { MeCustomerAppointmentsController } from './me-customer-appointments.controller';
@@ -10,7 +11,7 @@ import { MeTimeOffController } from './me-time-off.controller';
 import { MeController } from './me.controller';
 
 @Module({
-  imports: [AppointmentsModule],
+  imports: [AppointmentsModule, forwardRef(() => CouponsModule)],
   controllers: [
     MeController,
     MeServicesController,

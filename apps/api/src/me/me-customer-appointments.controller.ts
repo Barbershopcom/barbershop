@@ -18,6 +18,7 @@ import {
 import { canCancelAppointment } from '@barbearia/domain';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
+import { CouponsService } from '../coupons/coupons.service';
 import { EmailService } from '../email/email.service';
 import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { formatDate, formatDuration, formatTime } from '../common/formatters';
@@ -45,6 +46,7 @@ export class MeCustomerAppointmentsController {
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
     private readonly customers: CustomerService,
+    private readonly coupons: CouponsService,
   ) {}
 
   @Get()
@@ -177,6 +179,22 @@ export class MeCustomerAppointmentsController {
         cancelledAt: new Date(),
       },
     });
+
+    // Liberar coupon reservation se houver (best-effort).
+    try {
+      const redemption = await this.prisma.couponRedemption.findUnique({
+        where: { appointmentId: id },
+        select: { couponId: true },
+      });
+      if (redemption) {
+        await this.coupons.releaseReservation(redemption.couponId);
+      }
+    } catch (err) {
+      // Log mas não quebra o fluxo de cancelamento
+      console.warn(
+        `Falha ao liberar coupon reservation no cancel de ${id}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
 
     // Email best-effort de confirmação de cancelamento.
     const tenant = await this.prisma.tenant.findUnique({

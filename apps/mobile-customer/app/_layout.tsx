@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { BookingProvider } from '@/lib/booking-context';
 import { Sentry, initSentry } from '@/lib/sentry';
@@ -71,11 +72,13 @@ function RootLayoutNav() {
 
 function RootLayout() {
   return (
-    <SessionProvider>
-      <BookingProvider>
-        <RootLayoutNav />
-      </BookingProvider>
-    </SessionProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SessionProvider>
+        <BookingProvider>
+          <RootLayoutNav />
+        </BookingProvider>
+      </SessionProvider>
+    </GestureHandlerRootView>
   );
 }
 

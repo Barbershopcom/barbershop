@@ -20,6 +20,7 @@ import { canCancelAppointment } from '@barbearia/domain';
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { EmailService } from '../email/email.service';
 import { formatPriceBRL, tenantContactVars } from '../email/format';
+import { formatDate, formatDuration, formatTime } from '../common/formatters';
 import { PrismaService } from '../prisma/prisma.service';
 import { CustomerService } from './customer.service';
 
@@ -205,28 +206,4 @@ export class MeCustomerAppointmentsController {
       },
     });
   }
-}
-
-function formatDate(date: Date, tz: string): string {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: tz,
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(date);
-}
-
-function formatTime(date: Date, tz: string): string {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: tz,
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
-
-function formatDuration(min: number): string {
-  if (min < 60) return `${min} minutos`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m === 0 ? `${h}h` : `${h}h ${m}min`;
 }

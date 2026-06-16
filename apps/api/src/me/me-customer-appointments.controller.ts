@@ -15,7 +15,6 @@ import {
   type MyCustomerAppointmentItem,
   slotOccupyingStatuses,
 } from '@barbearia/schemas';
-import { canCancelAppointment } from '@barbearia/domain';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { CouponsService } from '../coupons/coupons.service';
@@ -160,11 +159,8 @@ export class MeCustomerAppointmentsController {
     }
 
     // Validar janela de cancelamento: 24h antes do appointment
-    const canCancel = canCancelAppointment({
-      appointmentStartMs: appt.startAt.getTime(),
-      nowMs: Date.now(),
-      cancelWindowHours: 24,
-    });
+    const cancellationDeadlineMs = appt.startAt.getTime() - 24 * 60 * 60 * 1000;
+    const canCancel = Date.now() <= cancellationDeadlineMs;
     if (!canCancel) {
       throw new ForbiddenException(
         'Só é possível cancelar com 24h de antecedência.',

@@ -50,7 +50,7 @@ export default function ServicesPage() {
 
   const form = useForm<CreateServiceInput>({
     resolver: zodResolver(createServiceSchema),
-    defaultValues: { name: '', description: '', durationMin: 30, basePriceCents: 0, isActive: true },
+    defaultValues: { name: '', description: '', durationMin: 30, basePriceCents: 3000, isActive: true },
   });
 
   async function refresh() {
@@ -73,7 +73,7 @@ export default function ServicesPage() {
   function startCreate() {
     setEditingId(null);
     setSubmitError(null);
-    form.reset({ name: '', description: '', durationMin: 30, basePriceCents: 0, isActive: true });
+    form.reset({ name: '', description: '', durationMin: 30, basePriceCents: 3000, isActive: true });
     setShowForm(true);
   }
 
@@ -211,9 +211,24 @@ export default function ServicesPage() {
                     name="basePriceCents"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Preço (centavos)</FormLabel>
+                        <FormLabel>Preço (reais)</FormLabel>
                         <FormControl>
-                          <Input type="number" min={0} step={100} {...field} />
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={0.01}
+                              placeholder="30,00"
+                              className="pl-8"
+                              value={field.value ? (field.value / 100).toFixed(2) : ''}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                field.onChange(isNaN(val) ? 0 : Math.round(val * 100));
+                              }}
+                              onBlur={field.onBlur}
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>

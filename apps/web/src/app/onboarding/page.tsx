@@ -6,6 +6,7 @@ import {
   createTenantOnboardingSchema,
 } from '@barbearia/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -42,6 +43,9 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState<string | null>(null);
+  const [cepFilled, setCepFilled] = useState(false);
 
   const form = useForm<CreateTenantOnboardingInput>({
     resolver: zodResolver(createTenantOnboardingSchema),
@@ -53,7 +57,7 @@ export default function OnboardingPage() {
         addressLine1: '',
         addressLine2: '',
         city: '',
-        state: 'SP',
+        state: 'RJ',
         postalCode: '',
         country: 'BR',
       },
@@ -61,6 +65,35 @@ export default function OnboardingPage() {
     },
     mode: 'onBlur',
   });
+
+  async function handleCepLookup(cep: string) {
+    const cleaned = cep.replace(/\D/g, '');
+    if (cleaned.length !== 8) return;
+
+    setCepLoading(true);
+    setCepError(null);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cleaned}/json/`);
+      const data = await res.json();
+
+      if (data.erro) {
+        setCepError('CEP não encontrado');
+        setCepFilled(false);
+        return;
+      }
+
+      form.setValue('location.addressLine1', data.logradouro || '');
+      form.setValue('location.addressLine2', (data.bairro || '') + (data.complemento ? ` - ${data.complemento}` : ''));
+      form.setValue('location.city', data.localidade || '');
+      form.setValue('location.state', data.uf || 'RJ');
+      setCepFilled(true);
+    } catch (err) {
+      setCepError('Erro ao buscar CEP. Preencha manualmente.');
+      setCepFilled(false);
+    } finally {
+      setCepLoading(false);
+    }
+  }
 
   async function onSubmit(values: CreateTenantOnboardingInput) {
     setSubmitError(null);
@@ -265,7 +298,7 @@ export default function OnboardingPage() {
                           <FormItem>
                             <FormLabel>Endereço</FormLabel>
                             <FormControl>
-                              <Input placeholder="Rua, número" {...field} />
+                              <Input placeholder="Rua, número" {...field} disabled={cepFilled} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -278,7 +311,7 @@ export default function OnboardingPage() {
                           <FormItem>
                             <FormLabel>Complemento (opcional)</FormLabel>
                             <FormControl>
-                              <Input placeholder="Sala, andar, ponto de referência" {...field} />
+                              <Input placeholder="Sala, andar, ponto de referência" {...field} disabled={cepFilled} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -292,7 +325,7 @@ export default function OnboardingPage() {
                             <FormItem className="col-span-2">
                               <FormLabel>Cidade</FormLabel>
                               <FormControl>
-                                <Input {...field} />
+                                <Input {...field} disabled={cepFilled} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -306,8 +339,9 @@ export default function OnboardingPage() {
                               <FormLabel>UF</FormLabel>
                               <FormControl>
                                 <select
-                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                                   {...field}
+                                  disabled={cepFilled}
                                 >
                                   {brazilianStates.map((uf) => (
                                     <option key={uf} value={uf}>
@@ -328,8 +362,27 @@ export default function OnboardingPage() {
                           <FormItem>
                             <FormLabel>CEP</FormLabel>
                             <FormControl>
-                              <Input placeholder="00000-000" {...field} />
+                              <div className="relative">
+                                <Input
+                                  placeholder="00000-000"
+                                  {...field}
+                                  onChange={(e) => {
+                                    const formatted = e.target.value
+                                      .replace(/\D/g, '')
+                                      .slice(0, 8)
+                                      .replace(/(\d{5})(\d{3})/, '$1-$2');
+                                    field.onChange(formatted);
+                                    if (formatted.replace(/-/g, '').length === 8) {
+                                      handleCepLookup(formatted);
+                                    }
+                                  }}
+                                />
+                                {cepLoading && (
+                                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin" />
+                                )}
+                              </div>
                             </FormControl>
+                            {cepError && <p className="text-xs text-destructive mt-1">{cepError}</p>}
                             <FormMessage />
                           </FormItem>
                         )}

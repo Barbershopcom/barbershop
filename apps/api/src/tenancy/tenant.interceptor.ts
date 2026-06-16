@@ -70,7 +70,11 @@ export class TenantInterceptor implements NestInterceptor {
         await tx.$executeRaw`
           INSERT INTO app_users (id, email, phone_e164, updated_at)
           VALUES (${user.id}::uuid, ${safeEmail}, ${safePhone}, now())
-          ON CONFLICT (id) DO NOTHING
+          ON CONFLICT (id)
+          DO UPDATE SET
+            email = EXCLUDED.email,
+            phone_e164 = EXCLUDED.phone_e164,
+            updated_at = now()
         `;
 
         const tenantId = this.extractTenantId(req);

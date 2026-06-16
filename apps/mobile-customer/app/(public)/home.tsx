@@ -46,16 +46,15 @@ export default function HomeScreen() {
   const router = useRouter();
   const { state } = useSession();
   const insets = useSafeAreaInsets();
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data: barbershops, isLoading, error: barbershopsError } = useQuery<DiscoverItem[]>({
+  const { data: barbershops, isLoading, refetch: refetchBarbershops } = useQuery<DiscoverItem[]>({
     queryFn: async () => {
       const res = await api.get<DiscoverItem[]>('/public/discover');
       return res;
     },
   });
 
-  const { data: promotions, isLoading: promotionsLoading, error: promotionsError } = useQuery<PromotionDto[]>({
+  const { data: promotions, isLoading: promotionsLoading, refetch: refetchPromotions } = useQuery<PromotionDto[]>({
     queryFn: async () => {
       const res = await api.get<PromotionDto[]>('/public/promotions');
       return res;
@@ -63,16 +62,10 @@ export default function HomeScreen() {
   });
 
   async function handleRefresh() {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([
-        barbershops ? api.get<DiscoverItem[]>('/public/discover') : Promise.resolve([]),
-        promotions ? api.get<PromotionDto[]>('/public/promotions') : Promise.resolve([]),
-      ]);
-    } catch (err) {
-    } finally {
-      setIsRefreshing(false);
-    }
+    await Promise.all([
+      refetchBarbershops(),
+      refetchPromotions(),
+    ]);
   }
 
   const userName = useMemo(() => {
@@ -111,9 +104,10 @@ export default function HomeScreen() {
       scrollIndicatorInsets={{ right: 1 }}
       refreshControl={
         <RefreshControl
-          refreshing={isRefreshing}
+          refreshing={isLoading || promotionsLoading}
           onRefresh={handleRefresh}
           tintColor="#1a365d"
+          colors={['#1a365d']}
         />
       }
     >

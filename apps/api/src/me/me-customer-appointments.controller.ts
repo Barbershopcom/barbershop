@@ -15,6 +15,7 @@ import {
   type MyCustomerAppointmentItem,
   slotOccupyingStatuses,
 } from '@barbearia/schemas';
+import { canCancelAppointment } from '@barbearia/domain';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { EmailService } from '../email/email.service';
@@ -152,6 +153,18 @@ export class MeCustomerAppointmentsController {
     if (!slotOccupyingStatuses.includes(appt.status as never)) {
       throw new ForbiddenException(
         `Não é possível cancelar appointment com status '${appt.status}'.`,
+      );
+    }
+
+    // Validar janela de cancelamento: 24h antes do appointment
+    const canCancel = canCancelAppointment({
+      appointmentStartMs: appt.startAt.getTime(),
+      nowMs: Date.now(),
+      cancelWindowHours: 24,
+    });
+    if (!canCancel) {
+      throw new ForbiddenException(
+        'Só é possível cancelar com 24h de antecedência.',
       );
     }
 

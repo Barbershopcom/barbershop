@@ -57,7 +57,7 @@ type BootState =
 
 export default function BookingFlow() {
   const router = useRouter();
-  const { slug, s: serviceId, t, b: barberId } = useLocalSearchParams<{
+  const { slug, s: serviceIds, t, b: barberId } = useLocalSearchParams<{
     slug: string;
     s?: string;
     t?: string;
@@ -65,6 +65,10 @@ export default function BookingFlow() {
   }>();
 
   const [boot, setBoot] = useState<BootState>({ kind: 'loading' });
+
+  // TODO (Fase 6 multiservice): aceitar múltiplos serviços no mesmo agendamento.
+  // Por enquanto, usa o primeiro ID se houver múltiplos (separados por vírgula).
+  const serviceId = serviceIds?.split(',')[0];
 
   useEffect(() => {
     if (!slug || !serviceId) return;

@@ -448,6 +448,28 @@ model Review {
   @@map("reviews")
 }
 
+/// Promoção semanal — display no app público (home, descoberta).
+/// Tenant-scoped. Pode ter desconto % ou fixo; validação de período.
+model Promotion {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  name             String    // ex: "30% OFF no Corte + Barba"
+  description      String?
+  /// 'percent' | 'fixed'
+  discountType     String    @map("discount_type") @default("percent")
+  /// percent: basis points (1000=10%); fixed: centavos
+  discountValue    Int       @map("discount_value")
+  validFrom        DateTime? @map("valid_from") @db.Timestamptz(6)
+  validUntil       DateTime? @map("valid_until") @db.Timestamptz(6)
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId])
+  @@index([isActive, validFrom, validUntil])
+  @@map("promotions")
+}
+
 /// Cupom de desconto (ADR-021 §1). Tenant-scoped (RLS). `code` único por
 /// tenant; validação case-insensitive. discountValue: bps se 'percent',
 /// centavos se 'fixed'. timesRedeemed tem guard atômico no resgate.

@@ -35,16 +35,52 @@ export class CustomerService {
       email?.split('@')[0] ||
       'Cliente';
 
-    const customer = await this.prisma.customer.upsert({
-      where: { appUserId: user.id },
-      create: {
-        appUserId: user.id,
-        displayName,
-        phoneE164: typeof user.phone === 'string' ? user.phone : null,
-      },
-      update: {}, // não sobrescreve nome editado pelo cliente
-      select: { id: true },
-    });
+    let customer;
+    try {
+      customer = await this.prisma.customer.upsert({
+        where: { appUserId: user.id },
+        create: {
+          appUserId: user.id,
+          displayName,
+          phoneE164: typeof user.phone === 'string' ? user.phone : null,
+        },
+        update: {}, // não sobrescreve nome editado pelo cliente
+        select: { id: true },
+      });
+    } catch (err) {
+      // Se FK falhar, tenta garantir que app_user existe antes de fazer upsert
+      if (err instanceof Error && err.message.includes('customers_app_user_id_fkey')) {
+        CustomerService.logger.warn(
+          `FK constraint falhou pra user ${user.id}; tentando criar AppUser explicitamente`,
+        );
+        // Cria app_user se não existir (RLS/transação pode ter deixado passado)
+        await this.prisma.appUser.upsert({
+          where: { id: user.id },
+          create: {
+            id: user.id,
+            email: email,
+            phoneE164: typeof user.phone === 'string' ? user.phone : null,
+            displayName: displayName,
+          },
+          update: {}, // não sobrescreve app_user existente
+          select: { id: true },
+        });
+
+        // Retry customer upsert
+        customer = await this.prisma.customer.upsert({
+          where: { appUserId: user.id },
+          create: {
+            appUserId: user.id,
+            displayName,
+            phoneE164: typeof user.phone === 'string' ? user.phone : null,
+          },
+          update: {},
+          select: { id: true },
+        });
+      } else {
+        throw err;
+      }
+    }
 
     // Account-linking retroativo: appointments guest com o mesmo email
     // que ainda não têm customerId passam a pertencer a esse Customer.

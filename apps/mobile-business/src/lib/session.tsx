@@ -62,6 +62,9 @@ interface SignInResult {
 interface SessionContextValue {
   state: AuthState;
   signIn: (email: string, password: string) => Promise<SignInResult>;
+  signUp: (email: string, password: string) => Promise<SignInResult>;
+  signInWithGoogle: () => Promise<SignInResult>;
+  signInWithApple: () => Promise<SignInResult>;
   signOut: () => Promise<void>;
   retryLink: () => Promise<void>;
   /** Re-busca employee+tenant+roles. Útil após mutação no perfil. */
@@ -142,6 +145,38 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }
 
+  async function signUp(email: string, password: string): Promise<SignInResult> {
+    const supabase = getSupabase();
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) return { ok: false, error: error.message };
+    // onAuthStateChange acima dispara attemptLink automaticamente.
+    return { ok: true };
+  }
+
+  async function signInWithGoogle(): Promise<SignInResult> {
+    const supabase = getSupabase();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+      },
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
+  async function signInWithApple(): Promise<SignInResult> {
+    const supabase = getSupabase();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'apple',
+      options: {
+        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+      },
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
   async function signOut(): Promise<void> {
     const supabase = getSupabase();
     await supabase.auth.signOut();
@@ -161,7 +196,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SessionContext.Provider value={{ state, signIn, signOut, retryLink, refresh }}>
+    <SessionContext.Provider
+      value={{ state, signIn, signUp, signInWithGoogle, signInWithApple, signOut, retryLink, refresh }}
+    >
       {children}
     </SessionContext.Provider>
   );

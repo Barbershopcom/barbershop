@@ -12,7 +12,8 @@
     "lint": "eslint app src",
     "typecheck": "tsc --noEmit",
     "test": "echo \"no tests yet\" && exit 0",
-    "build": "echo \"use EAS Build for native builds\" && exit 0"
+    "build": "echo \"use EAS Build for native builds\" && exit 0",
+    "eas-build-post-install": "pnpm --filter @barbearia/schemas run build"
   },
   "dependencies": {
     "@barbearia/design-tokens": "workspace:*",

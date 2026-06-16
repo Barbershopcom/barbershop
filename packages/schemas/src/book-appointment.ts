@@ -10,25 +10,30 @@ import { emailSchema, phoneE164Schema, uuidSchema } from './common';
  * `startAt` em UTC ISO-8601 (mesmo formato que slots retorna).
  * `endAt` é derivado server-side de service.durationMin.
  */
-export const bookAppointmentSchema = z.object({
-  serviceId: uuidSchema,
-  barberId: uuidSchema,
-  startAt: z.string().datetime({ offset: false }),
-  customerName: z.string().trim().min(2).max(120),
-  customerPhone: phoneE164Schema,
-  customerEmail: emailSchema.optional(),
-  /**
-   * Token do Expo Push Service (formato `ExponentPushToken[xxx]`).
-   * Opcional — quando presente, API registra o device pra disparar
-   * reminder via push 24h antes (ADR-010 §5).
-   */
-  expoPushToken: z.string().max(255).optional(),
-  /**
-   * Código de cupom opcional (ADR-021 §4). Backend re-valida server-side
-   * (fonte de verdade) e aplica o desconto no `priceCents` snapshot.
-   */
-  couponCode: z.string().trim().min(3).max(32).optional(),
-});
+export const bookAppointmentSchema = z
+  .object({
+    serviceId: uuidSchema,
+    barberId: uuidSchema,
+    startAt: z.string().datetime({ offset: false }),
+    customerName: z.string().trim().min(2).max(120),
+    customerPhone: phoneE164Schema,
+    customerEmail: emailSchema.optional(),
+    /**
+     * Token do Expo Push Service (formato `ExponentPushToken[xxx]`).
+     * Opcional — quando presente, API registra o device pra disparar
+     * reminder via push 24h antes (ADR-010 §5).
+     */
+    expoPushToken: z.string().max(255).optional(),
+    /**
+     * Código de cupom opcional (ADR-021 §4). Backend re-valida server-side
+     * (fonte de verdade) e aplica o desconto no `priceCents` snapshot.
+     */
+    couponCode: z.string().trim().min(3).max(32).optional(),
+  })
+  .refine((data) => new Date(data.startAt) > new Date(), {
+    message: 'startAt deve ser no futuro.',
+    path: ['startAt'],
+  });
 
 export type BookAppointmentInput = z.infer<typeof bookAppointmentSchema>;
 

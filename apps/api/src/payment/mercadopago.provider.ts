@@ -8,9 +8,6 @@ import type {
   RefundInput,
 } from './payment-provider';
 
-/** 10 minutos pro Pix expirar (ADR-022 §3). */
-const PIX_EXPIRATION_MS = 10 * 60 * 1000;
-
 export interface OAuthTokenResult {
   access_token: string;
   refresh_token?: string;
@@ -66,6 +63,11 @@ export class MercadoPagoProvider implements PaymentProvider {
     return api ? `${api.replace(/\/$/, '')}/webhooks/mercadopago` : undefined;
   }
 
+  private get pixExpirationMs(): number {
+    const minutes = this.config.get<number>('PIX_EXPIRATION_MINUTES') ?? 10;
+    return minutes * 60 * 1000;
+  }
+
   async charge(input: ChargeInput): Promise<ChargeResult> {
     if (input.method === 'pix') return this.chargePix(input);
     return this.chargeCard(input);
@@ -78,7 +80,7 @@ export class MercadoPagoProvider implements PaymentProvider {
       payment_method_id: 'pix',
       payer: { email: input.payerEmail ?? 'comprador@email.com' },
       external_reference: input.appointmentId,
-      date_of_expiration: new Date(Date.now() + PIX_EXPIRATION_MS).toISOString(),
+      date_of_expiration: new Date(Date.now() + this.pixExpirationMs).toISOString(),
     };
     if (input.applicationFeeCents) body.application_fee = centsToReais(input.applicationFeeCents);
     const notif = this.notificationUrl();

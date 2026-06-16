@@ -1,30 +1,52 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { createHmac } from 'node:crypto';
+
 import {
-  ApiTags,
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiBody,
-  ApiOkResponse,
-  ApiCreatedResponse,
-  ApiBadRequestResponse,
-  ApiNotFoundResponse,
+  ApiTags,
   ApiUnauthorizedResponse,
-  ApiForbiddenResponse,
 } from '@nestjs/swagger';
-import { JwtService } from '@nestjs/jwt';
 import { z } from 'zod';
-import { PrismaService } from '../prisma/prisma.service';
+
+import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { EmailService } from '../email/email.service';
-import { TenantGuard } from '../auth/tenant.guard';
-import { Auth } from '../auth/auth.decorators';
+import { type TenantContextValue } from '../tenancy/tenant-context';
+import { Tx } from '../tenancy/tenancy.decorators';
 
 const CreateEmployeeSchema = z.object({
-  displayName: z.string().min(1).max(100),
+  displayName: z.string().min(1, 'Nome obrigatório').max(100),
   email: z.string().email().optional(),
   role: z.enum(['barber', 'admin', 'admin_barber']),
 });
+type CreateEmployeeInput = z.infer<typeof CreateEmployeeSchema>;
 
-const UpdateEmployeeSchema = CreateEmployeeSchema.partial();
+const UpdateEmployeeSchema = CreateEmployeeSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+type UpdateEmployeeInput = z.infer<typeof UpdateEmployeeSchema>;
 
 interface EmployeeResponseDto {
   id: string;
@@ -40,104 +62,77 @@ interface EmployeeResponseDto {
 
 /**
  * Admin Employees API — CRUD de funcionários (barbeiros/admin).
+ * Só admin/admin_barber. Tenant via @Tx (RLS); role validado em requireAdmin.
  *
- * **Autenticação:** Bearer token (role: admin)
- * **Rate limit:** 100/min
- *
- * **Invariantes:**
- * - Email único no tenant (validado em DB)
- * - role: 'barber' (apenas serviços), 'admin' (apenas gestão), 'admin_barber' (ambos)
- * - isActive=false mantém histórico, apenas oculta de agendamentos futuros
- * - appUserId fica null até barbeiro aceitar convite via email
- * - Rating é calculado automaticamente de reviews (read-only)
- *
- * **Workflow de onboarding:**
- * 1. Admin cria funcionário (POST /admin/employees, appUserId=null)
- * 2. Sistema envia email de convite
- * 3. Barbeiro clica link → cria AppUser + vincula (POST /me/employee/link)
- * 4. appUserId é preenchido, barbeiro pode agendar
+ * Workflow de onboarding: admin cria (appUserId=null) → email de convite com
+ * token HMAC assinado → barbeiro aceita e vincula AppUser.
  */
 @ApiTags('admin')
+@ApiBearerAuth()
 @Controller('admin/employees')
-@UseGuards(TenantGuard)
-@Auth('admin')
 export class AdminEmployeesController {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly email: EmailService,
-    private readonly jwt: JwtService,
+    private readonly config: ConfigService,
   ) {}
 
-  /**
-   * **[GET] Listar funcionários do tenant**
-   *
-   * Retorna todos os funcionários (ativos e inativos) com seus ratings agregados.
-   * Ordenado por nome.
-   */
-  @Get()
-  @ApiOperation({
-    summary: 'Listar funcionários',
-    description: 'Retorna todos os funcionários (ativos/inativos) do tenant.',
-  })
-  @ApiOkResponse({
-    description: 'Lista de funcionários',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string', format: 'uuid' },
-          displayName: { type: 'string', example: 'João Silva' },
-          email: { type: 'string', example: 'joao@barbershop.com' },
-          role: { type: 'string', enum: ['barber', 'admin', 'admin_barber'] },
-          isActive: { type: 'boolean' },
-          ratingAvg: { type: 'number', nullable: true, example: 4.8 },
-          ratingCount: { type: 'number', example: 42 },
-          createdAt: { type: 'string', format: 'date-time' },
-          updatedAt: { type: 'string', format: 'date-time' },
-        },
-      },
-    },
-  })
-  async list(): Promise<EmployeeResponseDto[]> {
-    const tenantId = (this as any).req.tenantId;
-    const employees = await this.prisma.employee.findMany({
-      where: { tenantId },
-      select: {
-        id: true,
-        displayName: true,
-        email: true,
-        role: true,
-        isActive: true,
-        ratingAvg: true,
-        ratingCount: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: { displayName: 'asc' },
+  private async requireAdmin(
+    ctx: TenantContextValue,
+    user: AuthenticatedUser,
+  ): Promise<{ tenantId: string }> {
+    const employee = await ctx.tx.employee.findFirst({
+      where: { appUserId: user.id },
+      select: { tenantId: true, role: true },
     });
-    return employees;
+    if (!employee) throw new ForbiddenException('Usuário não vinculado.');
+    if (employee.role !== 'admin' && employee.role !== 'admin_barber') {
+      throw new ForbiddenException('Apenas admin pode gerenciar funcionários.');
+    }
+    await ctx.tx.$executeRaw`SELECT set_config('app.tenant_id', ${employee.tenantId}, true)`;
+    return { tenantId: employee.tenantId };
   }
 
-  /**
-   * **[POST] Criar novo funcionário (convite)**
-   *
-   * Cria um funcionário e envia email de convite (workflow descrito acima).
-   * appUserId fica null até barbeiro aceitar.
-   *
-   * **Request body:**
-   * - `displayName`: Nome completo (1-100 chars)
-   * - `email` (opcional): Email para convite
-   * - `role`: 'barber' | 'admin' | 'admin_barber'
-   *
-   * **Response 201:** Funcionário criado (appUserId=null)
-   * **Response 400:** Validação falhou (ex: email já existe)
-   */
+  /** Token de convite HMAC-assinado ({employeeId, tenantId, exp} base64url). */
+  private buildOnboardingToken(employeeId: string, tenantId: string): string {
+    const secret =
+      this.config.get<string>('APPOINTMENT_CANCEL_SECRET') ?? 'dev-secret';
+    const exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60; // 7 dias
+    const payload = Buffer.from(
+      JSON.stringify({ employeeId, tenantId, exp }),
+      'utf8',
+    )
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    const sig = createHmac('sha256', secret)
+      .update(payload)
+      .digest('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    return `${payload}.${sig}`;
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Listar funcionários (ativos/inativos) do tenant.' })
+  @ApiOkResponse({ description: 'Lista de funcionários' })
+  @ApiUnauthorizedResponse({ description: 'Token inválido' })
+  @ApiForbiddenResponse({ description: 'Usuário sem role admin' })
+  async list(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<EmployeeResponseDto[]> {
+    await this.requireAdmin(ctx, user);
+    const employees = await ctx.tx.employee.findMany({
+      orderBy: { displayName: 'asc' },
+    });
+    return employees.map(toDto);
+  }
+
   @Post()
-  @ApiOperation({
-    summary: 'Criar funcionário (enviar convite)',
-    description: 'Cria um novo funcionário e envia email de convite.',
-  })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Criar funcionário e enviar convite por email.' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -151,54 +146,43 @@ export class AdminEmployeesController {
   })
   @ApiCreatedResponse({ description: 'Funcionário criado, convite enviado' })
   @ApiBadRequestResponse({ description: 'Validação falhou (ex: email duplicado)' })
-  async create(@Body() body: any): Promise<EmployeeResponseDto> {
-    const tenantId = (this as any).req.tenantId;
-    const valid = CreateEmployeeSchema.safeParse(body);
-    if (!valid.success) {
-      throw new Error(valid.error.message);
+  async create(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(CreateEmployeeSchema)) body: CreateEmployeeInput,
+  ): Promise<EmployeeResponseDto> {
+    const admin = await this.requireAdmin(ctx, user);
+
+    if (body.email) {
+      const dup = await ctx.tx.employee.findFirst({
+        where: { email: body.email },
+        select: { id: true },
+      });
+      if (dup) throw new ForbiddenException('Já existe um funcionário com esse email.');
     }
 
-    const barbershop = await this.prisma.barbershop.findFirst({
-      where: { tenantId },
-    });
-    if (!barbershop) {
-      throw new Error('Barbearia não encontrada');
-    }
+    const barbershop = await ctx.tx.barbershop.findFirst({ select: { id: true } });
+    if (!barbershop) throw new NotFoundException('Barbearia não encontrada.');
 
-    const employee = await this.prisma.employee.create({
+    const employee = await ctx.tx.employee.create({
       data: {
-        tenantId,
+        tenantId: admin.tenantId,
         barbershopId: barbershop.id,
         appUserId: null,
         isActive: true,
-        ...valid.data,
-      },
-      select: {
-        id: true,
-        displayName: true,
-        email: true,
-        role: true,
-        isActive: true,
-        ratingAvg: true,
-        ratingCount: true,
-        createdAt: true,
-        updatedAt: true,
+        displayName: body.displayName,
+        email: body.email ?? null,
+        role: body.role,
       },
     });
 
-    // Enviar email de convite se email foi fornecido
     if (employee.email) {
-      const onboardingToken = this.jwt.sign(
-        { employeeId: employee.id, tenantId, type: 'employee_onboard' },
-        { expiresIn: '7d' },
-      );
-
-      const tenant = await this.prisma.tenant.findUnique({
-        where: { id: tenantId },
+      const tenant = await ctx.tx.tenant.findUnique({
+        where: { id: admin.tenantId },
         select: { name: true },
       });
-
-      await this.email.sendEmployeeInvite({
+      const onboardingToken = this.buildOnboardingToken(employee.id, admin.tenantId);
+      void this.email.sendEmployeeInvite({
         to: employee.email,
         employeeName: employee.displayName,
         tenantName: tenant?.name ?? 'Barbearia',
@@ -206,98 +190,77 @@ export class AdminEmployeesController {
       });
     }
 
-    return employee;
+    return toDto(employee);
   }
 
-  /**
-   * **[PATCH] Atualizar funcionário**
-   *
-   * Atualiza dados do funcionário. Role pode ser alterado dinamicamente.
-   * isActive=false não deleta histórico, apenas oculta de agendamentos futuros.
-   *
-   * **Response 200:** Funcionário atualizado
-   * **Response 404:** Funcionário não encontrado
-   */
   @Patch(':id')
-  @ApiOperation({
-    summary: 'Atualizar funcionário',
-    description: 'Atualiza dados do funcionário. Campos opcionais.',
-  })
+  @ApiOperation({ summary: 'Atualizar funcionário (campos opcionais).' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        displayName: { type: 'string' },
-        email: { type: 'string' },
-        role: { type: 'string', enum: ['barber', 'admin', 'admin_barber'] },
-        isActive: { type: 'boolean' },
-      },
-    },
-  })
   @ApiOkResponse({ description: 'Funcionário atualizado' })
   @ApiNotFoundResponse({ description: 'Funcionário não encontrado' })
-  async update(@Param('id') id: string, @Body() body: any): Promise<EmployeeResponseDto> {
-    const tenantId = (this as any).req.tenantId;
-    const valid = UpdateEmployeeSchema.safeParse(body);
-    if (!valid.success) {
-      throw new Error(valid.error.message);
-    }
+  async update(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(UpdateEmployeeSchema)) body: UpdateEmployeeInput,
+  ): Promise<EmployeeResponseDto> {
+    await this.requireAdmin(ctx, user);
 
-    // Validate ownership before update (IDOR prevention)
-    const existing = await this.prisma.employee.findFirst({
-      where: { id, tenantId },
-    });
-    if (!existing) {
-      throw new Error('Funcionário não encontrado');
-    }
+    const existing = await ctx.tx.employee.findFirst({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException('Funcionário não encontrado.');
 
-    const employee = await this.prisma.employee.update({
+    const employee = await ctx.tx.employee.update({
       where: { id },
-      data: valid.data,
-      select: {
-        id: true,
-        displayName: true,
-        email: true,
-        role: true,
-        isActive: true,
-        ratingAvg: true,
-        ratingCount: true,
-        createdAt: true,
-        updatedAt: true,
+      data: {
+        ...(body.displayName !== undefined && { displayName: body.displayName }),
+        ...(body.email !== undefined && { email: body.email ?? null }),
+        ...(body.role !== undefined && { role: body.role }),
+        ...(body.isActive !== undefined && { isActive: body.isActive }),
       },
     });
-    return employee;
+    return toDto(employee);
   }
 
-  /**
-   * **[DELETE] Deletar funcionário**
-   *
-   * Remove um funcionário permanentemente.
-   * ⚠️ Cuidado: Deleta histórico de appointments e reviews.
-   *
-   * **Response 204:** Deletado com sucesso
-   * **Response 404:** Funcionário não encontrado
-   */
   @Delete(':id')
-  @ApiOperation({
-    summary: 'Deletar funcionário',
-    description: 'Remove um funcionário permanentemente. Operação irreversível.',
-  })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Deletar funcionário (irreversível).' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   @ApiOkResponse({ description: 'Deletado com sucesso' })
   @ApiNotFoundResponse({ description: 'Funcionário não encontrado' })
-  async delete(@Param('id') id: string): Promise<void> {
-    const tenantId = (this as any).req.tenantId;
+  async delete(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    await this.requireAdmin(ctx, user);
 
-    // Validate ownership before delete (IDOR prevention)
-    const existing = await this.prisma.employee.findFirst({
-      where: { id, tenantId },
-    });
-    if (!existing) {
-      throw new Error('Funcionário não encontrado');
-    }
+    const existing = await ctx.tx.employee.findFirst({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException('Funcionário não encontrado.');
 
-    await this.prisma.employee.delete({ where: { id } });
+    await ctx.tx.employee.delete({ where: { id } });
   }
+}
+
+function toDto(row: {
+  id: string;
+  displayName: string;
+  email: string | null;
+  role: string;
+  isActive: boolean;
+  ratingAvg: number | null;
+  ratingCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}): EmployeeResponseDto {
+  return {
+    id: row.id,
+    displayName: row.displayName,
+    email: row.email,
+    role: row.role,
+    isActive: row.isActive,
+    ratingAvg: row.ratingAvg,
+    ratingCount: row.ratingCount,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }

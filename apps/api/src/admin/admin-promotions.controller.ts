@@ -1,20 +1,36 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import {
-  ApiTags,
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiBody,
-  ApiOkResponse,
-  ApiCreatedResponse,
-  ApiBadRequestResponse,
-  ApiNotFoundResponse,
+  ApiTags,
   ApiUnauthorizedResponse,
-  ApiForbiddenResponse,
 } from '@nestjs/swagger';
 import { z } from 'zod';
-import { PrismaService } from '../prisma/prisma.service';
-import { TenantGuard } from '../auth/tenant.guard';
-import { Auth } from '../auth/auth.decorators';
+
+import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { type TenantContextValue } from '../tenancy/tenant-context';
+import { Tx } from '../tenancy/tenancy.decorators';
 
 const CreatePromotionSchema = z.object({
   name: z.string().min(1, 'Nome obrigatório').max(200),
@@ -24,8 +40,12 @@ const CreatePromotionSchema = z.object({
   validFrom: z.string().datetime().optional(),
   validUntil: z.string().datetime().optional(),
 });
+type CreatePromotionInput = z.infer<typeof CreatePromotionSchema>;
 
-const UpdatePromotionSchema = CreatePromotionSchema.partial();
+const UpdatePromotionSchema = CreatePromotionSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+type UpdatePromotionInput = z.infer<typeof UpdatePromotionSchema>;
 
 interface PromotionResponseDto {
   id: string;
@@ -42,115 +62,47 @@ interface PromotionResponseDto {
 
 /**
  * Admin Promotions API — CRUD de promoções exibidas na descoberta pública.
+ * Só admin/admin_barber. Tenant via @Tx (RLS); role validado em requireAdmin.
  *
- * **Autenticação:** Bearer token (role: admin)
- * **Rate limit:** 100/min
- * **Cache:** Promoções são cacheadas por 60s no cliente
- *
- * **Invariantes:**
- * - discountType: 'percent' (valor em basis points: 1000=10%) | 'fixed' (em centavos)
- * - Datas UTC (validFrom/validUntil, ISO 8601)
- * - isActive=false oculta de /public/discover, mas mantém histórico
- * - Exibição: qualquer promoção com isActive=true E período válido (now entre validFrom/validUntil)
- *
- * **Exemplo:**
- * - percent: discountValue=3000 → 30% OFF
- * - fixed: discountValue=500 → R$ 5,00 OFF
+ * discountType: 'percent' (basis points, 1000=10%) | 'fixed' (centavos).
  */
 @ApiTags('admin')
+@ApiBearerAuth()
 @Controller('admin/promotions')
-@UseGuards(TenantGuard)
-@Auth('admin')
 export class AdminPromotionsController {
-  constructor(private readonly prisma: PrismaService) {}
-
-  /**
-   * **[GET] Listar promoções do tenant**
-   *
-   * Retorna todas as promoções (ativas e inativas) do tenant.
-   * Útil para gerenciamento administrativo e preview de datas.
-   */
-  @Get()
-  @ApiOperation({
-    summary: 'Listar promoções',
-    description: 'Retorna todas as promoções (ativas/inativas) do tenant.',
-  })
-  @ApiOkResponse({
-    description: 'Lista de promoções',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string', format: 'uuid' },
-          name: { type: 'string', example: '30% OFF Corte + Barba' },
-          description: { type: 'string', example: 'Promoção especial de segunda-feira' },
-          discountType: { type: 'string', enum: ['percent', 'fixed'] },
-          discountValue: { type: 'number', example: 3000 },
-          validFrom: { type: 'string', format: 'date-time', nullable: true },
-          validUntil: { type: 'string', format: 'date-time', nullable: true },
-          isActive: { type: 'boolean' },
-          createdAt: { type: 'string', format: 'date-time' },
-          updatedAt: { type: 'string', format: 'date-time' },
-        },
-      },
-    },
-  })
-  @ApiUnauthorizedResponse({ description: 'Token inválido' })
-  @ApiForbiddenResponse({ description: 'Usuário sem role admin' })
-  async list(): Promise<PromotionResponseDto[]> {
-    const tenantId = (this as any).req.tenantId;
-    const promotions = await this.prisma.promotion.findMany({
-      where: { tenantId },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        discountType: true,
-        discountValue: true,
-        validFrom: true,
-        validUntil: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
+  private async requireAdmin(
+    ctx: TenantContextValue,
+    user: AuthenticatedUser,
+  ): Promise<{ tenantId: string }> {
+    const employee = await ctx.tx.employee.findFirst({
+      where: { appUserId: user.id },
+      select: { tenantId: true, role: true },
     });
-    return promotions.map((p) => ({
-      ...p,
-      validFrom: p.validFrom?.toISOString() ?? null,
-      validUntil: p.validUntil?.toISOString() ?? null,
-      createdAt: p.createdAt.toISOString(),
-      updatedAt: p.updatedAt.toISOString(),
-    }));
+    if (!employee) throw new ForbiddenException('Usuário não vinculado.');
+    if (employee.role !== 'admin' && employee.role !== 'admin_barber') {
+      throw new ForbiddenException('Apenas admin pode gerenciar promoções.');
+    }
+    await ctx.tx.$executeRaw`SELECT set_config('app.tenant_id', ${employee.tenantId}, true)`;
+    return { tenantId: employee.tenantId };
   }
 
-  /**
-   * **[POST] Criar nova promoção**
-   *
-   * Cria uma promoção que será exibida em /public/tenants/:slug/promotions
-   * se estiver ativa E dentro do período de validade.
-   *
-   * **Request body:**
-   * - `name` (string, 1-200 chars): Título da promoção
-   * - `description` (string, opcional, ≤500 chars): Detalhes
-   * - `discountType` (enum): 'percent' | 'fixed'
-   * - `discountValue` (number): basis points (percent) ou centavos (fixed)
-   * - `validFrom` (ISO 8601, opcional): Início da validade (default: now)
-   * - `validUntil` (ISO 8601, opcional): Fim da validade (default: sem limite)
-   *
-   * **Exemplos:**
-   * - 30% OFF: { discountType: 'percent', discountValue: 3000 }
-   * - R$ 5 OFF: { discountType: 'fixed', discountValue: 500 }
-   *
-   * **Response 201:** Promoção criada (isActive=true por padrão)
-   * **Response 400:** Validação falhou
-   */
+  @Get()
+  @ApiOperation({ summary: 'Listar promoções (ativas e inativas) do tenant.' })
+  @ApiOkResponse({ description: 'Lista de promoções' })
+  @ApiUnauthorizedResponse({ description: 'Token inválido' })
+  @ApiForbiddenResponse({ description: 'Usuário sem role admin' })
+  async list(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PromotionResponseDto[]> {
+    await this.requireAdmin(ctx, user);
+    const promotions = await ctx.tx.promotion.findMany({ orderBy: { createdAt: 'desc' } });
+    return promotions.map(toDto);
+  }
+
   @Post()
-  @ApiOperation({
-    summary: 'Criar promoção',
-    description: 'Cria uma nova promoção para exibição pública.',
-  })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Criar promoção para exibição pública.' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -167,148 +119,105 @@ export class AdminPromotionsController {
   })
   @ApiCreatedResponse({ description: 'Promoção criada com sucesso' })
   @ApiBadRequestResponse({ description: 'Validação falhou' })
-  async create(@Body() body: any): Promise<PromotionResponseDto> {
-    const tenantId = (this as any).req.tenantId;
-    const valid = CreatePromotionSchema.safeParse(body);
-    if (!valid.success) {
-      throw new Error(valid.error.message);
-    }
+  async create(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(CreatePromotionSchema)) body: CreatePromotionInput,
+  ): Promise<PromotionResponseDto> {
+    const admin = await this.requireAdmin(ctx, user);
 
-    const promotion = await this.prisma.promotion.create({
+    const promotion = await ctx.tx.promotion.create({
       data: {
-        tenantId,
+        tenantId: admin.tenantId,
         isActive: true,
-        ...valid.data,
-        validFrom: valid.data.validFrom ? new Date(valid.data.validFrom) : null,
-        validUntil: valid.data.validUntil ? new Date(valid.data.validUntil) : null,
-      },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        discountType: true,
-        discountValue: true,
-        validFrom: true,
-        validUntil: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
+        name: body.name,
+        description: body.description ?? null,
+        discountType: body.discountType,
+        discountValue: body.discountValue,
+        validFrom: body.validFrom ? new Date(body.validFrom) : null,
+        validUntil: body.validUntil ? new Date(body.validUntil) : null,
       },
     });
-
-    return {
-      ...promotion,
-      validFrom: promotion.validFrom?.toISOString() ?? null,
-      validUntil: promotion.validUntil?.toISOString() ?? null,
-      createdAt: promotion.createdAt.toISOString(),
-      updatedAt: promotion.updatedAt.toISOString(),
-    };
+    return toDto(promotion);
   }
 
-  /**
-   * **[PATCH] Atualizar promoção**
-   *
-   * Atualiza dados de uma promoção existente.
-   * Mudar `isActive` ou datas afeta visibilidade imediata.
-   *
-   * **Response 200:** Promoção atualizada
-   * **Response 404:** Promoção não encontrada
-   */
   @Patch(':id')
-  @ApiOperation({
-    summary: 'Atualizar promoção',
-    description: 'Atualiza uma promoção existente. Campos opcionais.',
-  })
+  @ApiOperation({ summary: 'Atualizar promoção (campos opcionais).' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        description: { type: 'string' },
-        discountType: { type: 'string', enum: ['percent', 'fixed'] },
-        discountValue: { type: 'number' },
-        validFrom: { type: 'string', format: 'date-time' },
-        validUntil: { type: 'string', format: 'date-time' },
-        isActive: { type: 'boolean' },
-      },
-    },
-  })
   @ApiOkResponse({ description: 'Promoção atualizada' })
   @ApiNotFoundResponse({ description: 'Promoção não encontrada' })
-  async update(@Param('id') id: string, @Body() body: any): Promise<PromotionResponseDto> {
-    const tenantId = (this as any).req.tenantId;
-    const valid = UpdatePromotionSchema.safeParse(body);
-    if (!valid.success) {
-      throw new Error(valid.error.message);
-    }
+  async update(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(UpdatePromotionSchema)) body: UpdatePromotionInput,
+  ): Promise<PromotionResponseDto> {
+    await this.requireAdmin(ctx, user);
 
-    // Validate ownership before update (IDOR prevention)
-    const existing = await this.prisma.promotion.findFirst({
-      where: { id, tenantId },
-    });
-    if (!existing) {
-      throw new Error('Promoção não encontrada');
-    }
+    const existing = await ctx.tx.promotion.findFirst({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException('Promoção não encontrada.');
 
-    const promotion = await this.prisma.promotion.update({
+    const promotion = await ctx.tx.promotion.update({
       where: { id },
       data: {
-        ...valid.data,
-        validFrom: valid.data.validFrom ? new Date(valid.data.validFrom) : undefined,
-        validUntil: valid.data.validUntil ? new Date(valid.data.validUntil) : undefined,
-      },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        discountType: true,
-        discountValue: true,
-        validFrom: true,
-        validUntil: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.description !== undefined && { description: body.description ?? null }),
+        ...(body.discountType !== undefined && { discountType: body.discountType }),
+        ...(body.discountValue !== undefined && { discountValue: body.discountValue }),
+        ...(body.validFrom !== undefined && {
+          validFrom: body.validFrom ? new Date(body.validFrom) : null,
+        }),
+        ...(body.validUntil !== undefined && {
+          validUntil: body.validUntil ? new Date(body.validUntil) : null,
+        }),
+        ...(body.isActive !== undefined && { isActive: body.isActive }),
       },
     });
-
-    return {
-      ...promotion,
-      validFrom: promotion.validFrom?.toISOString() ?? null,
-      validUntil: promotion.validUntil?.toISOString() ?? null,
-      createdAt: promotion.createdAt.toISOString(),
-      updatedAt: promotion.updatedAt.toISOString(),
-    };
+    return toDto(promotion);
   }
 
-  /**
-   * **[DELETE] Deletar promoção**
-   *
-   * Remove uma promoção permanentemente.
-   * ⚠️ Cuidado: Operação irreversível.
-   *
-   * **Response 204:** Deletado com sucesso
-   * **Response 404:** Promoção não encontrada
-   */
   @Delete(':id')
-  @ApiOperation({
-    summary: 'Deletar promoção',
-    description: 'Remove uma promoção permanentemente. Operação irreversível.',
-  })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Deletar promoção (irreversível).' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   @ApiOkResponse({ description: 'Deletado com sucesso' })
   @ApiNotFoundResponse({ description: 'Promoção não encontrada' })
-  async delete(@Param('id') id: string): Promise<void> {
-    const tenantId = (this as any).req.tenantId;
+  async delete(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    await this.requireAdmin(ctx, user);
 
-    // Validate ownership before delete (IDOR prevention)
-    const existing = await this.prisma.promotion.findFirst({
-      where: { id, tenantId },
-    });
-    if (!existing) {
-      throw new Error('Promoção não encontrada');
-    }
+    const existing = await ctx.tx.promotion.findFirst({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException('Promoção não encontrada.');
 
-    await this.prisma.promotion.delete({ where: { id } });
+    await ctx.tx.promotion.delete({ where: { id } });
   }
+}
+
+function toDto(row: {
+  id: string;
+  name: string;
+  description: string | null;
+  discountType: string;
+  discountValue: number;
+  validFrom: Date | null;
+  validUntil: Date | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}): PromotionResponseDto {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    discountType: row.discountType,
+    discountValue: row.discountValue,
+    validFrom: row.validFrom ? row.validFrom.toISOString() : null,
+    validUntil: row.validUntil ? row.validUntil.toISOString() : null,
+    isActive: row.isActive,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }

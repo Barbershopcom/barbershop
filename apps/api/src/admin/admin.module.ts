@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
 
 import { SlotsModule } from '../slots/slots.module';
 import { EmailModule } from '../email/email.module';
@@ -12,25 +11,7 @@ import { AdminEmployeesController } from './admin-employees.controller';
 import { AdminPromotionsController } from './admin-promotions.controller';
 
 @Module({
-  imports: [
-    SlotsModule,
-    EmailModule,
-    JwtModule.registerAsync({
-      useFactory: () => {
-        const secret = process.env.JWT_SECRET;
-        if (!secret || secret.length < 32) {
-          throw new Error(
-            'JWT_SECRET environment variable must be set and at least 32 characters long. ' +
-            'Set it in your .env file for security.',
-          );
-        }
-        return {
-          secret,
-          signOptions: { expiresIn: '24h' },
-        };
-      },
-    }),
-  ],
+  imports: [SlotsModule, EmailModule],
   providers: [PrismaService],
   controllers: [
     AdminAppointmentsController,

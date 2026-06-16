@@ -1,23 +1,36 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import {
-  ApiTags,
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiBody,
-  ApiOkResponse,
-  ApiCreatedResponse,
-  ApiBadRequestResponse,
-  ApiNotFoundResponse,
+  ApiTags,
   ApiUnauthorizedResponse,
-  ApiForbiddenResponse,
-  ApiHeader,
-  ApiQuery,
 } from '@nestjs/swagger';
 import { z } from 'zod';
-import { PrismaService } from '../prisma/prisma.service';
-import { TenantGuard } from '../auth/tenant.guard';
-import { Auth } from '../auth/auth.decorators';
-import type { PublicServiceDto } from '@barbearia/schemas';
+
+import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { type TenantContextValue } from '../tenancy/tenant-context';
+import { Tx } from '../tenancy/tenancy.decorators';
 
 const CreateServiceSchema = z.object({
   name: z.string().min(1, 'Nome obrigatório').max(100),
@@ -26,122 +39,69 @@ const CreateServiceSchema = z.object({
   bufferMin: z.number().int().nonnegative('Buffer não pode ser negativo').default(0),
   basePriceCents: z.number().int().positive('Preço deve ser positivo'),
 });
+type CreateServiceInput = z.infer<typeof CreateServiceSchema>;
 
-const UpdateServiceSchema = CreateServiceSchema.partial();
+const UpdateServiceSchema = CreateServiceSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+type UpdateServiceInput = z.infer<typeof UpdateServiceSchema>;
 
-interface ServiceResponseDto extends PublicServiceDto {
+interface ServiceResponseDto {
+  id: string;
+  name: string;
+  description: string | null;
+  durationMin: number;
+  bufferMin: number;
+  basePriceCents: number;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 /**
- * Admin Services API — CRUD de serviços por tenant.
- *
- * **Autenticação:** Bearer token JWT (role: admin)
- * **Rate limit:** 100/min
- * **Cache:** Serviços são cacheados por 30s no cliente público
- *
- * **Invariantes:**
- * - Serviço deve ter pelo menos 1 barbeiro capaz (validation na criação)
- * - Preço em centavos (centavos BRL, ex: 5000 = R$ 50,00)
- * - Duração em minutos (mínimo 15, máximo 480)
- * - Buffer é o tempo de limpeza pós-serviço (afeta cálculo de slots)
- * - isActive=false oculta o serviço de descoberta, mas bookings existentes permanecem válidos
+ * Admin Services API — CRUD de serviços por tenant. Só admin/admin_barber.
+ * Tenant via @Tx (RLS); role validado em requireAdmin.
  */
 @ApiTags('admin')
+@ApiBearerAuth()
 @Controller('admin/services')
-@UseGuards(TenantGuard)
-@Auth('admin')
 export class AdminServicesController {
-  constructor(private readonly prisma: PrismaService) {}
-
-  /**
-   * **[GET] Listar serviços do tenant**
-   *
-   * Retorna todos os serviços (ativos e inativos) do tenant autenticado,
-   * ordenados por preço e nome. Útil para gerenciamento administrativo.
-   *
-   * **Response 200:** Array de serviços com metadados (created_at, updated_at)
-   * **Response 401:** Token inválido/expirado
-   * **Response 403:** Usuário sem role 'admin'
-   */
-  @Get()
-  @ApiOperation({
-    summary: 'Listar serviços do tenant',
-    description: 'Retorna todos os serviços (ativos e inativos) do tenant autenticado.',
-  })
-  @ApiHeader({
-    name: 'Authorization',
-    description: 'Bearer token JWT',
-    required: true,
-  })
-  @ApiOkResponse({
-    description: 'Lista de serviços',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string', format: 'uuid' },
-          name: { type: 'string', example: 'Corte clássico' },
-          description: { type: 'string', example: 'Corte com tesoura' },
-          durationMin: { type: 'number', example: 30 },
-          bufferMin: { type: 'number', example: 5 },
-          basePriceCents: { type: 'number', example: 5000 },
-          isActive: { type: 'boolean' },
-          createdAt: { type: 'string', format: 'date-time' },
-          updatedAt: { type: 'string', format: 'date-time' },
-        },
-      },
-    },
-  })
-  @ApiUnauthorizedResponse({ description: 'Token inválido ou expirado' })
-  @ApiForbiddenResponse({ description: 'Usuário sem permissão (role: admin)' })
-  async list(): Promise<ServiceResponseDto[]> {
-    // Tenant extraído do JWT via TenantGuard
-    const tenantId = (this as any).req.tenantId;
-    const services = await this.prisma.service.findMany({
-      where: { tenantId },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        durationMin: true,
-        bufferMin: true,
-        basePriceCents: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: [{ basePriceCents: 'asc' }, { name: 'asc' }],
+  private async requireAdmin(
+    ctx: TenantContextValue,
+    user: AuthenticatedUser,
+  ): Promise<{ tenantId: string }> {
+    const employee = await ctx.tx.employee.findFirst({
+      where: { appUserId: user.id },
+      select: { tenantId: true, role: true },
     });
-    return services;
+    if (!employee) throw new ForbiddenException('Usuário não vinculado.');
+    if (employee.role !== 'admin' && employee.role !== 'admin_barber') {
+      throw new ForbiddenException('Apenas admin pode gerenciar serviços.');
+    }
+    await ctx.tx.$executeRaw`SELECT set_config('app.tenant_id', ${employee.tenantId}, true)`;
+    return { tenantId: employee.tenantId };
   }
 
-  /**
-   * **[POST] Criar novo serviço**
-   *
-   * Cria um novo serviço para o tenant autenticado.
-   * O serviço fica inativo por padrão — ative em PATCH após associar barbeiros.
-   *
-   * **Request body:**
-   * - `name` (string, 1-100 chars): Nome do serviço
-   * - `description` (string, opcional, ≤500 chars): Descrição
-   * - `durationMin` (number, 15-480): Duração em minutos
-   * - `bufferMin` (number, ≥0, default=0): Tempo de limpeza pós-serviço
-   * - `basePriceCents` (number, >0): Preço em centavos (5000 = R$ 50,00)
-   *
-   * **Response 201:** Serviço criado
-   * **Response 400:** Validação falhou
-   * **Response 401/403:** Não autenticado ou sem permissão
-   */
+  @Get()
+  @ApiOperation({ summary: 'Listar serviços do tenant' })
+  @ApiOkResponse({ description: 'Lista de serviços (ativos e inativos).' })
+  @ApiUnauthorizedResponse({ description: 'Token inválido ou expirado' })
+  @ApiForbiddenResponse({ description: 'Usuário sem permissão (role: admin)' })
+  async list(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ServiceResponseDto[]> {
+    await this.requireAdmin(ctx, user);
+    const services = await ctx.tx.service.findMany({
+      orderBy: [{ basePriceCents: 'asc' }, { name: 'asc' }],
+    });
+    return services.map(toDto);
+  }
+
   @Post()
-  @ApiOperation({
-    summary: 'Criar novo serviço',
-    description: 'Cria um novo serviço para o tenant. Começa inativo.',
-  })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Criar novo serviço (começa inativo).' })
   @ApiBody({
-    description: 'Dados do serviço',
     schema: {
       type: 'object',
       required: ['name', 'durationMin', 'basePriceCents'],
@@ -154,143 +114,103 @@ export class AdminServicesController {
       },
     },
   })
-  @ApiCreatedResponse({
-    description: 'Serviço criado com sucesso',
-    schema: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', format: 'uuid' },
-        name: { type: 'string' },
-        basePriceCents: { type: 'number' },
-      },
-    },
-  })
+  @ApiCreatedResponse({ description: 'Serviço criado com sucesso' })
   @ApiBadRequestResponse({ description: 'Campo inválido ou faltando' })
-  async create(@Body() body: any): Promise<ServiceResponseDto> {
-    const tenantId = (this as any).req.tenantId;
-    const valid = CreateServiceSchema.safeParse(body);
-    if (!valid.success) {
-      throw new Error(valid.error.message);
-    }
+  async create(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(CreateServiceSchema)) body: CreateServiceInput,
+  ): Promise<ServiceResponseDto> {
+    const admin = await this.requireAdmin(ctx, user);
 
-    const service = await this.prisma.service.create({
+    const barbershop = await ctx.tx.barbershop.findFirst({ select: { id: true } });
+    if (!barbershop) throw new NotFoundException('Barbearia não encontrada.');
+
+    const service = await ctx.tx.service.create({
       data: {
-        tenantId,
-        barbershopId: (await this.prisma.barbershop.findFirst({ where: { tenantId } }))?.id!,
+        tenantId: admin.tenantId,
+        barbershopId: barbershop.id,
         isActive: false,
-        ...valid.data,
-      },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        durationMin: true,
-        bufferMin: true,
-        basePriceCents: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
+        name: body.name,
+        description: body.description ?? null,
+        durationMin: body.durationMin,
+        bufferMin: body.bufferMin,
+        basePriceCents: body.basePriceCents,
       },
     });
-    return service;
+    return toDto(service);
   }
 
-  /**
-   * **[PATCH] Atualizar serviço**
-   *
-   * Atualiza um serviço existente. Todos os campos são opcionais.
-   * Mudar `isActive` afeta visibilidade pública, não invalida bookings.
-   *
-   * **Response 200:** Serviço atualizado
-   * **Response 404:** Serviço não encontrado
-   */
   @Patch(':id')
-  @ApiOperation({
-    summary: 'Atualizar serviço',
-    description: 'Atualiza um serviço existente. Campos opcionais.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: 'string',
-    format: 'uuid',
-    description: 'ID do serviço',
-  })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        description: { type: 'string' },
-        durationMin: { type: 'number' },
-        bufferMin: { type: 'number' },
-        basePriceCents: { type: 'number' },
-        isActive: { type: 'boolean' },
-      },
-    },
-  })
+  @ApiOperation({ summary: 'Atualizar serviço (campos opcionais).' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   @ApiOkResponse({ description: 'Serviço atualizado' })
   @ApiNotFoundResponse({ description: 'Serviço não encontrado' })
-  async update(@Param('id') id: string, @Body() body: any): Promise<ServiceResponseDto> {
-    const tenantId = (this as any).req.tenantId;
-    const valid = UpdateServiceSchema.safeParse(body);
-    if (!valid.success) {
-      throw new Error(valid.error.message);
-    }
+  async update(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(UpdateServiceSchema)) body: UpdateServiceInput,
+  ): Promise<ServiceResponseDto> {
+    await this.requireAdmin(ctx, user);
 
-    // Validate ownership before update (IDOR prevention)
-    const existing = await this.prisma.service.findFirst({
-      where: { id, tenantId },
-    });
-    if (!existing) {
-      throw new Error('Serviço não encontrado');
-    }
+    const existing = await ctx.tx.service.findFirst({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException('Serviço não encontrado.');
 
-    const service = await this.prisma.service.update({
+    const service = await ctx.tx.service.update({
       where: { id },
-      data: valid.data,
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        durationMin: true,
-        bufferMin: true,
-        basePriceCents: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
+      data: {
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.description !== undefined && { description: body.description ?? null }),
+        ...(body.durationMin !== undefined && { durationMin: body.durationMin }),
+        ...(body.bufferMin !== undefined && { bufferMin: body.bufferMin }),
+        ...(body.basePriceCents !== undefined && { basePriceCents: body.basePriceCents }),
+        ...(body.isActive !== undefined && { isActive: body.isActive }),
       },
     });
-    return service;
+    return toDto(service);
   }
 
-  /**
-   * **[DELETE] Deletar serviço**
-   *
-   * Remove um serviço permanentemente.
-   * ⚠️ Cuidado: Deleta todas as referências (capabilities, appointments históricos).
-   *
-   * **Response 204:** Deletado com sucesso
-   * **Response 404:** Serviço não encontrado
-   */
   @Delete(':id')
-  @ApiOperation({
-    summary: 'Deletar serviço',
-    description: 'Remove um serviço permanentemente. Operação irreversível.',
-  })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Deletar serviço (irreversível).' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   @ApiOkResponse({ description: 'Deletado com sucesso' })
   @ApiNotFoundResponse({ description: 'Serviço não encontrado' })
-  async delete(@Param('id') id: string): Promise<void> {
-    const tenantId = (this as any).req.tenantId;
+  async delete(
+    @Tx() ctx: TenantContextValue,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    await this.requireAdmin(ctx, user);
 
-    // Validate ownership before delete (IDOR prevention)
-    const existing = await this.prisma.service.findFirst({
-      where: { id, tenantId },
-    });
-    if (!existing) {
-      throw new Error('Serviço não encontrado');
-    }
+    const existing = await ctx.tx.service.findFirst({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException('Serviço não encontrado.');
 
-    await this.prisma.service.delete({ where: { id } });
+    await ctx.tx.service.delete({ where: { id } });
   }
+}
+
+function toDto(row: {
+  id: string;
+  name: string;
+  description: string | null;
+  durationMin: number;
+  bufferMin: number;
+  basePriceCents: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}): ServiceResponseDto {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    durationMin: row.durationMin,
+    bufferMin: row.bufferMin,
+    basePriceCents: row.basePriceCents,
+    isActive: row.isActive,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }

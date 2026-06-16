@@ -86,18 +86,26 @@ export class PublicPromotionsController {
   async list(): Promise<PublicPromotionDto[]> {
     const now = new Date();
 
+    // Não há relação Prisma Promotion→Tenant (multi-tenancy é por tenantId
+    // scalar + RLS). Resolvemos os tenants públicos primeiro e filtramos as
+    // promoções por tenantId. Bypassa RLS de propósito (igual /public/discover),
+    // filtrando explicitamente por listedPublicly=true.
+    const tenants = await this.prisma.tenant.findMany({
+      where: { listedPublicly: true },
+      select: { id: true, slug: true, name: true },
+    });
+    if (tenants.length === 0) return [];
+    const tenantById = new Map(tenants.map((t) => [t.id, t]));
+
     const promotions = await this.prisma.promotion.findMany({
       where: {
         isActive: true,
+        tenantId: { in: tenants.map((t) => t.id) },
         // Período válido: now >= validFrom (ou null) AND now <= validUntil (ou null)
         AND: [
           { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
           { OR: [{ validUntil: null }, { validUntil: { gte: now } }] },
         ],
-        // Apenas de tenants públicos
-        tenant: {
-          listedPublicly: true,
-        },
       },
       select: {
         id: true,
@@ -106,26 +114,27 @@ export class PublicPromotionsController {
         discountType: true,
         discountValue: true,
         validUntil: true,
-        tenant: {
-          select: {
-            slug: true,
-            name: true,
-          },
-        },
+        tenantId: true,
       },
       orderBy: { createdAt: 'desc' },
       take: 20, // Máximo 20 promoções para carousel
     });
 
-    return promotions.map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      discountType: p.discountType,
-      discountValue: p.discountValue,
-      tenantSlug: p.tenant.slug,
-      tenantName: p.tenant.name,
-      validUntil: p.validUntil?.toISOString() ?? null,
-    }));
+    return promotions.flatMap((p) => {
+      const tenant = tenantById.get(p.tenantId);
+      if (!tenant) return [];
+      return [
+        {
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          discountType: p.discountType,
+          discountValue: p.discountValue,
+          tenantSlug: tenant.slug,
+          tenantName: tenant.name,
+          validUntil: p.validUntil?.toISOString() ?? null,
+        },
+      ];
+    });
   }
 }

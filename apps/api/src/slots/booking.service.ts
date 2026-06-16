@@ -173,8 +173,8 @@ export class BookingService {
           reason: 'exhausted',
         });
       }
-      priceCents = v.finalPriceCents ?? service.basePriceCents;
-      reservedCoupon = { id: v.couponId, discountCents: v.discountCents ?? 0 };
+      priceCents = couponValidation.finalPriceCents ?? service.basePriceCents;
+      reservedCoupon = { id: couponValidation.couponId, discountCents: couponValidation.discountCents ?? 0 };
     }
 
     // 4. INSERT atômico. EXCLUDE constraint pega race condition.

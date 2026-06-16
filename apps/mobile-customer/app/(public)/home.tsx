@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { Bell, Search } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   Pressable,
   RefreshControl,
@@ -245,11 +244,7 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {isLoading ? (
-          <View className="py-8">
-            <ActivityIndicator color="#1a365d" />
-          </View>
-        ) : barbershops && barbershops.length > 0 ? (
+        {barbershops && barbershops.length > 0 ? (
           <View className="gap-3">
             {barbershops.slice(0, 5).map((shop: DiscoverItem) => (
               <Pressable

@@ -99,9 +99,9 @@ export default function TeamPage() {
     setSubmitting(true);
     try {
       if (editingId) {
-        await api.patch(`/employees/${editingId}`, values, { tenantId: tenant.id });
+        await api.patch(`/admin/employees/${editingId}`, values, { tenantId: tenant.id });
       } else {
-        await api.post('/employees', values, { tenantId: tenant.id });
+        await api.post('/admin/employees', values, { tenantId: tenant.id });
       }
       await refresh();
       cancel();
@@ -115,7 +115,7 @@ export default function TeamPage() {
   async function deactivate(id: string) {
     if (!confirm('Desativar este funcionário? Pode reativar depois.')) return;
     try {
-      await api.delete(`/employees/${id}`, { tenantId: tenant.id });
+      await api.delete(`/admin/employees/${id}`, { tenantId: tenant.id });
       await refresh();
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Erro ao desativar');
@@ -124,7 +124,7 @@ export default function TeamPage() {
 
   async function reactivate(id: string) {
     try {
-      await api.patch(`/employees/${id}`, { isActive: true }, { tenantId: tenant.id });
+      await api.patch(`/admin/employees/${id}`, { isActive: true }, { tenantId: tenant.id });
       await refresh();
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Erro ao reativar');

@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import {
   Image,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,

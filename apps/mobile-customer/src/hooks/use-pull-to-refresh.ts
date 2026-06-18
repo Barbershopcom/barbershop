@@ -27,10 +27,10 @@ interface UsePullToRefreshReturn {
   pullState: PullState;
   isPulling: boolean;
   isRefreshing: boolean;
-  translateY: Reanimated.Animated.Value;
-  scale: Reanimated.Animated.Value;
-  opacity: Reanimated.Animated.Value;
-  rotation: Reanimated.Animated.Value;
+  translateY: any;
+  scale: any;
+  opacity: any;
+  rotation: any;
   indicatorAnimatedStyle: any;
   onDragStart: () => void;
   onDragUpdate: (translation: number) => void;

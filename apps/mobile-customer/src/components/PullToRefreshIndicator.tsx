@@ -11,10 +11,10 @@ import { PullState } from '@/hooks/use-pull-to-refresh';
 interface PullToRefreshIndicatorProps {
   pullState: PullState;
   indicatorAnimatedStyle: any;
-  translateY: Reanimated.Animated.Value;
-  scale: Reanimated.Animated.Value;
-  rotation: Reanimated.Animated.Value;
-  opacity: Reanimated.Animated.Value;
+  translateY: any;
+  scale: any;
+  rotation: any;
+  opacity: any;
 }
 
 const AnimatedView = Reanimated.createAnimatedComponent(View);

@@ -177,6 +177,7 @@ export class AdminEmployeesController {
     });
 
     if (employee.email) {
+      console.log('📨 [AdminEmployeesController] Enviando convite para:', employee.email);
       const tenant = await ctx.tx.tenant.findUnique({
         where: { id: admin.tenantId },
         select: { name: true },
@@ -188,6 +189,8 @@ export class AdminEmployeesController {
         tenantName: tenant?.name ?? 'Barbearia',
         onboardingToken,
       });
+    } else {
+      console.log('⚠️ [AdminEmployeesController] Sem email fornecido, convite não enviado');
     }
 
     return toDto(employee);

@@ -118,6 +118,7 @@ export class EmailService {
     onboardingToken: string;
   }): Promise<{ ok: boolean; error?: string }> {
     const { employeeName, tenantName, onboardingToken } = args;
+    console.log('📧 [sendEmployeeInvite] Iniciando envio de convite', { to: args.to, employeeName });
     const onboardingUrl = `https://app.barbearia.com/employee/onboard?token=${encodeURIComponent(onboardingToken)}`;
 
     const html = `

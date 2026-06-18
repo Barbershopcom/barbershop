@@ -25,6 +25,7 @@ interface BookingContextValue {
   setBarbershop: (id: string, name: string, slug: string) => void;
   setAvailableServices: (services: ServiceDetail[]) => void;
   toggleService: (serviceId: string) => void;
+  selectServices: (serviceIds: string[]) => void;
   setBarber: (id: string, name: string, ratingAvg?: number) => void;
   setDateTime: (date: Date, time: string) => void;
   setAppointmentId: (id: string) => void;
@@ -99,6 +100,24 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const selectServices = (serviceIds: string[]) => {
+    setState((prev) => {
+      const newServices = new Set(serviceIds);
+      const newTotal = Array.from(newServices).reduce((acc, id) => {
+        const service = prev.services.get(id);
+        return acc + (service?.basePriceCents || 0);
+      }, 0);
+      return {
+        ...prev,
+        selectedServiceIds: newServices,
+        totalPrice: newTotal,
+        selectedBarber: null,
+        selectedDate: null,
+        selectedTime: null,
+      };
+    });
+  };
+
   const setBarber = (id: string, name: string, ratingAvg?: number) => {
     setState((prev) => ({
       ...prev,
@@ -130,7 +149,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
 
   return (
     <BookingContext.Provider
-      value={{ state, setBarbershop, setAvailableServices, toggleService, setBarber, setDateTime, setAppointmentId, reset }}
+      value={{ state, setBarbershop, setAvailableServices, toggleService, selectServices, setBarber, setDateTime, setAppointmentId, reset }}
     >
       {children}
     </BookingContext.Provider>

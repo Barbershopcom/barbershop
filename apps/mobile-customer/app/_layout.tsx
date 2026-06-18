@@ -1,5 +1,20 @@
 import '../global.css';
 
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+import {
+  BebasNeue_400Regular,
+} from '@expo-google-fonts/bebas-neue';
+import {
+  Lora_400Regular_Italic,
+} from '@expo-google-fonts/lora';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
 import { Redirect, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -11,11 +26,28 @@ import { BookingProvider } from '@/lib/booking-context';
 import { Sentry, initSentry } from '@/lib/sentry';
 import { SessionProvider, useSession } from '@/lib/session';
 
+SplashScreen.preventAutoHideAsync();
+
 initSentry();
 
 function RootLayoutNav() {
   const { state } = useSession();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  const [fontsLoaded] = useFonts({
+    BebasNeue_400Regular,
+    Lora_400Regular_Italic,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
 
   useEffect(() => {
     (async () => {

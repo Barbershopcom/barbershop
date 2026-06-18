@@ -1,22 +1,29 @@
-import type { PublicServiceDto, PublicTenantDto } from '@barbearia/schemas';
+import type { PublicServiceDto } from '@barbearia/schemas';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
-  ScrollView,
+  FlatList,
+  StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '@/lib/api';
 import { useBooking } from '@/lib/booking-context';
-import { formatDurationLabel, formatPriceBRL } from '@/lib/format';
+import {
+  AgendarServicosScreen,
+  Header,
+  PrimaryButton,
+  ServiceCard,
+} from '@/components/agendar';
+import { colors, fonts, radius, space } from '@/theme';
+import type { Service, Barber } from '@/types';
 
 type LoadState =
   | { kind: 'loading' }
-  | { kind: 'ready'; services: PublicServiceDto[] }
+  | { kind: 'ready'; services: Service[] }
   | { kind: 'error'; message: string };
 
 export default function AgendamentoServicoScreen() {
@@ -24,15 +31,25 @@ export default function AgendamentoServicoScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const booking = useBooking();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
+  const [selected, setSelected] = useState<string[]>([]);
 
   useEffect(() => {
     if (!slug || !booking.state.barbershopId) return;
 
     (async () => {
       try {
-        const services = await api.get<PublicServiceDto[]>(
+        const apiServices = await api.get<PublicServiceDto[]>(
           `/public/tenants/${encodeURIComponent(slug)}/services`,
         );
+        // TODO: Buscar barbeiros para mapear quem faz cada serviço
+        const services: Service[] = apiServices.map((s) => ({
+          id: s.id,
+          name: s.name,
+          durationMin: s.durationMin,
+          price: (s.basePriceCents || 0) / 100,
+          discountPct: undefined,
+          barbers: [], // TODO: popular com dados reais
+        }));
         setState({ kind: 'ready', services });
       } catch (err) {
         setState({
@@ -43,107 +60,119 @@ export default function AgendamentoServicoScreen() {
     })();
   }, [slug, booking.state.barbershopId]);
 
+  const toggle = (id: string) =>
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
   const handleContinue = () => {
-    if (booking.state.selectedServiceIds.size > 0) {
+    if (selected.length > 0) {
+      booking.selectServices(selected);
       router.push(
         `/(public)/agendamento/${encodeURIComponent(slug)}/barbeiro`,
       );
     }
   };
 
-  const totalPrice = Array.from(booking.state.selectedServiceIds).reduce(
-    (acc) => acc,
-    0,
-  );
-
   if (state.kind === 'loading') {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#1a365d" />
+      <View style={s.centerContainer}>
+        <ActivityIndicator color={colors.navy} size="large" />
       </View>
     );
   }
 
   if (state.kind === 'error') {
     return (
-      <View className="flex-1 items-center justify-center gap-3 bg-background px-6">
-        <Text className="text-sm text-destructive">{state.message}</Text>
-        <Pressable onPress={() => router.back()} className="rounded-md bg-navy px-4 py-2">
-          <Text className="text-sm font-semibold text-white">Voltar</Text>
-        </Pressable>
+      <View style={s.centerContainer}>
+        <Text style={s.errorText}>{state.message}</Text>
+        <PrimaryButton
+          label="Voltar"
+          onPress={() => router.back()}
+        />
       </View>
     );
   }
 
   const { services } = state;
-  const selectedServices = Array.from(booking.state.selectedServiceIds)
-    .map((id) => services.find((s) => s.id === id))
-    .filter(Boolean) as PublicServiceDto[];
 
   return (
-    <View className="flex-1 bg-background">
-      {/* Header */}
-      <View className="border-b border-border bg-card px-6 py-4">
-        <View className="flex-row items-center justify-between">
-          <Pressable onPress={() => router.back()} className="p-2">
-            <ArrowLeft size={24} color="#1a365d" />
-          </Pressable>
-          <Text className="font-display text-lg font-bold uppercase">AGENDAR</Text>
-          <View className="w-10" />
-        </View>
-      </View>
+    <SafeAreaView edges={['top', 'bottom']} style={s.root}>
+      <Header
+        title="AGENDAR"
+        onBack={() => router.back()}
+      />
 
-      <ScrollView contentContainerClassName="p-6 pb-32">
-        {/* Resumo */}
-        <View className="mb-6">
-          <Text className="font-display text-lg font-bold uppercase text-foreground">
-            {booking.state.barbershopName}
-          </Text>
-          <Text className="mt-1 font-serif text-sm italic text-foreground-muted">
-            Serviço{selectedServices.length !== 1 ? 's' : ''} selecionado{selectedServices.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
+      <FlatList
+        data={services}
+        keyExtractor={(s) => s.id}
+        contentContainerStyle={s.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={s.intro}>
+            <Text style={s.title}>O QUE VOCÊ VAI FAZER?</Text>
+            <Text style={s.subtitle}>Escolha um ou combine vários serviços</Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <ServiceCard
+            service={item}
+            selected={selected.includes(item.id)}
+            onToggle={() => toggle(item.id)}
+          />
+        )}
+      />
 
-        {/* Lista de serviços */}
-        <View className="mb-8 gap-2">
-          {selectedServices.map((service) => (
-            <View
-              key={service.id}
-              className="flex-row items-center justify-between rounded-lg bg-card px-4 py-3 border border-border"
-            >
-              <View className="flex-1">
-                <Text className="font-semibold text-foreground">{service.name}</Text>
-                <Text className="text-xs text-foreground-muted">
-                  {formatDurationLabel(service.durationMin)}
-                </Text>
-              </View>
-              <Text className="font-bold text-navy">{formatPriceBRL(service.basePriceCents)}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Próximo passo */}
-        <View className="rounded-lg bg-blue-50 p-4 mb-6">
-          <Text className="text-xs font-semibold uppercase text-foreground-muted">
-            Próximo: escolher barbeiro
-          </Text>
-          <Text className="text-sm text-foreground-muted">
-            Veja quem pode fazer esses serviços
-          </Text>
-        </View>
-      </ScrollView>
-
-      {/* Footer */}
-      <View className="absolute bottom-0 left-0 right-0 border-t border-border bg-background px-6 py-4">
-        <Pressable
+      <View style={s.footer}>
+        <PrimaryButton
+          label="Continuar"
+          disabled={selected.length === 0}
           onPress={handleContinue}
-          className="items-center justify-center rounded-lg bg-navy py-4 active:opacity-80"
-        >
-          <Text className="font-display text-base font-bold text-white">
-            Continuar →
-          </Text>
-        </Pressable>
+        />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bg,
+    paddingHorizontal: space(5),
+  },
+  errorText: {
+    fontFamily: fonts.ui,
+    fontSize: 14,
+    color: colors.vermelho,
+    marginBottom: space(4),
+    textAlign: 'center',
+  },
+  listContent: {
+    paddingHorizontal: space(5),
+    paddingBottom: space(28),
+  },
+  intro: { paddingTop: space(5), paddingBottom: space(4) },
+  title: {
+    fontFamily: fonts.display,
+    fontSize: 32,
+    letterSpacing: 0.5,
+    color: colors.ink,
+  },
+  subtitle: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 15,
+    color: colors.muted,
+    marginTop: space(1.5),
+  },
+  footer: {
+    paddingHorizontal: space(5),
+    paddingTop: space(3),
+    paddingBottom: space(2),
+    backgroundColor: colors.bg,
+    borderTopWidth: 1,
+    borderTopColor: colors.hairline,
+  },
+});

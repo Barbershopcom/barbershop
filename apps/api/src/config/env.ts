@@ -26,6 +26,11 @@ const schema = z
     EMAIL_FROM: z.string().email().default('onboarding@resend.dev'),
     /** URL pública usada nos magic links do email (sem trailing slash). */
     PUBLIC_WEB_URL: z.string().url().default('http://localhost:3000'),
+    /**
+     * URL do app do barbeiro (mobile-business). Usada no convite de employee.
+     * Em dev é o Expo web (porta 8082); em prod, a URL publicada do app.
+     */
+    EMPLOYEE_APP_URL: z.string().url().default('http://localhost:8082'),
     /** Secret HMAC pros tokens de cancel (mínimo 32 chars em prod). */
     APPOINTMENT_CANCEL_SECRET: z
       .string()

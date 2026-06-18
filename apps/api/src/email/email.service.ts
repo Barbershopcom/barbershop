@@ -30,10 +30,13 @@ export class EmailService {
   private static readonly logger = new Logger(EmailService.name);
   private readonly resend: Resend | null;
   private readonly from: string;
+  private readonly employeeAppUrl: string;
 
   constructor(config: ConfigService) {
     const apiKey = config.get<string>('RESEND_API_KEY');
     this.from = config.get<string>('EMAIL_FROM') ?? 'onboarding@resend.dev';
+    this.employeeAppUrl =
+      config.get<string>('EMPLOYEE_APP_URL') ?? 'http://localhost:8082';
 
     if (!apiKey) {
       EmailService.logger.warn(
@@ -106,10 +109,12 @@ export class EmailService {
   }
 
   /**
-   * Enviar convite de employee (barbeiro/admin)
+   * Enviar convite de employee (barbeiro/admin).
    *
-   * Token deve ser JWT com exp=7d (ADR-025 §3)
-   * URL de onboarding: https://app.barbearia.com/employee/onboard?token=...
+   * O vínculo acontece por email-matching: o barbeiro cria conta no app com
+   * ESTE email e o backend (POST /me/employee/link) vincula automaticamente.
+   * Não há página que consome token — o link só leva o barbeiro ao signup.
+   * `onboardingToken` fica reservado pra um fluxo token-based futuro.
    */
   async sendEmployeeInvite(args: {
     to: string;
@@ -117,8 +122,8 @@ export class EmailService {
     tenantName: string;
     onboardingToken: string;
   }): Promise<{ ok: boolean; error?: string }> {
-    const { employeeName, tenantName, onboardingToken } = args;
-    const onboardingUrl = `https://app.barbearia.com/employee/onboard?token=${encodeURIComponent(onboardingToken)}`;
+    const { to, employeeName, tenantName } = args;
+    const signupUrl = `${this.employeeAppUrl}/signup`;
 
     const html = `
 <!DOCTYPE html>
@@ -131,7 +136,7 @@ export class EmailService {
     .header { color: #1a365d; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
     .button { display: inline-block; background-color: #1a365d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
     .footer { color: #8a8073; font-size: 12px; margin-top: 40px; border-top: 1px solid #e5ddd0; padding-top: 20px; }
-    code { background: #f5f5f5; padding: 8px 12px; display: inline-block; border-radius: 4px; font-family: monospace; font-size: 12px; word-break: break-all; }
+    code { background: #f5f5f5; padding: 8px 12px; display: inline-block; border-radius: 4px; font-family: monospace; font-size: 13px; word-break: break-all; }
   </style>
 </head>
 <body>
@@ -140,21 +145,26 @@ export class EmailService {
 
     <p>Olá <strong>${this.escapeHtml(employeeName)}</strong>,</p>
 
-    <p>Você foi convidado para gerenciar agendamentos na plataforma <strong>Barbearia</strong>.</p>
+    <p>Você foi cadastrado como funcionário na <strong>${this.escapeHtml(tenantName)}</strong>.</p>
 
-    <p>Clique no botão abaixo para finalizar seu cadastro e começar a usar:</p>
+    <p>Para acessar, crie sua conta no app usando <strong>exatamente este email</strong>:</p>
 
     <center>
-      <a href="${this.escapeHtml(onboardingUrl)}" class="button">Aceitar Convite</a>
+      <code>${this.escapeHtml(to)}</code>
+    </center>
+
+    <center>
+      <a href="${this.escapeHtml(signupUrl)}" class="button">Criar minha conta</a>
     </center>
 
     <p style="color: #666; font-size: 14px; margin-top: 30px;">
-      Se o botão não funcionar, copie este link:<br>
-      <code>${this.escapeHtml(onboardingUrl)}</code>
+      Se o botão não funcionar, abra este link:<br>
+      <code>${this.escapeHtml(signupUrl)}</code>
     </p>
 
     <p style="color: #666; margin-top: 30px;">
-      ⏰ <strong>Este link expira em 7 dias.</strong> Após isso, peça ao seu gerente para enviar um novo convite.
+      Assim que você criar a conta com esse email, seu acesso é vinculado
+      automaticamente à barbearia.
     </p>
 
     <div class="footer">

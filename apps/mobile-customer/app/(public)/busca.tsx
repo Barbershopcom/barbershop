@@ -116,7 +116,7 @@ export default function SearchScreen() {
           contentContainerClassName="px-4 py-4 gap-3"
           renderItem={({ item: shop }) => (
             <Pressable
-              onPress={() => router.push(`/(public)/b/${shop.slug}`)}
+              onPress={() => router.push(`/(public)/b/${shop.slug}/agendar`)}
               className="rounded-lg border border-border bg-card p-4 active:bg-blue-50"
             >
               <View className="flex-row items-start gap-3">

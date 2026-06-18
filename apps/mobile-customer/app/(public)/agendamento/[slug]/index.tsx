@@ -1,4 +1,4 @@
-import type { PublicServiceDto } from '@barbearia/schemas';
+import type { PublicServiceDto, PublicTenantDto } from '@barbearia/schemas';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -34,21 +34,38 @@ export default function AgendamentoServicoScreen() {
   const [selected, setSelected] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!slug || !booking.state.barbershopId) return;
+    if (!slug) return;
 
     (async () => {
       try {
-        const apiServices = await api.get<PublicServiceDto[]>(
-          `/public/tenants/${encodeURIComponent(slug)}/services`,
+        const [tenant, apiServices] = await Promise.all([
+          api.get<PublicTenantDto>(`/public/tenants/${encodeURIComponent(slug)}`),
+          api.get<PublicServiceDto[]>(
+            `/public/tenants/${encodeURIComponent(slug)}/services`,
+          ),
+        ]);
+        // Preenche o contexto de booking (necessário para as etapas seguintes:
+        // barbeiro, data/hora e confirmação).
+        booking.setBarbershop(tenant.id, tenant.name, tenant.slug);
+        booking.setAvailableServices(
+          apiServices.map((s) => ({
+            id: s.id,
+            name: s.name,
+            basePriceCents: s.basePriceCents,
+            durationMin: s.durationMin,
+          })),
         );
-        // TODO: Buscar barbeiros para mapear quem faz cada serviço
         const services: Service[] = apiServices.map((s) => ({
           id: s.id,
           name: s.name,
           durationMin: s.durationMin,
           price: (s.basePriceCents || 0) / 100,
           discountPct: undefined,
-          barbers: [], // TODO: popular com dados reais
+          barbers: s.barbers.map((b) => ({
+            id: b.id,
+            initials: initialsOf(b.displayName),
+            colorIndex: colorIndexOf(b.id),
+          })),
         }));
         setState({ kind: 'ready', services });
       } catch (err) {
@@ -58,7 +75,8 @@ export default function AgendamentoServicoScreen() {
         });
       }
     })();
-  }, [slug, booking.state.barbershopId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
 
   const toggle = (id: string) =>
     setSelected((prev) =>
@@ -132,6 +150,24 @@ export default function AgendamentoServicoScreen() {
       </View>
     </SafeAreaView>
   );
+}
+
+/** Iniciais (até 2 letras) a partir do nome de exibição. */
+function initialsOf(displayName: string): string {
+  return displayName
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+/** Índice de cor estável (0..n-1) derivado do id do barbeiro. */
+function colorIndexOf(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash + id.charCodeAt(i)) % 4;
+  return hash;
 }
 
 const s = StyleSheet.create({

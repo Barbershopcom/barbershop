@@ -90,7 +90,7 @@ export default function PublicHome() {
           renderItem={({ item }) => (
             <BarbershopCard
               item={item}
-              onPress={() => router.push(`/b/${encodeURIComponent(item.slug)}/agendar`)}
+              onPress={() => router.push(`/agendamento/${encodeURIComponent(item.slug)}`)}
             />
           )}
           ListEmptyComponent={

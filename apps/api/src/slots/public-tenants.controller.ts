@@ -209,6 +209,16 @@ export class PublicTenantsController {
           description: { type: 'string', example: 'Corte com tesoura', nullable: true },
           durationMin: { type: 'number', minimum: 15, maximum: 480, example: 30 },
           basePriceCents: { type: 'number', example: 5000 },
+          barbers: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                displayName: { type: 'string', example: 'João Silva' },
+              },
+            },
+          },
         },
       },
     },
@@ -223,10 +233,26 @@ export class PublicTenantsController {
         description: true,
         durationMin: true,
         basePriceCents: true,
+        capabilities: {
+          where: { barber: { isActive: true } },
+          select: {
+            barber: { select: { id: true, displayName: true } },
+          },
+        },
       },
       orderBy: [{ basePriceCents: 'asc' }, { name: 'asc' }],
     });
-    return services;
+    return services.map((s) => ({
+      id: s.id,
+      name: s.name,
+      description: s.description,
+      durationMin: s.durationMin,
+      basePriceCents: s.basePriceCents,
+      barbers: s.capabilities.map((c) => ({
+        id: c.barber.id,
+        displayName: c.barber.displayName,
+      })),
+    }));
   }
 
   /**

@@ -171,7 +171,7 @@ export default function HomeScreen() {
                 <Pressable
                   key={promo.id}
                   onPress={() =>
-                    router.push(`/(public)/b/${encodeURIComponent(promo.tenantSlug)}/agendar`)
+                    router.push(`/(public)/agendamento/${encodeURIComponent(promo.tenantSlug)}`)
                   }
                   className="w-48 rounded-lg bg-navy px-4 py-6 active:opacity-80"
                 >
@@ -242,7 +242,7 @@ export default function HomeScreen() {
             {barbershops.slice(0, 5).map((shop: DiscoverItem) => (
               <Pressable
                 key={shop.id}
-                onPress={() => router.push(`/(public)/b/${shop.slug}/agendar`)}
+                onPress={() => router.push(`/(public)/agendamento/${shop.slug}`)}
                 className="rounded-lg border border-border bg-card p-4"
               >
                 <View className="flex-row items-start gap-3">

@@ -17,10 +17,18 @@ export interface PublicTenantDto {
   ratingCount: number;
 }
 
+/** Barbeiro (resumido) que atende um serviço. */
+export interface PublicServiceBarberDto {
+  id: string;
+  displayName: string;
+}
+
 export interface PublicServiceDto {
   id: string;
   name: string;
   description: string | null;
   durationMin: number;
   basePriceCents: number;
+  /** Barbeiros ativos que fazem este serviço (capabilities). */
+  barbers: PublicServiceBarberDto[];
 }

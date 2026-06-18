@@ -30,3 +30,10 @@ export function initSentry() {
 }
 
 export { Sentry };
+
+// Auto-init em ambientes que não chamem initSentry() explicitamente
+if (process.env.NODE_ENV !== 'test' && typeof window !== 'undefined') {
+  if (!Sentry.isInitialized?.()) {
+    initSentry();
+  }
+}

@@ -24,6 +24,7 @@ import {
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { assertTenantAdmin } from '../tenancy/require-admin';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -34,20 +35,11 @@ import { Tx } from '../tenancy/tenancy.decorators';
 @ApiBearerAuth()
 @Controller('admin/coupons')
 export class AdminCouponsController {
-  private async requireAdmin(
+  private requireAdmin(
     ctx: TenantContextValue,
     user: AuthenticatedUser,
   ): Promise<{ tenantId: string }> {
-    const employee = await ctx.tx.employee.findFirst({
-      where: { appUserId: user.id },
-      select: { tenantId: true, role: true },
-    });
-    if (!employee) throw new ForbiddenException('Usuário não vinculado.');
-    if (employee.role !== 'admin' && employee.role !== 'admin_barber') {
-      throw new ForbiddenException('Apenas admin pode gerenciar cupons.');
-    }
-    await ctx.tx.$executeRaw`SELECT set_config('app.tenant_id', ${employee.tenantId}, true)`;
-    return { tenantId: employee.tenantId };
+    return assertTenantAdmin(ctx, user, 'gerenciar cupons');
   }
 
   @Get()

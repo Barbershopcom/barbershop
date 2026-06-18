@@ -13,6 +13,7 @@ import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
+import { assertTenantAdmin } from '../tenancy/require-admin';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 import { MercadoPagoProvider } from './mercadopago.provider';
@@ -34,20 +35,11 @@ export class AdminMpController {
     private readonly mp: MercadoPagoProvider,
   ) {}
 
-  private async requireAdmin(
+  private requireAdmin(
     ctx: TenantContextValue,
     user: AuthenticatedUser,
   ): Promise<{ tenantId: string }> {
-    const employee = await ctx.tx.employee.findFirst({
-      where: { appUserId: user.id },
-      select: { tenantId: true, role: true },
-    });
-    if (!employee) throw new ForbiddenException('Usuário não vinculado.');
-    if (employee.role !== 'admin' && employee.role !== 'admin_barber') {
-      throw new ForbiddenException('Apenas admin pode conectar o Mercado Pago.');
-    }
-    await ctx.tx.$executeRaw`SELECT set_config('app.tenant_id', ${employee.tenantId}, true)`;
-    return { tenantId: employee.tenantId };
+    return assertTenantAdmin(ctx, user, 'conectar o Mercado Pago');
   }
 
   /** Secret pra assinar o `state` do OAuth (reusa o do cancel — sempre presente). */

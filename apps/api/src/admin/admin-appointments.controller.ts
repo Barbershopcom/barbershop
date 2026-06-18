@@ -44,6 +44,7 @@ import { EmailService } from '../email/email.service';
 import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { BookingRescheduleError } from '../slots/booking.service';
 import { BookingService } from '../slots/booking.service';
+import { assertTenantAdmin } from '../tenancy/require-admin';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -74,25 +75,13 @@ export class AdminAppointmentsController {
     ctx: TenantContextValue,
     user: AuthenticatedUser,
   ): Promise<{ tenantId: string; timezone: string }> {
-    const employee = await ctx.tx.employee.findFirst({
-      where: { appUserId: user.id },
-      select: { tenantId: true, role: true },
-    });
-    if (!employee) {
-      throw new ForbiddenException(
-        'Usuário não vinculado a nenhum funcionário.',
-      );
-    }
-    if (employee.role !== 'admin' && employee.role !== 'admin_barber') {
-      throw new ForbiddenException('Apenas admin pode acessar essa rota.');
-    }
-    await ctx.tx.$executeRaw`SELECT set_config('app.tenant_id', ${employee.tenantId}, true)`;
+    const { tenantId } = await assertTenantAdmin(ctx, user, 'acessar essa rota');
     const tenant = await ctx.tx.tenant.findUnique({
-      where: { id: employee.tenantId },
+      where: { id: tenantId },
       select: { timezone: true },
     });
     return {
-      tenantId: employee.tenantId,
+      tenantId,
       timezone: tenant?.timezone ?? 'America/Sao_Paulo',
     };
   }

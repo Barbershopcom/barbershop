@@ -39,7 +39,10 @@ import { Tx } from '../tenancy/tenancy.decorators';
 
 const CreateEmployeeSchema = z.object({
   displayName: z.string().min(1, 'Nome obrigatório').max(100),
-  email: z.string().email().optional(),
+  // Email normalizado pra minúsculo: o auto-link (POST /me/employee/link)
+  // compara com o email do JWT do Supabase, que sempre vem em minúsculo.
+  // Sem isso, "Joao@x.com" no cadastro nunca casa com "joao@x.com" do login.
+  email: z.string().trim().toLowerCase().email().optional(),
   role: z.enum(['barber', 'admin', 'admin_barber']),
 });
 type CreateEmployeeInput = z.infer<typeof CreateEmployeeSchema>;

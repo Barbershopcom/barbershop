@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -21,10 +22,17 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { z } from 'zod';
+import {
+  type CreateServiceInput,
+  createServiceSchema,
+  type ServiceDto,
+  type UpdateServiceInput,
+  updateServiceSchema,
+} from '@barbearia/schemas';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -32,35 +40,11 @@ import { assertTenantAdmin } from '../tenancy/require-admin';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
-const CreateServiceSchema = z.object({
-  name: z.string().min(1, 'Nome obrigatório').max(100),
-  description: z.string().max(500).optional(),
-  durationMin: z.number().int().positive('Duração deve ser positiva'),
-  bufferMin: z.number().int().nonnegative('Buffer não pode ser negativo').default(0),
-  basePriceCents: z.number().int().positive('Preço deve ser positivo'),
-});
-type CreateServiceInput = z.infer<typeof CreateServiceSchema>;
-
-const UpdateServiceSchema = CreateServiceSchema.partial().extend({
-  isActive: z.boolean().optional(),
-});
-type UpdateServiceInput = z.infer<typeof UpdateServiceSchema>;
-
-interface ServiceResponseDto {
-  id: string;
-  name: string;
-  description: string | null;
-  durationMin: number;
-  bufferMin: number;
-  basePriceCents: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 /**
- * Admin Services API — CRUD de serviços por tenant. Só admin/admin_barber.
- * Tenant via @Tx (RLS); role validado em requireAdmin.
+ * Admin Services API — superfície canônica de escrita de serviços por tenant.
+ * Só admin do tenant (assertTenantAdmin via tenant_memberships).
+ * Validação vem do schema compartilhado @barbearia/schemas (fonte única).
+ * Tenant via @Tx (RLS).
  */
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -75,23 +59,32 @@ export class AdminServicesController {
 
   @Get()
   @ApiOperation({ summary: 'Listar serviços do tenant' })
-  @ApiOkResponse({ description: 'Lista de serviços (ativos e inativos).' })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    type: Boolean,
+    description: 'true/1 inclui serviços inativos. Default: só ativos.',
+  })
+  @ApiOkResponse({ description: 'Lista de serviços do tenant.' })
   @ApiUnauthorizedResponse({ description: 'Token inválido ou expirado' })
   @ApiForbiddenResponse({ description: 'Usuário sem permissão (role: admin)' })
   async list(
     @Tx() ctx: TenantContextValue,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<ServiceResponseDto[]> {
+    @Query('includeInactive') includeInactive?: string,
+  ): Promise<ServiceDto[]> {
     await this.requireAdmin(ctx, user);
+    const showInactive = includeInactive === 'true' || includeInactive === '1';
     const services = await ctx.tx.service.findMany({
-      orderBy: [{ basePriceCents: 'asc' }, { name: 'asc' }],
+      where: showInactive ? {} : { isActive: true },
+      orderBy: [{ isActive: 'desc' }, { basePriceCents: 'asc' }, { name: 'asc' }],
     });
     return services.map(toDto);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Criar novo serviço (começa inativo).' })
+  @ApiOperation({ summary: 'Criar novo serviço.' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -102,6 +95,7 @@ export class AdminServicesController {
         durationMin: { type: 'number', example: 30 },
         bufferMin: { type: 'number', example: 5 },
         basePriceCents: { type: 'number', example: 5000 },
+        isActive: { type: 'boolean', example: true },
       },
     },
   })
@@ -110,8 +104,8 @@ export class AdminServicesController {
   async create(
     @Tx() ctx: TenantContextValue,
     @CurrentUser() user: AuthenticatedUser,
-    @Body(new ZodValidationPipe(CreateServiceSchema)) body: CreateServiceInput,
-  ): Promise<ServiceResponseDto> {
+    @Body(new ZodValidationPipe(createServiceSchema)) body: CreateServiceInput,
+  ): Promise<ServiceDto> {
     const admin = await this.requireAdmin(ctx, user);
 
     const barbershop = await ctx.tx.barbershop.findFirst({ select: { id: true } });
@@ -121,12 +115,12 @@ export class AdminServicesController {
       data: {
         tenantId: admin.tenantId,
         barbershopId: barbershop.id,
-        isActive: false,
         name: body.name,
         description: body.description ?? null,
         durationMin: body.durationMin,
         bufferMin: body.bufferMin,
         basePriceCents: body.basePriceCents,
+        isActive: body.isActive,
       },
     });
     return toDto(service);
@@ -141,8 +135,8 @@ export class AdminServicesController {
     @Tx() ctx: TenantContextValue,
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(UpdateServiceSchema)) body: UpdateServiceInput,
-  ): Promise<ServiceResponseDto> {
+    @Body(new ZodValidationPipe(updateServiceSchema)) body: UpdateServiceInput,
+  ): Promise<ServiceDto> {
     await this.requireAdmin(ctx, user);
 
     const existing = await ctx.tx.service.findFirst({ where: { id }, select: { id: true } });
@@ -164,11 +158,13 @@ export class AdminServicesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Deletar serviço (irreversível).' })
+  @ApiOperation({
+    summary: 'Desativar serviço (soft delete — preserva histórico de agendamentos).',
+  })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
-  @ApiOkResponse({ description: 'Deletado com sucesso' })
+  @ApiOkResponse({ description: 'Desativado com sucesso' })
   @ApiNotFoundResponse({ description: 'Serviço não encontrado' })
-  async delete(
+  async deactivate(
     @Tx() ctx: TenantContextValue,
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -178,7 +174,7 @@ export class AdminServicesController {
     const existing = await ctx.tx.service.findFirst({ where: { id }, select: { id: true } });
     if (!existing) throw new NotFoundException('Serviço não encontrado.');
 
-    await ctx.tx.service.delete({ where: { id } });
+    await ctx.tx.service.update({ where: { id }, data: { isActive: false } });
   }
 }
 
@@ -190,9 +186,10 @@ function toDto(row: {
   bufferMin: number;
   basePriceCents: number;
   isActive: boolean;
+  barbershopId: string;
   createdAt: Date;
   updatedAt: Date;
-}): ServiceResponseDto {
+}): ServiceDto {
   return {
     id: row.id,
     name: row.name,
@@ -201,6 +198,7 @@ function toDto(row: {
     bufferMin: row.bufferMin,
     basePriceCents: row.basePriceCents,
     isActive: row.isActive,
+    barbershopId: row.barbershopId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

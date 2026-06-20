@@ -2,7 +2,7 @@
 
 import { type CreateServiceInput, createServiceSchema, type ServiceDto } from '@barbearia/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { Pencil, Plus, RotateCcw, Scissors, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -23,6 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { api, ApiError } from '@/lib/api';
@@ -56,7 +57,7 @@ export default function ServicesPage() {
   async function refresh() {
     setLoadError(null);
     try {
-      const data = await api.get<ServiceDto[]>('/services?includeInactive=true', {
+      const data = await api.get<ServiceDto[]>('/admin/services?includeInactive=true', {
         tenantId: tenant.id,
       });
       setServices(data);
@@ -101,9 +102,9 @@ export default function ServicesPage() {
     setSubmitting(true);
     try {
       if (editingId) {
-        await api.patch(`/services/${editingId}`, values, { tenantId: tenant.id });
+        await api.patch(`/admin/services/${editingId}`, values, { tenantId: tenant.id });
       } else {
-        await api.post('/services', values, { tenantId: tenant.id });
+        await api.post('/admin/services', values, { tenantId: tenant.id });
       }
       await refresh();
       cancel();
@@ -117,7 +118,7 @@ export default function ServicesPage() {
   async function deactivate(id: string) {
     if (!confirm('Desativar este serviço? Pode reativar depois.')) return;
     try {
-      await api.delete(`/services/${id}`, { tenantId: tenant.id });
+      await api.delete(`/admin/services/${id}`, { tenantId: tenant.id });
       await refresh();
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Erro ao desativar');
@@ -126,7 +127,7 @@ export default function ServicesPage() {
 
   async function reactivate(id: string) {
     try {
-      await api.patch(`/services/${id}`, { isActive: true }, { tenantId: tenant.id });
+      await api.patch(`/admin/services/${id}`, { isActive: true }, { tenantId: tenant.id });
       await refresh();
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Erro ao reativar');
@@ -274,14 +275,36 @@ export default function ServicesPage() {
       ) : null}
 
       {loadError ? (
-        <p className="text-sm text-destructive">{loadError}</p>
+        <Card>
+          <EmptyState
+            variant="error"
+            icon={<Scissors className="h-7 w-7" />}
+            title="Erro ao carregar"
+            description={loadError}
+            action={
+              <Button variant="outline" onClick={() => void refresh()}>
+                Tentar de novo
+              </Button>
+            }
+          />
+        </Card>
       ) : services === null ? (
         <p className="text-sm text-muted-foreground">Carregando…</p>
       ) : services.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Nenhum serviço cadastrado ainda.
-          </CardContent>
+          <EmptyState
+            icon={<Scissors className="h-7 w-7" />}
+            title="Nenhum serviço ainda"
+            description="Cadastre os serviços da sua barbearia pra eles aparecerem no agendamento."
+            action={
+              !showForm ? (
+                <Button onClick={startCreate}>
+                  <Plus className="h-4 w-4" />
+                  Novo serviço
+                </Button>
+              ) : undefined
+            }
+          />
         </Card>
       ) : (
         <div className="rounded-lg border">

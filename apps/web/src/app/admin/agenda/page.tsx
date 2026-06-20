@@ -63,7 +63,7 @@ export default function AdminAgendaPage() {
         .get<EmployeeDto[]>('/employees?includeInactive=false', { tenantId: tenant.id })
         .then((data) => setEmployees(data.filter((e) => e.role !== 'admin'))),
       api
-        .get<ServiceDto[]>('/services', { tenantId: tenant.id })
+        .get<ServiceDto[]>('/admin/services', { tenantId: tenant.id })
         .then(setServices),
     ]).catch(() => undefined);
   }, [tenant.id]);

@@ -44,6 +44,58 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-  # NOTE: testes rodam localmente. CI no postgres genérico não tem o role
-  # `neondb_owner` que algumas migrations referenciam (ADR-002 §RLS).
-  # Pra habilitar: setup do role + GRANT antes de prisma migrate deploy.
+  test:
+    name: Test (api — Postgres + RLS)
+    runs-on: ubuntu-latest
+
+    # Postgres efêmero do job. O usuário é `neondb_owner` de propósito: as
+    # migrations de RLS fazem `GRANT app_user TO neondb_owner` e
+    # `ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner`. Como superuser ele tem
+    # BYPASSRLS (seed das fixtures) e consegue `SET ROLE app_user` (exercita RLS).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: neondb_owner
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: neondb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U neondb_owner -d neondb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    # localhost:5432 (service do job). Sobrescreve o .env.test (55432, p/ local):
+    # dotenv não sobrescreve var já definida, então estes valores vencem.
+    env:
+      DATABASE_URL: postgresql://neondb_owner:postgres@localhost:5432/neondb
+      DIRECT_URL: postgresql://neondb_owner:postgres@localhost:5432/neondb
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build @barbearia/schemas (dep dos testes da api)
+        run: pnpm --filter @barbearia/schemas build
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @barbearia/api prisma:generate
+
+      - name: Apply migrations
+        run: pnpm --filter @barbearia/api prisma:migrate:deploy
+
+      - name: Run tests
+        run: pnpm --filter @barbearia/api test

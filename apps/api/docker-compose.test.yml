@@ -1,0 +1,29 @@
+# Postgres efêmero para os testes de integração (Jest).
+#
+# Por que o usuário é `neondb_owner`: as migrations de RLS fazem
+# `GRANT app_user TO neondb_owner` e `ALTER DEFAULT PRIVILEGES FOR ROLE
+# neondb_owner`. Replicar esse nome de role localmente faz as migrations
+# rodarem sem patch. Como superuser, ele tem BYPASSRLS (necessário pro seed
+# das fixtures) e consegue `SET ROLE app_user` (necessário pra exercitar RLS).
+#
+# Dados em tmpfs (memória): banco descartável, rápido, zera ao recriar.
+
+services:
+  test-db:
+    image: postgres:16-alpine
+    container_name: barbearia-test-db
+    environment:
+      POSTGRES_USER: neondb_owner
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: neondb
+    # 55432 no host pra evitar conflito com instalações nativas de Postgres
+    # (5432/5433/5434 costumam estar ocupadas). Container continua na 5432.
+    ports:
+      - '55432:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U neondb_owner -d neondb']
+      interval: 2s
+      timeout: 3s
+      retries: 30

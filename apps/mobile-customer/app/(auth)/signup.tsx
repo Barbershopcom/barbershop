@@ -50,7 +50,7 @@ export default function SignupScreen() {
       setError(result.error ?? 'Erro ao criar conta.');
       return;
     }
-    router.replace('/(public)/home');
+    router.replace('/(main)');
   }
 
   return (

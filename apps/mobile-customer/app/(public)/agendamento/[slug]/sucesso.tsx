@@ -17,7 +17,7 @@ export default function SucessoScreen() {
 
   const handleGoHome = () => {
     booking.reset();
-    router.replace('/(public)/home');
+    router.replace('/(main)');
   };
 
   const handleViewAppointments = () => {

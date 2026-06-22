@@ -38,7 +38,6 @@ export default function PixScreen() {
   useEffect(() => {
     if (!appointmentId || !slug) return;
     let cancelled = false;
-    let pollInterval: ReturnType<typeof setInterval>;
 
     const poll = async () => {
       try {
@@ -66,8 +65,8 @@ export default function PixScreen() {
       }
     };
 
+    const pollInterval = setInterval(poll, 3000);
     void poll();
-    pollInterval = setInterval(poll, 3000);
 
     return () => {
       cancelled = true;

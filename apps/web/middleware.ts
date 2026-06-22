@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { type CookieOptions, createServerClient } from '@supabase/ssr';
 
 // Rotas públicas que não requerem autenticação
 const PUBLIC_ROUTES = ['/login', '/signup', '/auth'];
@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
             getAll() {
               return request.cookies.getAll();
             },
-            setAll(cookies) {
+            setAll(cookies: { name: string; value: string; options: CookieOptions }[]) {
               const response = NextResponse.next();
               cookies.forEach((cookie) => response.cookies.set(cookie));
               return response;

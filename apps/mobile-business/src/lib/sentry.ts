@@ -6,6 +6,8 @@ import * as Sentry from '@sentry/react-native';
  *
  * Sem DSN configurado, é no-op — Expo Go local roda sem precisar.
  */
+let initialized = false;
+
 export function initSentry() {
   const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
   if (!dsn) return;
@@ -27,13 +29,16 @@ export function initSentry() {
       return event;
     },
   });
+
+  initialized = true;
 }
 
 export { Sentry };
 
-// Auto-init em ambientes que não chamem initSentry() explicitamente
+// Auto-init em ambientes que não chamem initSentry() explicitamente.
+// Controle via flag local: @sentry/react-native 8.x não expõe isInitialized().
 if (process.env.NODE_ENV !== 'test' && typeof window !== 'undefined') {
-  if (!Sentry.isInitialized?.()) {
+  if (!initialized) {
     initSentry();
   }
 }

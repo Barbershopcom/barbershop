@@ -95,10 +95,15 @@ export default function OnboardingPage() {
         return;
       }
 
-      form.setValue('location.addressLine1', data.logradouro || '');
-      form.setValue('location.addressLine2', (data.bairro || '') + (data.complemento ? ` - ${data.complemento}` : ''));
-      form.setValue('location.city', data.localidade || '');
-      form.setValue('location.state', data.uf || 'RJ');
+      const opts = { shouldValidate: true, shouldDirty: true };
+      form.setValue('location.addressLine1', data.logradouro || '', opts);
+      form.setValue(
+        'location.addressLine2',
+        (data.bairro || '') + (data.complemento ? ` - ${data.complemento}` : ''),
+        opts,
+      );
+      form.setValue('location.city', data.localidade || '', opts);
+      form.setValue('location.state', data.uf || 'RJ', opts);
       setCepFilled(true);
     } catch (err) {
       setCepError('Erro ao buscar CEP. Preencha manualmente.');
@@ -336,7 +341,7 @@ export default function OnboardingPage() {
                           <FormItem>
                             <FormLabel>Endereço</FormLabel>
                             <FormControl>
-                              <Input placeholder="Rua, número" {...field} disabled={cepFilled} />
+                              <Input placeholder="Rua, número" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -349,7 +354,7 @@ export default function OnboardingPage() {
                           <FormItem>
                             <FormLabel>Complemento (opcional)</FormLabel>
                             <FormControl>
-                              <Input placeholder="Sala, andar, ponto de referência" {...field} disabled={cepFilled} />
+                              <Input placeholder="Sala, andar, ponto de referência" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

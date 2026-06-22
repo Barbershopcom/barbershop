@@ -51,7 +51,7 @@ export default function ServicesPage() {
 
   const form = useForm<CreateServiceInput>({
     resolver: zodResolver(createServiceSchema),
-    defaultValues: { name: '', description: '', durationMin: 30, basePriceCents: 3000, isActive: true },
+    defaultValues: { name: '', description: '', durationMin: 30, basePriceCents: 1000, isActive: true },
   });
 
   async function refresh() {
@@ -74,7 +74,7 @@ export default function ServicesPage() {
   function startCreate() {
     setEditingId(null);
     setSubmitError(null);
-    form.reset({ name: '', description: '', durationMin: 30, basePriceCents: 3000, isActive: true });
+    form.reset({ name: '', description: '', durationMin: 30, basePriceCents: 1000, isActive: true });
     setShowForm(true);
   }
 
@@ -232,7 +232,7 @@ export default function ServicesPage() {
                           </div>
                         </FormControl>
                         <div className="flex flex-wrap gap-2 pt-1">
-                          {[2000, 3000, 3500, 4000].map((cents) => (
+                          {[6000, 4500, 5000, 3500, 2000].map((cents) => (
                             <Button
                               key={cents}
                               type="button"

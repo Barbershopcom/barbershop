@@ -18,6 +18,13 @@ export interface BookingState {
   selectedTime: string | null;
   totalPrice: number;
   appointmentId: string | null;
+  /** Dados do cliente confirmados no checkout (vão no POST de booking). */
+  customerName: string | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
+  /** Payload do Pix retornado pelo POST /pay (renderizado na tela pix). */
+  pixQrCode: string | null;
+  pixQrCodeBase64: string | null;
 }
 
 interface BookingContextValue {
@@ -29,6 +36,8 @@ interface BookingContextValue {
   setBarber: (id: string, name: string, ratingAvg?: number) => void;
   setDateTime: (date: Date, time: string) => void;
   setAppointmentId: (id: string) => void;
+  setCustomer: (name: string, phone: string, email: string | null) => void;
+  setPixPayload: (qrCode: string | null, qrCodeBase64: string | null) => void;
   reset: () => void;
 }
 
@@ -53,6 +62,11 @@ const initialState: BookingState = {
   selectedTime: null,
   totalPrice: 0,
   appointmentId: null,
+  customerName: null,
+  customerPhone: null,
+  customerEmail: null,
+  pixQrCode: null,
+  pixQrCodeBase64: null,
 };
 
 export function BookingProvider({ children }: { children: ReactNode }) {
@@ -143,13 +157,30 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const setCustomer = (name: string, phone: string, email: string | null) => {
+    setState((prev) => ({
+      ...prev,
+      customerName: name,
+      customerPhone: phone,
+      customerEmail: email,
+    }));
+  };
+
+  const setPixPayload = (qrCode: string | null, qrCodeBase64: string | null) => {
+    setState((prev) => ({
+      ...prev,
+      pixQrCode: qrCode,
+      pixQrCodeBase64: qrCodeBase64,
+    }));
+  };
+
   const reset = () => {
     setState(initialState);
   };
 
   return (
     <BookingContext.Provider
-      value={{ state, setBarbershop, setAvailableServices, toggleService, selectServices, setBarber, setDateTime, setAppointmentId, reset }}
+      value={{ state, setBarbershop, setAvailableServices, toggleService, selectServices, setBarber, setDateTime, setAppointmentId, setCustomer, setPixPayload, reset }}
     >
       {children}
     </BookingContext.Provider>

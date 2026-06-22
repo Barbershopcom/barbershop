@@ -4,6 +4,7 @@ import { AppointmentsModule } from '../appointments/appointments.module';
 import { CouponsModule } from '../coupons/coupons.module';
 import { CustomerService } from './customer.service';
 import { MeAppointmentsController } from './me-appointments.controller';
+import { MeCustomerController } from './me-customer.controller';
 import { MeCustomerAppointmentsController } from './me-customer-appointments.controller';
 import { MeScheduleController } from './me-schedule.controller';
 import { MeServicesController } from './me-services.controller';
@@ -17,6 +18,7 @@ import { MeController } from './me.controller';
     MeServicesController,
     MeScheduleController,
     MeAppointmentsController,
+    MeCustomerController,
     MeCustomerAppointmentsController,
     MeTimeOffController,
   ],

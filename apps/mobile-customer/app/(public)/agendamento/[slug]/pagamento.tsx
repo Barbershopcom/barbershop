@@ -1,6 +1,11 @@
+import type {
+  BookedAppointment,
+  PaymentDto,
+  PaymentMethod,
+} from '@barbearia/schemas';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, Circle } from 'lucide-react-native';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -9,49 +14,85 @@ import {
   View,
 } from 'react-native';
 
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { useBooking } from '@/lib/booking-context';
 import { formatPriceBRL } from '@/lib/format';
+import { generateUuid } from '@/lib/uuid';
 
-type PaymentMethod = 'pix' | 'credit_card';
+type UiPaymentMethod = 'pix' | 'credit_card';
+
+interface PayResponse {
+  payment: PaymentDto;
+  pixQrCode?: string;
+  pixQrCodeBase64?: string;
+}
 
 export default function PagamentoScreen() {
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const booking = useBooking();
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
+  const [paymentMethod, setPaymentMethod] = useState<UiPaymentMethod>('pix');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Persiste entre re-submits no mesmo ciclo de vida (evita appointment duplicado).
+  const idemKeyRef = useRef<string | null>(null);
 
   const handleConfirm = async () => {
-    if (!booking.state.selectedDate || !booking.state.selectedTime) return;
+    setError(null);
+    const serviceId = Array.from(booking.state.selectedServiceIds)[0];
+    const barberId = booking.state.selectedBarber?.id;
+    const startAt = booking.state.selectedDate?.toISOString();
+    const { customerName, customerPhone, customerEmail } = booking.state;
+
+    if (!serviceId || !barberId || barberId === 'any' || !startAt) {
+      setError('Dados do agendamento incompletos. Volte e revise.');
+      return;
+    }
+    if (!customerName || !customerPhone) {
+      setError('Faltam seus dados. Volte e confirme nome e telefone.');
+      return;
+    }
 
     setLoading(true);
     try {
-      const payload = {
-        tenantId: booking.state.barbershopId,
-        serviceIds: Array.from(booking.state.selectedServiceIds),
-        employeeId: booking.state.selectedBarber?.id || null,
-        startAt: booking.state.selectedDate?.toISOString() || new Date().toISOString(),
-        preferredPaymentMethod: paymentMethod,
-      };
-
-      const result = await api.post<{ appointmentId: string; paymentId?: string }>(
+      // 1. Cria o appointment (nasce awaiting_payment). Idempotency-Key
+      //    blinda contra double-tap.
+      if (!idemKeyRef.current) idemKeyRef.current = generateUuid();
+      const booked = await api.post<BookedAppointment>(
         `/public/tenants/${encodeURIComponent(slug)}/appointments`,
-        payload,
+        {
+          serviceId,
+          barberId,
+          startAt,
+          customerName,
+          customerPhone,
+          customerEmail: customerEmail || undefined,
+        },
+        { idempotencyKey: idemKeyRef.current },
+      );
+      booking.setAppointmentId(booked.id);
+
+      // 2. Cobra via método escolhido (mock aprova na hora → pending).
+      const method: PaymentMethod = paymentMethod === 'pix' ? 'pix' : 'credit';
+      const pay = await api.post<PayResponse>(
+        `/public/appointments/${booked.id}/payment/pay`,
+        { method },
       );
 
-      // Armazenar appointmentId no booking context para segurança (pix.tsx o usa)
-      booking.setAppointmentId(result.appointmentId);
-
-      // Se for Pix, vai pra tela de status
-      if (paymentMethod === 'pix') {
+      if (method === 'pix') {
+        booking.setPixPayload(pay.pixQrCode ?? null, pay.pixQrCodeBase64 ?? null);
         router.push(`/(public)/agendamento/${encodeURIComponent(slug)}/pix`);
       } else {
-        // Se for cartão ou outro, vai pro sucesso
         router.push(`/(public)/agendamento/${encodeURIComponent(slug)}/sucesso`);
       }
     } catch (err) {
-      console.error('Erro ao confirmar pagamento:', err);
+      if (err instanceof ApiError && err.status === 409) {
+        setError('Esse horário acabou de ser reservado. Escolha outro.');
+      } else if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError(err instanceof Error ? err.message : 'Erro de rede.');
+      }
     } finally {
       setLoading(false);
     }
@@ -223,6 +264,11 @@ export default function PagamentoScreen() {
 
       {/* Footer */}
       <View className="absolute bottom-0 left-0 right-0 border-t border-border bg-background px-6 py-4">
+        {error ? (
+          <View className="mb-3 rounded-md bg-red-50 px-3 py-2">
+            <Text className="text-sm text-red-700">{error}</Text>
+          </View>
+        ) : null}
         <Pressable
           onPress={handleConfirm}
           disabled={loading}

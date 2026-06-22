@@ -17,6 +17,7 @@ export * from './device';
 export * from './discover';
 export * from './employees';
 export * from './me-appointments';
+export * from './me-customer';
 export * from './me-customer-appointments';
 export * from './me-time-off';
 export * from './onboarding';

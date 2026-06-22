@@ -23,8 +23,10 @@ export default function HomeScreen() {
       enabled: isAuthenticated,
     });
 
-  // Pick the next FUTURE appointment using the real `startAt` field.
-  const next = appointments?.find((a) => new Date(a.startAt) > new Date());
+  // Pick the next FUTURE appointment (earliest upcoming) using the real `startAt` field.
+  const next = appointments
+    ?.filter((a) => new Date(a.startAt) > new Date())
+    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())[0];
 
   return (
     <ScrollView

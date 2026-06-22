@@ -71,9 +71,23 @@ export default function OnboardingPage() {
       .toLowerCase()
       .trim()
       .replace(/\s+/g, '-')
-      .replace(/[^\w-]/g, '')
+      .replace(/[^a-z0-9-]/g, '')
       .replace(/-+/g, '-')
       .replace(/^-+|-+$/g, '');
+  }
+
+  /**
+   * Transforma o que o usuário digita no campo de slug ao vivo: minúsculas,
+   * espaços viram hífen, remove inválidos. NÃO tira hífen das pontas aqui
+   * (senão "barbearia do " não vira "barbearia-do" ao continuar digitando);
+   * a limpeza das pontas acontece no onBlur via generateSlugFromName.
+   */
+  function liveSlug(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-');
   }
 
   async function handleCepLookup(cep: string) {
@@ -218,7 +232,20 @@ export default function OnboardingPage() {
                           <FormItem>
                             <FormLabel>Slug (URL pública)</FormLabel>
                             <FormControl>
-                              <Input placeholder="barbearia-do-jaja" {...field} />
+                              <Input
+                                placeholder="barbearia-do-jaja"
+                                {...field}
+                                onChange={(e) => field.onChange(liveSlug(e.target.value))}
+                                onBlur={() => {
+                                  const cleaned = generateSlugFromName(field.value);
+                                  if (cleaned !== field.value) {
+                                    form.setValue('tenant.slug', cleaned, {
+                                      shouldValidate: true,
+                                    });
+                                  }
+                                  field.onBlur();
+                                }}
+                              />
                             </FormControl>
                             <FormDescription>
                               Vai virar barbearia.app/b/{field.value || 'seu-slug'}

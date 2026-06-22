@@ -15,23 +15,47 @@ import {
   Inter_700Bold,
   Inter_800ExtraBold,
 } from '@expo-google-fonts/inter';
-import { Redirect, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { BookingProvider } from '@/lib/booking-context';
 import { Sentry, initSentry } from '@/lib/sentry';
 import { SessionProvider, useSession } from '@/lib/session';
+import { TenantProvider, useTenant } from '@/lib/tenant-context';
 
 SplashScreen.preventAutoHideAsync();
 
 initSentry();
 
+function NoTenantScreen() {
+  return (
+    <View className="flex-1 items-center justify-center gap-3 bg-background px-8">
+      <Text className="font-display text-xl font-bold text-foreground">Abra pelo link da sua barbearia</Text>
+      <Text className="text-center text-sm text-foreground-muted">
+        Use o link ou QR code que a barbearia compartilhou com você.
+      </Text>
+    </View>
+  );
+}
+
+function TenantErrorScreen({ onRetry }: { onRetry: () => void }) {
+  return (
+    <View className="flex-1 items-center justify-center gap-3 bg-background px-8">
+      <Text className="font-display text-xl font-bold text-foreground">Barbearia indisponível</Text>
+      <Pressable onPress={onRetry} className="rounded-lg bg-navy px-6 py-3 active:opacity-80">
+        <Text className="font-semibold text-white">Tentar de novo</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function RootLayoutNav() {
   const { state } = useSession();
+  const tenant = useTenant();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [fontsLoaded] = useFonts({
     BebasNeue_400Regular,
@@ -56,7 +80,7 @@ function RootLayoutNav() {
     })();
   }, []);
 
-  // Ainda carregando
+  // Ainda carregando fontes/onboarding/sessão
   if (onboardingDone === null || state.status === 'loading') {
     return (
       <View className="flex-1 bg-background">
@@ -78,25 +102,30 @@ function RootLayoutNav() {
     );
   }
 
-  // 2. Login → se não autenticado
-  if (state.status === 'anonymous') {
-    return (
-      <>
-        <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-        </Stack>
-      </>
-    );
+  // 2. Tenant ainda resolvendo
+  if (tenant.status === 'loading') {
+    return <View className="flex-1 bg-background"><StatusBar style="dark" /></View>;
   }
 
-  // 3. App completo → se autenticado (com tab bar)
+  // 3. Sem tenant — app aberto sem deep link/slug persistido
+  if (tenant.status === 'no-tenant') {
+    return <NoTenantScreen />;
+  }
+
+  // 4. Erro ao carregar tenant
+  if (tenant.status === 'error') {
+    return <TenantErrorScreen onRetry={tenant.retry} />;
+  }
+
+  // 5. Tenant pronto → app em abas, INDEPENDENTE de auth (guest-first)
   return (
     <>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(main)" />
         <Stack.Screen name="(public)/agendamento/[slug]" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(app)" />
       </Stack>
     </>
   );
@@ -106,9 +135,11 @@ function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SessionProvider>
-        <BookingProvider>
-          <RootLayoutNav />
-        </BookingProvider>
+        <TenantProvider>
+          <BookingProvider>
+            <RootLayoutNav />
+          </BookingProvider>
+        </TenantProvider>
       </SessionProvider>
     </GestureHandlerRootView>
   );

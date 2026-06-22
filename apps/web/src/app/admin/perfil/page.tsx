@@ -1,6 +1,6 @@
 'use client';
 
-import { Save } from 'lucide-react';
+import { Check, Copy, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,19 @@ export default function PerfilPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const appLink = `${process.env.NEXT_PUBLIC_CUSTOMER_APP_URL ?? 'https://app.barbearia'}/b/${tenant.slug}`;
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(appLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback: selecionar texto manualmente
+    }
+  }
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -112,6 +125,41 @@ export default function PerfilPage() {
           emails enviados aos clientes.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Link do app do cliente</CardTitle>
+          <CardDescription>
+            Envie esse link para seus clientes acessarem o app de agendamento da
+            sua barbearia.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 truncate rounded-md border bg-muted px-3 py-2 text-sm font-mono">
+              {appLink}
+            </code>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <>
+                  <Check className="mr-1.5 h-4 w-4 text-emerald-600" />
+                  Copiado
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-1.5 h-4 w-4" />
+                  Copiar
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <form onSubmit={handleSubmit}>

@@ -231,6 +231,19 @@ export default function ServicesPage() {
                             />
                           </div>
                         </FormControl>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {[2000, 3000, 3500, 4000].map((cents) => (
+                            <Button
+                              key={cents}
+                              type="button"
+                              variant={field.value === cents ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => field.onChange(cents)}
+                            >
+                              {brl(cents)}
+                            </Button>
+                          ))}
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}

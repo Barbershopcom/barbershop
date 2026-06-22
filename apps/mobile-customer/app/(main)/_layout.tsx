@@ -1,9 +1,13 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Home, Search, Calendar, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTenant } from '@/lib/tenant-context';
+
 export default function MainLayout() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const tenant = useTenant();
 
   return (
     <Tabs
@@ -38,6 +42,18 @@ export default function MainLayout() {
         options={{
           title: 'Buscar',
           tabBarIcon: ({ color }) => <Search size={24} color={color} />,
+        }}
+        listeners={{
+          // A aba Buscar abre o fluxo de agendamento (stack) no tenant fixo,
+          // em vez de virar uma tela vazia. Intercepta o toque e navega.
+          tabPress: (e) => {
+            if (tenant.status === 'ready') {
+              e.preventDefault();
+              router.push(
+                `/(public)/agendamento/${encodeURIComponent(tenant.tenant.slug)}`,
+              );
+            }
+          },
         }}
       />
       <Tabs.Screen

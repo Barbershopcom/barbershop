@@ -6,7 +6,7 @@ export const STORAGE_KEY = 'tenant_slug';
 export function extractSlugFromPath(path: string | null): string | null {
   if (!path) return null;
   const match = path.match(/\/b\/([^/?#]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  return match ? decodeURIComponent(match[1]!) : null;
 }
 
 export async function persistSlug(slug: string): Promise<void> {

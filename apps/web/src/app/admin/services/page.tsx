@@ -217,15 +217,15 @@ export default function ServicesPage() {
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                             <Input
-                              type="number"
-                              min={0}
-                              step={0.01}
-                              placeholder="30,00"
+                              inputMode="numeric"
+                              placeholder="0,00"
                               className="pl-8"
-                              value={field.value ? (field.value / 100).toFixed(2) : ''}
+                              // Máscara de centavos: os dígitos preenchem da direita
+                              // (digitar "4000" = R$ 40,00; acrescentar um "0" multiplica).
+                              value={((field.value ?? 0) / 100).toFixed(2).replace('.', ',')}
                               onChange={(e) => {
-                                const val = parseFloat(e.target.value);
-                                field.onChange(isNaN(val) ? 0 : Math.round(val * 100));
+                                const digits = e.target.value.replace(/\D/g, '');
+                                field.onChange(digits ? parseInt(digits, 10) : 0);
                               }}
                               onBlur={field.onBlur}
                             />

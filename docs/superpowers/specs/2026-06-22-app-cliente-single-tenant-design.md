@@ -18,8 +18,11 @@ abas: **Home · Busca · Agenda · Perfil**.
 
 ## 2. Decisões (travadas com o usuário)
 
-1. **Fixação do tenant:** build-time. Slug embutido via `EXPO_PUBLIC_TENANT_SLUG`.
-   1 build EAS por barbearia, com nome/ícone próprios (white-label de verdade).
+1. **Fixação do tenant:** app único + deep link. O dono compartilha um link/QR
+   com o slug (`.../b/{slug}`); na 1ª abertura o app **persiste o slug**
+   (AsyncStorage) e fica fixo nele. **1 build EAS / 1 listagem na loja** para
+   todas as barbearias. (Build nativo white-label por barbearia fica como
+   upgrade futuro, fora deste escopo.)
 2. **Auth:** guest-first. Home e o fluxo de agendar funcionam **sem login**
    (identidade capturada no checkout). Login só é exigido em **Agenda** e
    **Perfil**. Alinha com o backend atual (guest booking + account-linking via
@@ -35,22 +38,26 @@ abas: **Home · Busca · Agenda · Perfil**.
 Novo contexto React (`src/lib/tenant-context.tsx`) montado na raiz, acima do
 `BookingProvider`:
 
-- No boot, lê `EXPO_PUBLIC_TENANT_SLUG` e faz `GET /public/tenants/:slug`
+- **Resolução do slug**, nesta ordem: (1) parâmetro de **deep link** `/b/:slug`
+  na abertura (e **persiste** em AsyncStorage); (2) slug **persistido** de uma
+  abertura anterior. Com o slug, faz `GET /public/tenants/:slug`
   (+ `/:slug/services` quando útil) → expõe
   `{ slug, barbershopId, name, ratingAvg, address?, services? }` e estados
-  `loading | ready | error`.
+  `loading | ready | error | no-tenant`.
 - Substitui a escolha manual de barbearia. O `BookingProvider` passa a ser
   **inicializado a partir do TenantProvider** (não mais de `setBarbershop` por
   tela de marketplace). `setBarbershop` deixa de ser chamado pela UI de
   descoberta (que será removida); o tenant vem do provider.
-- **Falha de resolução** (env ausente, slug inexistente/privado, rede): estado
-  `error` → tela única "Barbearia indisponível" com retry. Sem env =
-  configuração de build inválida (mensagem clara pra quem montou o build).
+- **`no-tenant`** (app aberto sem deep link e nada persistido): tela "Abra pelo
+  link da sua barbearia" (o app é link-first). **Trocar de barbearia** = abrir
+  outro link `/b/:slug` (sobrescreve o slug persistido).
+- **`error`** (slug inexistente/privado/rede): tela "Barbearia indisponível"
+  com retry.
 
 **Interface (o que faz / como usar / do que depende):**
 - *Faz:* resolve e mantém o tenant atual do app.
 - *Usa:* `useTenant()` → `{ status, tenant, retry }`.
-- *Depende de:* `EXPO_PUBLIC_TENANT_SLUG`, `@/lib/api`, `GET /public/tenants/:slug`.
+- *Depende de:* deep link `/b/:slug` + AsyncStorage, `@/lib/api`, `GET /public/tenants/:slug`.
 
 ## 4. Navegação
 
@@ -68,7 +75,7 @@ Raiz (`app/_layout.tsx`) após onboarding/splash → **`(main)` Tabs** com 4 íc
 - `(app)` stack (auth-gated) mantém `editar-perfil`, `notificacoes`, `promocoes`.
 - O fluxo de booking (`(public)/agendamento/[slug]/*`) **permanece** como stack,
   mas alimentado pelo slug do `TenantProvider` (a aba Busca navega para o slug
-  do env em vez de um slug escolhido).
+  resolvido, em vez de um slug escolhido pelo usuário).
 
 ## 5. Telas
 
@@ -83,9 +90,10 @@ Raiz (`app/_layout.tsx`) após onboarding/splash → **`(main)` Tabs** com 4 íc
   seu próprio loading/empty.
 
 **Busca (`(main)/busca`) — agendar**
-- Ponto de entrada do fluxo de agendamento, já no tenant do env: serviço →
-  barbeiro → data/hora → checkout (dados) → pagamento/pix → sucesso.
-- Reusa o stack existente em `agendamento/[slug]` passando o slug do env.
+- Ponto de entrada do fluxo de agendamento, já no tenant resolvido pelo
+  `TenantProvider`: serviço → barbeiro → data/hora → checkout (dados) →
+  pagamento/pix → sucesso.
+- Reusa o stack existente em `agendamento/[slug]` passando o slug do `TenantProvider`.
 
 **Agenda (`(main)/agenda`) — meus agendamentos**
 - Requer login (senão prompt). Lista via `GET /me/customer-appointments`;
@@ -104,20 +112,36 @@ Raiz (`app/_layout.tsx`) após onboarding/splash → **`(main)` Tabs** com 4 íc
 - Remoção valida que nada do que fica referencia as telas removidas (ajustar
   imports/navegação órfã).
 
-## 7. Build (DevOps — fase posterior, não bloqueia dev)
+## 7. Distribuição e fluxo do dono
 
-- EAS: variável `EXPO_PUBLIC_TENANT_SLUG` por barbearia (profile/secret por
-  cliente) + `app.config` com nome/ícone por tenant.
-- Dev/local: usar um slug de teste apontando pra uma barbearia do Postgres local.
-- Detalhamento (perfis EAS, automação de build por cliente) fica no plano; não é
-  pré-requisito pra implementar/validar o fluxo localmente.
+**1 build / 1 app na loja** serve todas as barbearias. O tenant é fixado por
+**deep link**, não por build.
+
+**Fluxo do dono (como sai o app):**
+1. Dono faz onboarding no **web** e cria a barbearia (gera o `slug`).
+2. Web **mostra o link/QR** da barbearia (`.../b/{slug}`) pra ele compartilhar.
+3. Cliente abre o link/escaneia o QR → instala o app único → o app **fixa** a
+   barbearia naquela abertura e persiste o slug.
+
+**Pontos técnicos:**
+- **Deep link:** universal/app link `/b/:slug` (mesmo padrão de slug do web).
+- **Web gera o link/QR:** pequeno acréscimo no `apps/web` (painel do dono mostra
+  o link; QR é nice-to-have). Pode entrar nesta sprint ou logo depois.
+- **Deferred deep link:** instalar a partir do link **não** repassa o slug
+  automaticamente após o install (limitação de loja). MVP: o cliente **reabre o
+  link / escaneia o QR após instalar** e o app fixa a barbearia nessa abertura.
+  Solução plena (Branch/AppsFlyer) fica fora do MVP.
+- **Dev/local:** abrir o app com o slug via deep link de teste (ou seed no
+  AsyncStorage) apontando pra uma barbearia do Postgres local.
+- **App do barbeiro:** inalterado — 1 app, multi-tenant por login (`/me/employee`).
+  Dono convida funcionário no web; barbeiro baixa o app único e loga.
 
 ## 8. Testes
 
 - `TenantProvider`: resolve OK (mock fetch) e slug inválido → estado `error`.
 - Gate guest: Agenda e Perfil sem login → prompt; com login → conteúdo.
 - Home: render guest (CTA) vs logado (saudação + próximo agendamento).
-- Booking: continua funcionando com o slug vindo do env (smoke).
+- Booking: continua funcionando com o slug vindo do `TenantProvider` (smoke).
 - Backend: sem mudança → suíte atual (77/77) permanece verde.
 
 ## 9. Endpoints referenciados (existentes, verificados)
@@ -136,9 +160,9 @@ Raiz (`app/_layout.tsx`) após onboarding/splash → **`(main)` Tabs** com 4 íc
 
 ## 11. Riscos
 
-- **Operacional de build por cliente** (a decisão escolhida): 1 EAS build +
-  listagem na loja por barbearia. Aceito para o modelo white-label; mitigar com
-  automação de build no futuro.
+- **Deferred deep link** (cold start sem slug): instalar via link não repassa o
+  slug após o install. Mitigado pela tela `no-tenant` ("abra pelo link") +
+  reabrir o link/QR; solução plena (Branch) fora do MVP.
 - **Código órfão na remoção**: garantir que nenhuma rota/import aponte pras telas
   de marketplace removidas (typecheck + lint pegam a maioria).
 - **`booking-context` acoplado à escolha do usuário**: refac para inicializar do

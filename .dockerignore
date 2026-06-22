@@ -1,0 +1,49 @@
+# Aplicado a builds com contexto = raiz do monorepo.
+# O Railway aponta o serviço da API pro root do repo e usa
+# apps/api/Dockerfile — o Docker procura o .dockerignore AQUI (raiz do
+# contexto), não ao lado do Dockerfile. Por isso este arquivo precisa
+# viver na raiz, não em apps/api/.
+#
+# Sem ele, node_modules/dist entram no contexto e o `COPY packages/schemas`
+# do Dockerfile colide ("cannot copy to non-directory .../node_modules/...").
+
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/.expo
+**/.expo-shared
+
+# Logs
+**/*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Env locais (Railway injeta via dashboard — nunca pra imagem)
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.test
+
+# IDE / OS
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+
+# Tests + docs (não entram no runtime)
+**/coverage
+docs/
+
+# Apps que não fazem parte do build da imagem do API
+apps/web
+apps/mobile-business
+apps/mobile-customer
+
+# Artefatos de teste do API (não entram na imagem de produção)
+apps/api/docker-compose.test.yml

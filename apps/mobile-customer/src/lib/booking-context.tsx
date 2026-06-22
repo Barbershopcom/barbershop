@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+
+import { useTenant } from '@/lib/tenant-context';
 
 export interface ServiceDetail {
   id: string;
@@ -71,6 +73,7 @@ const initialState: BookingState = {
 
 export function BookingProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<BookingState>(initialState);
+  const tenant = useTenant();
 
   const setBarbershop = (id: string, name: string, slug: string) => {
     setState((prev) => ({
@@ -80,6 +83,13 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       barbershopSlug: slug,
     }));
   };
+
+  useEffect(() => {
+    if (tenant.status === 'ready') {
+      setBarbershop(tenant.tenant.barbershopId, tenant.tenant.name, tenant.tenant.slug);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenant.status]);
 
   const setAvailableServices = (services: ServiceDetail[]) => {
     setState((prev) => {

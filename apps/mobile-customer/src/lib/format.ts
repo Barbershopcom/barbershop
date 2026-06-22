@@ -44,6 +44,24 @@ export function formatYMD(date: Date): string {
 }
 
 /**
+ * Formata E.164 BR (`+5511999999999`) pra exibição `(11) 99999-9999`.
+ * Aplica máscara só pra números BR (com/sem o 55); fora isso, devolve como veio.
+ * String vazia/null → ''.
+ */
+export function formatPhoneBR(e164: string | null | undefined): string {
+  if (!e164) return '';
+  const digits = e164.replace(/\D/g, '');
+  const local = digits.startsWith('55') ? digits.slice(2) : digits;
+  if (local.length === 11) {
+    return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`;
+  }
+  if (local.length === 10) {
+    return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+  }
+  return e164;
+}
+
+/**
  * Aceita BR comum (`(11) 99999-9999`, `11 99999-9999`, `11999999999`)
  * e devolve E.164 (`+5511999999999`). Retorna null se inválido.
  */

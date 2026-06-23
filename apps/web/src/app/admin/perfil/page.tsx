@@ -25,6 +25,7 @@ interface TenantProfile {
   phoneE164: string | null;
   addressLine: string | null;
   instagramHandle: string | null;
+  lateCancelFeePct?: number | null;
 }
 
 export default function PerfilPage() {
@@ -35,7 +36,7 @@ export default function PerfilPage() {
   const [success, setSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const appLink = `${process.env.NEXT_PUBLIC_CUSTOMER_APP_URL ?? 'https://app.barbearia'}/b/${tenant.slug}`;
+  const appLink = `${process.env.NEXT_PUBLIC_CUSTOMER_APP_URL ?? 'https://appbarbeariab.com'}/b/${tenant.slug}`;
 
   async function handleCopy() {
     try {
@@ -51,6 +52,7 @@ export default function PerfilPage() {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [instagram, setInstagram] = useState('');
+  const [lateCancelFeePct, setLateCancelFeePct] = useState<number>(50);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +64,7 @@ export default function PerfilPage() {
         setPhone(data.phoneE164 ?? '');
         setAddress(data.addressLine ?? '');
         setInstagram(data.instagramHandle ?? '');
+        setLateCancelFeePct(data.lateCancelFeePct ?? 50);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -98,6 +101,7 @@ export default function PerfilPage() {
         phoneE164: phoneNormalized,
         addressLine: address.trim() ? address.trim() : null,
         instagramHandle: instagram.trim() ? instagram.trim() : null,
+        lateCancelFeePct,
       });
       setSuccess(true);
       await refresh();
@@ -227,6 +231,24 @@ export default function PerfilPage() {
                 placeholder="barbearia_jaja"
                 disabled={saving}
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="lateCancelFeePct">
+                Multa de cancelamento tardio (%)
+              </Label>
+              <Input
+                id="lateCancelFeePct"
+                type="number"
+                min={0}
+                max={100}
+                value={lateCancelFeePct}
+                onChange={(e) => setLateCancelFeePct(Number(e.target.value))}
+                disabled={saving}
+              />
+              <p className="text-xs text-muted-foreground">
+                % do valor do serviço cobrada quando o cliente cancela com menos de 24h (0–100).
+              </p>
             </div>
 
             {error ? (

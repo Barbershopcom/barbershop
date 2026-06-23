@@ -64,7 +64,7 @@ export default function OnboardingPage() {
         postalCode: '',
         country: 'BR',
       },
-      barbershop: { name: '', description: '' },
+      barbershop: { name: '', description: '', lateCancelFeePct: 50 },
     },
     mode: 'onBlur',
   });
@@ -464,6 +464,28 @@ export default function OnboardingPage() {
                             <FormControl>
                               <Textarea rows={2} {...field} />
                             </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="barbershop.lateCancelFeePct"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Multa de cancelamento tardio (%)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={100}
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              % do valor do serviço cobrada quando o cliente cancela com menos de 24h. Padrão: 50%.
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}

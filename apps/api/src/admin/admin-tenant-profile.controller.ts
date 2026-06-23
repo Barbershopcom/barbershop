@@ -53,7 +53,11 @@ export class AdminTenantProfileController {
       },
     });
     if (!tenant) throw new NotFoundException('Tenant não encontrado.');
-    return tenant;
+    const barbershop = await ctx.tx.barbershop.findFirst({
+      where: { tenantId: admin.tenantId },
+      select: { lateCancelFeePct: true },
+    });
+    return { ...tenant, lateCancelFeePct: barbershop?.lateCancelFeePct ?? 50 };
   }
 
   @Patch()
@@ -88,6 +92,14 @@ export class AdminTenantProfileController {
           instagramHandle: true,
         },
       });
+
+      if (body.lateCancelFeePct !== undefined) {
+        await ctx.tx.barbershop.updateMany({
+          where: { tenantId: admin.tenantId },
+          data: { lateCancelFeePct: body.lateCancelFeePct },
+        });
+      }
+
       return updated;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {

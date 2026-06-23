@@ -94,6 +94,7 @@ export class OnboardingController {
           locationId: location.id,
           name: body.barbershop.name,
           description: body.barbershop.description ?? null,
+          lateCancelFeePct: body.barbershop.lateCancelFeePct,
         },
       });
 

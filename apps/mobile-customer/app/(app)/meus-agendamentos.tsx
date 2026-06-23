@@ -38,6 +38,8 @@ export default function MyAppointmentsScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [tab, setTab] = useState<'upcoming' | 'history'>('upcoming');
   const [reviewing, setReviewing] = useState<MyCustomerAppointmentItem | null>(null);
+  const [cancelling, setCancelling] = useState<MyCustomerAppointmentItem | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setState({ kind: 'loading' });
@@ -64,29 +66,22 @@ export default function MyAppointmentsScreen() {
     setRefreshing(false);
   }
 
+  // Abre o modal de confirmação (Alert.alert não funciona no Expo web).
   function confirmCancel(item: MyCustomerAppointmentItem) {
-    Alert.alert(
-      'Cancelar agendamento?',
-      `${item.service.name} em ${item.tenant.name}\n${formatSlotInTz(item.startAt, item.tenant.timezone)}`,
-      [
-        { text: 'Manter', style: 'cancel' },
-        {
-          text: 'Cancelar',
-          style: 'destructive',
-          onPress: () => void doCancel(item.id),
-        },
-      ],
-    );
+    setCancelError(null);
+    setCancelling(item);
   }
 
   async function doCancel(id: string) {
     setBusyId(id);
+    setCancelError(null);
     try {
       await api.post(`/me/customer-appointments/${id}/cancel`);
+      setCancelling(null);
       await load(true);
     } catch (err) {
-      Alert.alert(
-        'Erro',
+      // Mostra o erro no próprio modal (ex.: regra das 24h de antecedência).
+      setCancelError(
         err instanceof ApiError ? err.message : 'Não foi possível cancelar.',
       );
     } finally {
@@ -230,7 +225,74 @@ export default function MyAppointmentsScreen() {
           void load(true);
         }}
       />
+
+      <CancelModal
+        item={cancelling}
+        busy={cancelling ? busyId === cancelling.id : false}
+        error={cancelError}
+        onConfirm={() => {
+          if (cancelling) void doCancel(cancelling.id);
+        }}
+        onClose={() => {
+          setCancelling(null);
+          setCancelError(null);
+        }}
+      />
     </View>
+  );
+}
+
+/** Modal de confirmação de cancelamento (funciona web + nativo, ao contrário
+ *  do Alert.alert). Mostra o erro inline — ex.: a regra das 24h. */
+function CancelModal({
+  item,
+  busy,
+  error,
+  onConfirm,
+  onClose,
+}: {
+  item: MyCustomerAppointmentItem | null;
+  busy: boolean;
+  error: string | null;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={item !== null} transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 items-center justify-center bg-black/40 px-6">
+        <View className="w-full max-w-md rounded-2xl bg-card p-6">
+          <Text className="text-lg font-bold text-foreground">Cancelar agendamento?</Text>
+          {item ? (
+            <Text className="mt-2 text-sm text-foreground-muted">
+              {item.service.name} com {item.barber.displayName}
+              {'\n'}
+              {formatSlotInTz(item.startAt, item.tenant.timezone)}
+            </Text>
+          ) : null}
+          {error ? <Text className="mt-3 text-sm text-destructive">{error}</Text> : null}
+          <View className="mt-5 flex-row gap-3">
+            <Pressable
+              onPress={onClose}
+              disabled={busy}
+              className="flex-1 items-center rounded-lg border border-border py-3 disabled:opacity-50"
+            >
+              <Text className="font-semibold text-foreground">Manter</Text>
+            </Pressable>
+            <Pressable
+              onPress={onConfirm}
+              disabled={busy}
+              className="flex-1 items-center rounded-lg bg-destructive py-3 disabled:opacity-50"
+            >
+              {busy ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="font-semibold text-white">Cancelar</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 

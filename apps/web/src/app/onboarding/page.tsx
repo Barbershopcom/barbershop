@@ -11,12 +11,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -37,7 +31,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Seal } from '@/components/ui/seal';
-import { Textarea } from '@/components/ui/textarea';
 import { api, ApiError } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 
@@ -80,7 +73,7 @@ export default function OnboardingPage() {
         postalCode: '',
         country: 'BR',
       },
-      barbershop: { name: '', description: '', lateCancelFeePct: 50 },
+      barbershop: { name: '', description: '', lateCancelFeePct: 15 },
     },
     mode: 'onBlur',
   });
@@ -230,16 +223,16 @@ export default function OnboardingPage() {
       </aside>
 
       {/* Conteúdo */}
-      <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-12">
-        <div className="flex flex-col gap-2">
+      <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-6 py-8">
+        <div className="flex flex-col gap-1">
           <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-destructive">
             Cadastro
           </span>
-          <h1 className="font-display text-4xl uppercase tracking-wide text-foreground">
+          <h1 className="font-display text-3xl uppercase tracking-wide text-foreground">
             Cadastre sua barbearia
           </h1>
           <p className="font-serif text-sm italic text-muted-foreground">
-            Algumas informações pra deixar tudo pronto. Você pode ajustar depois.
+            Você pode ajustar tudo depois.
           </p>
         </div>
 
@@ -257,53 +250,47 @@ export default function OnboardingPage() {
         >
           {hasSession === false ? (
             <Card>
-              <CardContent className="space-y-4 pt-6">
-                <div>
-                  <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-destructive">
-                    Sua conta
-                  </span>
-                  <p className="font-serif text-sm italic text-muted-foreground">
-                    Crie seu login para gerenciar a barbearia.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="account-email">Email</Label>
-                  <Input
-                    id="account-email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="voce@email.com"
-                    value={accountEmail}
-                    onChange={(e) => setAccountEmail(e.target.value)}
-                    disabled={submitting}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="account-password">Senha</Label>
-                  <Input
-                    id="account-password"
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="mínimo 6 caracteres"
-                    value={accountPassword}
-                    onChange={(e) => setAccountPassword(e.target.value)}
-                    disabled={submitting}
-                  />
+              <CardContent className="space-y-3 pt-6">
+                <h2 className="text-xs font-extrabold uppercase tracking-[0.16em] text-destructive">
+                  Sua conta
+                </h2>
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="account-email">Email</Label>
+                    <Input
+                      id="account-email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="voce@email.com"
+                      value={accountEmail}
+                      onChange={(e) => setAccountEmail(e.target.value)}
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="account-password">Senha</Label>
+                    <Input
+                      id="account-password"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="mínimo 6 caracteres"
+                      value={accountPassword}
+                      onChange={(e) => setAccountPassword(e.target.value)}
+                      disabled={submitting}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ) : null}
           <Card>
-            <CardContent className="pt-6">
-              <Accordion
-                type="multiple"
-                defaultValue={['tenant', 'organization', 'location', 'barbershop']}
-              >
-                {/* --- Tenant --- */}
-                <AccordionItem value="tenant">
-                  <AccordionTrigger>Identificação</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-4 pt-2">
+            <CardContent className="space-y-6 pt-6">
+              {/* --- Identificação & marca --- */}
+              <section className="space-y-3">
+                <h2 className="text-xs font-extrabold uppercase tracking-[0.16em] text-destructive">
+                  Identificação
+                </h2>
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
                       <FormField
                         control={form.control}
                         name="tenant.slug"
@@ -358,20 +345,11 @@ export default function OnboardingPage() {
                           </FormItem>
                         )}
                       />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
-                {/* --- Organization --- */}
-                <AccordionItem value="organization">
-                  <AccordionTrigger>Marca</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-4 pt-2">
                       <FormField
                         control={form.control}
                         name="organization.name"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="sm:col-span-2">
                             <FormLabel>Nome da marca</FormLabel>
                             <FormControl>
                               <Input placeholder="Barbearia do Jajá" {...field} />
@@ -380,37 +358,20 @@ export default function OnboardingPage() {
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={form.control}
-                        name="organization.description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Descrição (opcional)</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Conta um pouco sobre sua barbearia…"
-                                rows={3}
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                </div>
+              </section>
 
-                {/* --- Location --- */}
-                <AccordionItem value="location">
-                  <AccordionTrigger>Endereço</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-4 pt-2">
+              {/* --- Endereço --- */}
+              <section className="space-y-3">
+                <h2 className="text-xs font-extrabold uppercase tracking-[0.16em] text-destructive">
+                  Endereço
+                </h2>
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-6">
                       <FormField
                         control={form.control}
                         name="location.name"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="sm:col-span-3">
                             <FormLabel>Apelido da unidade</FormLabel>
                             <FormControl>
                               <Input placeholder="Matriz / Filial Centro" {...field} />
@@ -423,7 +384,7 @@ export default function OnboardingPage() {
                         control={form.control}
                         name="location.addressLine1"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="sm:col-span-3">
                             <FormLabel>Endereço</FormLabel>
                             <FormControl>
                               <Input placeholder="Rua, número" {...field} />
@@ -436,7 +397,7 @@ export default function OnboardingPage() {
                         control={form.control}
                         name="location.addressLine2"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="sm:col-span-6">
                             <FormLabel>Complemento (opcional)</FormLabel>
                             <FormControl>
                               <Input placeholder="Sala, andar, ponto de referência" {...field} />
@@ -445,49 +406,47 @@ export default function OnboardingPage() {
                           </FormItem>
                         )}
                       />
-                      <div className="grid grid-cols-3 gap-3">
-                        <FormField
-                          control={form.control}
-                          name="location.city"
-                          render={({ field }) => (
-                            <FormItem className="col-span-2">
-                              <FormLabel>Cidade</FormLabel>
-                              <FormControl>
-                                <Input {...field} disabled={cepFilled} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="location.state"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>UF</FormLabel>
-                              <FormControl>
-                                <select
-                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                                  {...field}
-                                  disabled={cepFilled}
-                                >
-                                  {brazilianStates.map((uf) => (
-                                    <option key={uf} value={uf}>
-                                      {uf}
-                                    </option>
-                                  ))}
-                                </select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      <FormField
+                        control={form.control}
+                        name="location.city"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-2">
+                            <FormLabel>Cidade</FormLabel>
+                            <FormControl>
+                              <Input {...field} disabled={cepFilled} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="location.state"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-1">
+                            <FormLabel>UF</FormLabel>
+                            <FormControl>
+                              <select
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                                {...field}
+                                disabled={cepFilled}
+                              >
+                                {brazilianStates.map((uf) => (
+                                  <option key={uf} value={uf}>
+                                    {uf}
+                                  </option>
+                                ))}
+                              </select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={form.control}
                         name="location.postalCode"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="sm:col-span-3">
                             <FormLabel>CEP</FormLabel>
                             <FormControl>
                               <div className="relative">
@@ -515,15 +474,15 @@ export default function OnboardingPage() {
                           </FormItem>
                         )}
                       />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                </div>
+              </section>
 
-                {/* --- Barbershop --- */}
-                <AccordionItem value="barbershop">
-                  <AccordionTrigger>Unidade operacional</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-4 pt-2">
+              {/* --- Sua barbearia --- */}
+              <section className="space-y-3">
+                <h2 className="text-xs font-extrabold uppercase tracking-[0.16em] text-destructive">
+                  Sua barbearia
+                </h2>
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
                       <FormField
                         control={form.control}
                         name="barbershop.name"
@@ -532,22 +491,6 @@ export default function OnboardingPage() {
                             <FormLabel>Nome da barbearia</FormLabel>
                             <FormControl>
                               <Input placeholder="Barbearia do Jajá — Unidade 1" {...field} />
-                            </FormControl>
-                            <FormDescription>
-                              Pode ser igual ao nome da marca se for unidade única.
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="barbershop.description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Descrição (opcional)</FormLabel>
-                            <FormControl>
-                              <Textarea rows={2} {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -569,16 +512,14 @@ export default function OnboardingPage() {
                               />
                             </FormControl>
                             <FormDescription>
-                              % do valor do serviço cobrada quando o cliente cancela com menos de 24h. Padrão: 50%.
+                              % do valor do serviço cobrada quando o cliente cancela com menos de 24h. Padrão: 15%.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+                </div>
+              </section>
             </CardContent>
           </Card>
 

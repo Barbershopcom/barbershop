@@ -87,6 +87,12 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Entrando…' : 'Entrar'}
             </Button>
+            <p className="text-xs text-muted-foreground">
+              Não tem conta?{' '}
+              <Link href="/onboarding" className="font-semibold text-foreground hover:underline">
+                Criar minha barbearia
+              </Link>
+            </p>
             <Link href="/" className="text-xs text-muted-foreground hover:underline">
               Voltar para o início
             </Link>

@@ -8,7 +8,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import {
@@ -35,9 +35,11 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Seal } from '@/components/ui/seal';
 import { Textarea } from '@/components/ui/textarea';
 import { api, ApiError } from '@/lib/api';
+import { createClient } from '@/lib/supabase/client';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -49,6 +51,20 @@ export default function OnboardingPage() {
   // Texto cru exibido no campo de slug (como o usuário digita: maiúsculas,
   // espaços). O valor salvo em tenant.slug é o resultado slugificado.
   const [slugDisplay, setSlugDisplay] = useState('');
+
+  // Conta do dono: o onboarding cria a conta (Supabase) + a barbearia num
+  // fluxo só. Se já houver sessão, escondemos os campos de conta.
+  // null = ainda verificando; true/false = resultado.
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountPassword, setAccountPassword] = useState('');
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data }) => {
+      setHasSession(Boolean(data.session));
+    });
+  }, []);
 
   const form = useForm<CreateTenantOnboardingInput>({
     resolver: zodResolver(createTenantOnboardingSchema),
@@ -117,6 +133,37 @@ export default function OnboardingPage() {
     setSubmitError(null);
     setSubmitting(true);
     try {
+      // Sem sessão: cria a conta no Supabase antes de criar a barbearia.
+      if (!hasSession) {
+        const email = accountEmail.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          setSubmitError('Informe um email válido para criar sua conta.');
+          return;
+        }
+        if (accountPassword.length < 6) {
+          setSubmitError('A senha deve ter pelo menos 6 caracteres.');
+          return;
+        }
+        const supabase = createClient();
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password: accountPassword,
+        });
+        if (error) {
+          setSubmitError(error.message);
+          return;
+        }
+        // Sem session = projeto exige confirmação de email. Não dá pra
+        // criar a barbearia ainda (o POST iria dar 401).
+        if (!data.session) {
+          setSubmitError(
+            'Conta criada! Confirme seu email (verifique a caixa de entrada) e depois entre em /login para criar sua barbearia.',
+          );
+          return;
+        }
+        setHasSession(true);
+      }
+
       // Limpa campos opcionais vazios antes de enviar
       const payload = {
         ...values,
@@ -208,6 +255,44 @@ export default function OnboardingPage() {
           })}
           className="space-y-6"
         >
+          {hasSession === false ? (
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                <div>
+                  <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-destructive">
+                    Sua conta
+                  </span>
+                  <p className="font-serif text-sm italic text-muted-foreground">
+                    Crie seu login para gerenciar a barbearia.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="account-email">Email</Label>
+                  <Input
+                    id="account-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="voce@email.com"
+                    value={accountEmail}
+                    onChange={(e) => setAccountEmail(e.target.value)}
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="account-password">Senha</Label>
+                  <Input
+                    id="account-password"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="mínimo 6 caracteres"
+                    value={accountPassword}
+                    onChange={(e) => setAccountPassword(e.target.value)}
+                    disabled={submitting}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
           <Card>
             <CardContent className="pt-6">
               <Accordion
@@ -508,7 +593,11 @@ export default function OnboardingPage() {
 
           <div className="flex justify-end">
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Criando…' : 'Criar barbearia'}
+              {submitting
+                ? 'Criando…'
+                : hasSession === false
+                  ? 'Criar conta e barbearia'
+                  : 'Criar barbearia'}
             </Button>
           </div>
         </form>

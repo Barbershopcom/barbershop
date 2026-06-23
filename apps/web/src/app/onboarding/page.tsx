@@ -410,37 +410,34 @@ export default function OnboardingPage() {
                 <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-6">
                       <FormField
                         control={form.control}
-                        name="location.name"
+                        name="location.postalCode"
                         render={({ field }) => (
-                          <FormItem className="sm:col-span-3">
-                            <FieldLabel>Apelido da unidade</FieldLabel>
+                          <FormItem className="sm:col-span-2">
+                            <FieldLabel info="Digite o CEP que a cidade e o estado são preenchidos automaticamente.">
+                              CEP
+                            </FieldLabel>
                             <FormControl>
-                              <Input placeholder="Matriz / Filial Centro" {...field} />
+                              <div className="relative">
+                                <Input
+                                  placeholder="00000-000"
+                                  {...field}
+                                  onChange={(e) => {
+                                    const formatted = e.target.value
+                                      .replace(/\D/g, '')
+                                      .slice(0, 8)
+                                      .replace(/(\d{5})(\d{3})/, '$1-$2');
+                                    field.onChange(formatted);
+                                    if (formatted.replace(/-/g, '').length === 8) {
+                                      handleCepLookup(formatted);
+                                    }
+                                  }}
+                                />
+                                {cepLoading && (
+                                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin" />
+                                )}
+                              </div>
                             </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="location.addressLine1"
-                        render={({ field }) => (
-                          <FormItem className="sm:col-span-3">
-                            <FieldLabel>Endereço</FieldLabel>
-                            <FormControl>
-                              <Input placeholder="Rua, número" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="location.addressLine2"
-                        render={({ field }) => (
-                          <FormItem className="sm:col-span-6">
-                            <FieldLabel>Complemento (opcional)</FieldLabel>
-                            <FormControl>
-                              <Input placeholder="Sala, andar, ponto de referência" {...field} />
-                            </FormControl>
+                            {cepError && <p className="text-xs text-destructive mt-1">{cepError}</p>}
                           </FormItem>
                         )}
                       />
@@ -448,7 +445,7 @@ export default function OnboardingPage() {
                         control={form.control}
                         name="location.city"
                         render={({ field }) => (
-                          <FormItem className="sm:col-span-2">
+                          <FormItem className="sm:col-span-3">
                             <FieldLabel>Cidade</FieldLabel>
                             <FormControl>
                               <Input {...field} disabled={cepFilled} />
@@ -480,32 +477,37 @@ export default function OnboardingPage() {
                       />
                       <FormField
                         control={form.control}
-                        name="location.postalCode"
+                        name="location.name"
                         render={({ field }) => (
                           <FormItem className="sm:col-span-3">
-                            <FieldLabel>CEP</FieldLabel>
+                            <FieldLabel>Apelido da unidade</FieldLabel>
                             <FormControl>
-                              <div className="relative">
-                                <Input
-                                  placeholder="00000-000"
-                                  {...field}
-                                  onChange={(e) => {
-                                    const formatted = e.target.value
-                                      .replace(/\D/g, '')
-                                      .slice(0, 8)
-                                      .replace(/(\d{5})(\d{3})/, '$1-$2');
-                                    field.onChange(formatted);
-                                    if (formatted.replace(/-/g, '').length === 8) {
-                                      handleCepLookup(formatted);
-                                    }
-                                  }}
-                                />
-                                {cepLoading && (
-                                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin" />
-                                )}
-                              </div>
+                              <Input placeholder="Matriz / Filial Centro" {...field} />
                             </FormControl>
-                            {cepError && <p className="text-xs text-destructive mt-1">{cepError}</p>}
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="location.addressLine1"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-3">
+                            <FieldLabel>Endereço</FieldLabel>
+                            <FormControl>
+                              <Input placeholder="Rua, número" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="location.addressLine2"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-6">
+                            <FieldLabel>Complemento (opcional)</FieldLabel>
+                            <FormControl>
+                              <Input placeholder="Sala, andar, ponto de referência" {...field} />
+                            </FormControl>
                           </FormItem>
                         )}
                       />

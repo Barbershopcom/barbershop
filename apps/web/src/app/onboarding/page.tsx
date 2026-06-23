@@ -6,7 +6,7 @@ import {
   createTenantOnboardingSchema,
 } from '@barbearia/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Info, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -22,7 +22,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -34,20 +33,20 @@ import { Seal } from '@/components/ui/seal';
 import { api, ApiError } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 
-// Ícone de alerta exibido na ponta da label quando o campo tem erro de
-// validação. No hover/focus abre um tooltip (CSS puro) com a mensagem.
-function FieldError() {
-  const { error } = useFormField();
-  if (!error) return null;
-  const message = String(error.message ?? 'Campo inválido');
+// Ícone com tooltip (CSS puro) exibido na ponta da label. Serve tanto para
+// erro de validação quanto para dica informativa do campo. No hover/focus
+// abre o tooltip com a mensagem.
+function TooltipIcon({ message, variant }: { message: string; variant: 'error' | 'info' }) {
+  const Icon = variant === 'error' ? AlertCircle : Info;
+  const color = variant === 'error' ? 'text-destructive' : 'text-muted-foreground';
   return (
     <span
-      className="group relative inline-flex shrink-0 cursor-help text-destructive outline-none"
+      className={`group relative inline-flex shrink-0 cursor-help outline-none ${color}`}
       tabIndex={0}
       role="img"
       aria-label={message}
     >
-      <AlertCircle className="h-4 w-4" aria-hidden />
+      <Icon className="h-4 w-4" aria-hidden />
       <span
         role="tooltip"
         className="pointer-events-none absolute right-0 top-6 z-20 hidden w-max max-w-[240px] rounded-md bg-foreground px-2 py-1 text-xs font-medium leading-snug text-background shadow-md group-hover:block group-focus:block"
@@ -58,12 +57,22 @@ function FieldError() {
   );
 }
 
-// Linha de label: texto à esquerda, ícone de erro (com tooltip) à direita.
-function FieldLabel({ children }: { children: ReactNode }) {
+// Ícone de erro do campo (lê o estado de validação via react-hook-form).
+function FieldError() {
+  const { error } = useFormField();
+  if (!error) return null;
+  return <TooltipIcon variant="error" message={String(error.message ?? 'Campo inválido')} />;
+}
+
+// Linha de label: texto à esquerda; à direita, dica (info) e/ou erro.
+function FieldLabel({ children, info }: { children: ReactNode; info?: string }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <FormLabel>{children}</FormLabel>
-      <FieldError />
+      <span className="flex items-center gap-1.5">
+        {info ? <TooltipIcon variant="info" message={info} /> : null}
+        <FieldError />
+      </span>
     </div>
   );
 }
@@ -330,7 +339,11 @@ export default function OnboardingPage() {
                         name="tenant.slug"
                         render={({ field }) => (
                           <FormItem>
-                            <FieldLabel>Slug (URL pública)</FieldLabel>
+                            <FieldLabel
+                              info={`Vai virar appbarbeariab.com/b/${field.value || 'seu-slug'}`}
+                            >
+                              Slug (URL pública)
+                            </FieldLabel>
                             <FormControl>
                               <Input
                                 placeholder="Barbearia do Jajá"
@@ -348,9 +361,6 @@ export default function OnboardingPage() {
                                 onBlur={field.onBlur}
                               />
                             </FormControl>
-                            <FormDescription>
-                              Vai virar appbarbeariab.com/b/{field.value || 'seu-slug'}
-                            </FormDescription>
                           </FormItem>
                         )}
                       />
@@ -525,7 +535,9 @@ export default function OnboardingPage() {
                         name="barbershop.lateCancelFeePct"
                         render={({ field }) => (
                           <FormItem>
-                            <FieldLabel>Multa de cancelamento tardio (%)</FieldLabel>
+                            <FieldLabel info="% do valor do serviço cobrada quando o cliente cancela com menos de 24h. Padrão: 15%.">
+                              Multa de cancelamento tardio (%)
+                            </FieldLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -535,9 +547,6 @@ export default function OnboardingPage() {
                                 onChange={(e) => field.onChange(e.target.valueAsNumber)}
                               />
                             </FormControl>
-                            <FormDescription>
-                              % do valor do serviço cobrada quando o cliente cancela com menos de 24h. Padrão: 15%.
-                            </FormDescription>
                           </FormItem>
                         )}
                       />

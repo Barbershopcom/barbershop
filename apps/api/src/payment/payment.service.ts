@@ -330,7 +330,7 @@ export class PaymentService {
    * Idempotente e best-effort: se não há payment pago, no-op silencioso
    * (ex: booking guest que nunca pagou, ou já estornado).
    */
-  async refund(appointmentId: string): Promise<void> {
+  async refund(appointmentId: string, feeCents = 0): Promise<void> {
     const payment = await this.prisma.payment.findUnique({
       where: { appointmentId },
       select: { id: true, status: true, providerPaymentId: true, tenantId: true },
@@ -357,7 +357,7 @@ export class PaymentService {
 
     await this.prisma.payment.update({
       where: { appointmentId },
-      data: { status: 'refunded', refundedAt: new Date() },
+      data: { status: 'refunded', refundedAt: new Date(), cancelFeeCents: feeCents },
     });
     PaymentService.logger.log(`Pagamento estornado appt=${appointmentId}`);
   }

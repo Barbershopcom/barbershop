@@ -22,14 +22,16 @@ export class OnboardingController {
   @Post('tenant')
   @HttpCode(HttpStatus.CREATED)
   @ApiResponse({ status: 201, description: 'Tenant criado com cadeia Org→Location→Barbershop.' })
-  @ApiResponse({ status: 409, description: 'Slug já em uso.' })
+  @ApiResponse({ status: 409, description: 'Slug já em uso, ou CPF já vinculado a outra conta.' })
   async createTenant(
     @Tx() ctx: TenantContextValue,
     @Body(new ZodValidationPipe(createTenantOnboardingSchema))
     body: CreateTenantOnboardingInput,
   ) {
     // Um usuário pode criar/gerenciar N barbearias (cada uma vira um tenant
-    // próprio com membership admin). A unicidade fica só no slug do tenant.
+    // próprio com membership admin). O anti-abuso de teste grátis fica no
+    // UNIQUE de app_users.cpf: a MESMA conta pode ter N barbearias, mas uma
+    // pessoa (CPF) não consegue abrir outra conta pra ganhar trial de novo.
 
     // Gera UUID no app para evitar RETURNING no tenant INSERT.
     // RETURNING aplica a SELECT policy na linha recém-criada, e
@@ -39,10 +41,18 @@ export class OnboardingController {
     const timezone = body.tenant.timezone;
 
     try {
-      // 1) tenant — INSERT raw, sem RETURNING
+      // 0) vincula o CPF ao usuário. O UNIQUE em app_users.cpf bloqueia que
+      //    a mesma pessoa reabra outra conta só pra ganhar novo teste grátis.
+      //    Se o CPF já pertence a outra conta -> P2002 (tratado no catch).
+      await ctx.tx.appUser.update({
+        where: { id: ctx.userId },
+        data: { cpf: body.ownerCpf },
+      });
+
+      // 1) tenant — INSERT raw, sem RETURNING (inclui owner_cpf + trial 14d)
       await ctx.tx.$executeRaw`
-        INSERT INTO tenants (id, slug, name, timezone, updated_at)
-        VALUES (${tenantId}::uuid, ${body.tenant.slug}, ${body.tenant.name}, ${timezone}, now())
+        INSERT INTO tenants (id, slug, name, timezone, owner_cpf, trial_ends_at, updated_at)
+        VALUES (${tenantId}::uuid, ${body.tenant.slug}, ${body.tenant.name}, ${timezone}, ${body.ownerCpf}, now() + interval '14 days', now())
       `;
 
       // 2) membership pro criador como admin
@@ -104,8 +114,18 @@ export class OnboardingController {
       };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        // unique violation no slug
-        throw new ConflictException('Esse slug já está em uso. Escolha outro.');
+        const target = Array.isArray(err.meta?.target)
+          ? (err.meta.target as string[]).join(',')
+          : String(err.meta?.target ?? '');
+        if (target.includes('cpf')) {
+          throw new ConflictException(
+            'Esse CPF já está vinculado a uma conta. Faça login na conta existente para gerenciar suas barbearias.',
+          );
+        }
+        if (target.includes('slug')) {
+          throw new ConflictException('Esse slug já está em uso. Escolha outro.');
+        }
+        throw new ConflictException('Registro duplicado.');
       }
       throw err;
     }

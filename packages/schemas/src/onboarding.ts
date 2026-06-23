@@ -4,6 +4,34 @@ import { slugSchema, timezoneSchema } from './common';
 
 const nonEmpty = (max: number) => z.string().trim().min(2).max(max);
 
+/**
+ * Valida CPF brasileiro pelos dois dígitos verificadores. Recebe a string
+ * só com dígitos (11 chars). Rejeita sequências repetidas (000..., 111...).
+ */
+export function isValidCpf(digits: string): boolean {
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+  const calc = (len: number): number => {
+    let sum = 0;
+    for (let i = 0; i < len; i++) {
+      sum += Number(digits[i]) * (len + 1 - i);
+    }
+    const mod = (sum * 10) % 11;
+    return mod === 10 ? 0 : mod;
+  };
+  return calc(9) === Number(digits[9]) && calc(10) === Number(digits[10]);
+}
+
+/**
+ * CPF de entrada (com ou sem máscara). Normaliza para 11 dígitos e valida
+ * os dígitos verificadores. O valor de saída é sempre só dígitos.
+ */
+export const cpfSchema = z
+  .string()
+  .trim()
+  .transform((v) => v.replace(/\D/g, ''))
+  .refine(isValidCpf, { message: 'CPF inválido' });
+
 // Pre-processor: empty string ⇒ undefined antes da validação.
 // Previne falsos negativos quando form tem default '' em campos opcionais
 // com format validators (.url(), .email(), .regex(), etc).
@@ -50,6 +78,9 @@ const barbershopBlock = z.object({
 });
 
 export const createTenantOnboardingSchema = z.object({
+  /** CPF do responsável — usado para identidade e liberar o teste grátis
+   *  uma única vez por pessoa (anti-abuso). Saída normalizada (11 dígitos). */
+  ownerCpf: cpfSchema,
   tenant: tenantBlock,
   organization: organizationBlock,
   location: locationBlock,

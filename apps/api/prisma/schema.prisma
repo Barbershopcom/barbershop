@@ -31,7 +31,9 @@ model AppUser {
   email       String?  @unique
   phoneE164   String?  @unique @map("phone_e164")
   displayName String?  @map("display_name")
-  cpf         String?
+  /// CPF do responsável (só dígitos). UNIQUE = uma pessoa só abre 1 conta/
+  /// trial (anti-abuso). NULLs múltiplos são permitidos no Postgres.
+  cpf         String?  @unique
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -62,6 +64,11 @@ model Tenant {
   mpRefreshToken   String?   @map("mp_refresh_token")
   mpTokenExpiresAt DateTime? @map("mp_token_expires_at") @db.Timestamptz(6)
   mpConnectedAt    DateTime? @map("mp_connected_at") @db.Timestamptz(6)
+  /// CPF do criador (só dígitos), desnormalizado p/ suporte/admin. A garantia
+  /// anti-abuso fica no UNIQUE de app_users.cpf.
+  ownerCpf    String?   @map("owner_cpf")
+  /// Fim do período de teste grátis (createdAt + 14 dias). Base p/ billing.
+  trialEndsAt DateTime? @map("trial_ends_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

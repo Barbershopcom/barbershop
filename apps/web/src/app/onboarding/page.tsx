@@ -105,6 +105,7 @@ export default function OnboardingPage() {
   const form = useForm<CreateTenantOnboardingInput>({
     resolver: zodResolver(createTenantOnboardingSchema),
     defaultValues: {
+      ownerCpf: '',
       tenant: { slug: '', name: '', timezone: 'America/Sao_Paulo' },
       organization: { name: '', description: '', logoUrl: '' },
       location: {
@@ -157,7 +158,7 @@ export default function OnboardingPage() {
       form.setValue('location.city', data.localidade || '', opts);
       form.setValue('location.state', data.uf || 'RJ', opts);
       setCepFilled(true);
-    } catch (err) {
+    } catch {
       setCepError('Erro ao buscar CEP. Preencha manualmente.');
       setCepFilled(false);
     } finally {
@@ -266,7 +267,7 @@ export default function OnboardingPage() {
       </aside>
 
       {/* Conteúdo */}
-      <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-6 py-8">
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-6 py-6">
         <div className="flex flex-col gap-1">
           <span className="text-xs font-extrabold uppercase tracking-[0.16em] text-destructive">
             Cadastro
@@ -391,10 +392,37 @@ export default function OnboardingPage() {
                         control={form.control}
                         name="organization.name"
                         render={({ field }) => (
-                          <FormItem className="sm:col-span-2">
+                          <FormItem>
                             <FieldLabel>Nome da marca</FieldLabel>
                             <FormControl>
                               <Input placeholder="Barbearia do Jajá" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="ownerCpf"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FieldLabel info="Usamos o CPF para identificar o responsável e liberar o teste grátis uma vez por pessoa.">
+                              CPF do responsável
+                            </FieldLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="000.000.000-00"
+                                inputMode="numeric"
+                                {...field}
+                                onChange={(e) => {
+                                  const masked = e.target.value
+                                    .replace(/\D/g, '')
+                                    .slice(0, 11)
+                                    .replace(/(\d{3})(\d)/, '$1.$2')
+                                    .replace(/(\d{3})(\d)/, '$1.$2')
+                                    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                                  field.onChange(masked);
+                                }}
+                              />
                             </FormControl>
                           </FormItem>
                         )}

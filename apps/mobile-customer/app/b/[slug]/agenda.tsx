@@ -1,5 +1,5 @@
 import { AuthGate } from '@/components/AuthGate';
-import MeusAgendamentos from '../(app)/meus-agendamentos';
+import MeusAgendamentos from '../../(app)/meus-agendamentos';
 
 export default function AgendaTab() {
   return (

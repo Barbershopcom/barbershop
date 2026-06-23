@@ -17,12 +17,12 @@ export default function SucessoScreen() {
 
   const handleGoHome = () => {
     booking.reset();
-    router.replace('/(main)');
+    router.replace(`/b/${slug}`);
   };
 
   const handleViewAppointments = () => {
     booking.reset();
-    router.replace('/(main)/agenda');
+    router.replace(`/b/${slug}/agenda`);
   };
 
   return (

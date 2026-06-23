@@ -15,6 +15,7 @@ export default function HomeScreen() {
   const isAuthenticated = state.status === 'authenticated';
   const barbershopName =
     tenantState.status === 'ready' ? tenantState.tenant.name : '';
+  const slug = tenantState.status === 'ready' ? tenantState.tenant.slug : '';
 
   const { data: appointments, isLoading: apptLoading } =
     useQuery<MyCustomerAppointmentItem[]>({
@@ -73,13 +74,13 @@ export default function HomeScreen() {
           {/* Shortcuts */}
           <View className="flex-row gap-3">
             <Pressable
-              onPress={() => router.push('/(main)/busca')}
+              onPress={() => router.push(`/(public)/agendamento/${slug}`)}
               className="flex-1 items-center rounded-lg bg-navy py-4 active:opacity-80"
             >
               <Text className="font-semibold text-white">Agendar</Text>
             </Pressable>
             <Pressable
-              onPress={() => router.push('/(main)/agenda')}
+              onPress={() => router.push(`/b/${slug}/agenda`)}
               className="flex-1 items-center rounded-lg border border-border py-4 active:bg-blue-50"
             >
               <Text className="font-semibold text-foreground">Histórico</Text>
@@ -90,7 +91,7 @@ export default function HomeScreen() {
         <>
           {/* Guest CTA */}
           <Pressable
-            onPress={() => router.push('/(main)/busca')}
+            onPress={() => router.push(`/(public)/agendamento/${slug}`)}
             className="items-center rounded-lg bg-navy py-4 active:opacity-80"
           >
             <Text className="font-semibold text-white">Agendar agora</Text>

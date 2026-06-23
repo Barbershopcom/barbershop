@@ -122,7 +122,8 @@ function RootLayoutNav() {
     <>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(main)" />
+        <Stack.Screen name="index" />
+        <Stack.Screen name="b/[slug]" />
         <Stack.Screen name="(public)/agendamento/[slug]" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(app)" />

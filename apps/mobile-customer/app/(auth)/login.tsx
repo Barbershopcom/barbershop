@@ -35,7 +35,7 @@ export default function LoginScreen() {
       setError(result.error ?? 'Erro ao entrar.');
       return;
     }
-    router.replace('/(main)');
+    router.replace('/');
   }
 
   return (

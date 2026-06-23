@@ -1,13 +1,19 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useLocalSearchParams, useRouter } from 'expo-router';
 import { Home, Search, Calendar, User } from 'lucide-react-native';
+import { useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useTenant } from '@/lib/tenant-context';
+import { persistSlug } from '@/lib/tenant-slug';
 
-export default function MainLayout() {
+export default function TenantTabsLayout() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const tenant = useTenant();
+  const { slug } = useLocalSearchParams<{ slug: string }>();
+
+  // Persiste o slug da URL — reabrir o app sem o link mantém a barbearia fixa.
+  useEffect(() => {
+    if (slug) void persistSlug(slug);
+  }, [slug]);
 
   return (
     <Tabs
@@ -44,14 +50,12 @@ export default function MainLayout() {
           tabBarIcon: ({ color }) => <Search size={24} color={color} />,
         }}
         listeners={{
-          // A aba Buscar abre o fluxo de agendamento (stack) no tenant fixo,
+          // A aba Buscar abre o fluxo de agendamento (stack) no tenant da URL,
           // em vez de virar uma tela vazia. Intercepta o toque e navega.
           tabPress: (e) => {
-            if (tenant.status === 'ready') {
+            if (slug) {
               e.preventDefault();
-              router.push(
-                `/(public)/agendamento/${encodeURIComponent(tenant.tenant.slug)}`,
-              );
+              router.push(`/(public)/agendamento/${encodeURIComponent(slug)}`);
             }
           },
         }}

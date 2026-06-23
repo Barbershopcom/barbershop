@@ -243,7 +243,7 @@ export default function OnboardingPage() {
                               />
                             </FormControl>
                             <FormDescription>
-                              Vai virar barbearia.app/b/{field.value || 'seu-slug'}
+                              Vai virar appbarbeariab.com/b/{field.value || 'seu-slug'}
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

@@ -270,6 +270,14 @@ function CancelModal({
             </Text>
           ) : null}
           {error ? <Text className="mt-3 text-sm text-destructive">{error}</Text> : null}
+          {item && item.cancellation.isLate && item.cancellation.feeCents > 0 ? (
+            <Text className="mt-3 text-sm text-foreground">
+              Cancelar com menos de 24h tem multa de{' '}
+              {(item.cancellation.feeCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.
+              {'\n'}Você recebe{' '}
+              {(item.cancellation.refundCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}{' '}de volta.
+            </Text>
+          ) : null}
           <View className="mt-5 flex-row gap-3">
             <Pressable
               onPress={onClose}

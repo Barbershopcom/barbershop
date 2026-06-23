@@ -337,3 +337,172 @@ describe('MeCustomerAppointmentsController — cancel e list com multa', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// C1 — multa usa appointment.priceCents (não service.basePriceCents)
+// Simula cupom: priceCents=2000, basePriceCents=3000 → fee = 1000 (não 1500)
+// ---------------------------------------------------------------------------
+describe('MeCustomerAppointmentsController — multa com cupom (priceCents != basePriceCents)', () => {
+  const ids: {
+    tenant?: string;
+    org?: string;
+    loc?: string;
+    shop?: string;
+    svc?: string;
+    appt?: string;
+    apptCoupon?: string;
+    user?: string;
+    barber?: string;
+    customer?: string;
+  } = {};
+
+  let controller: MeCustomerAppointmentsController;
+
+  beforeAll(async () => {
+    ids.user = randomUUID();
+    const userEmail = `u-${ids.user}@test.invalid`;
+
+    await prisma.appUser.create({ data: { id: ids.user, email: userEmail } });
+
+    ids.tenant = (
+      await prisma.tenant.create({
+        data: { slug: `cp-${ids.user.slice(0, 8)}`, name: 'CP' },
+      })
+    ).id;
+    ids.org = (
+      await prisma.organization.create({
+        data: { tenantId: ids.tenant, name: 'O3' },
+      })
+    ).id;
+    ids.loc = (
+      await prisma.location.create({
+        data: {
+          tenantId: ids.tenant,
+          organizationId: ids.org,
+          name: 'L3',
+          addressLine1: 'R3',
+          city: 'C3',
+          state: 'SP',
+          postalCode: '01000-002',
+        },
+      })
+    ).id;
+    ids.shop = (
+      await prisma.barbershop.create({
+        data: {
+          tenantId: ids.tenant,
+          locationId: ids.loc,
+          name: 'S3',
+          lateCancelFeePct: 50,
+        },
+      })
+    ).id;
+    // basePriceCents=3000 but appointment will be booked at priceCents=2000 (coupon)
+    ids.svc = (
+      await prisma.service.create({
+        data: {
+          tenantId: ids.tenant,
+          barbershopId: ids.shop,
+          name: 'Corte3',
+          durationMin: 30,
+          basePriceCents: 3000,
+        },
+      })
+    ).id;
+    ids.barber = (
+      await prisma.employee.create({
+        data: {
+          tenantId: ids.tenant,
+          barbershopId: ids.shop,
+          displayName: 'Barber CP',
+          role: 'barber',
+        },
+      })
+    ).id;
+    ids.customer = (
+      await prisma.customer.create({
+        data: { appUserId: ids.user!, displayName: 'X3' },
+      })
+    ).id;
+
+    // Appointment with coupon discount: priceCents=2000, but service.basePriceCents=3000
+    ids.apptCoupon = (
+      await prisma.appointment.create({
+        data: {
+          tenantId: ids.tenant,
+          barbershopId: ids.shop,
+          barberId: ids.barber!,
+          serviceId: ids.svc,
+          customerId: ids.customer,
+          customerName: 'X3',
+          customerEmail: userEmail,
+          startAt: new Date(Date.now() + 3_600_000), // +1h → within 24h → isLate=true
+          endAt: new Date(Date.now() + 5_400_000),
+          priceCents: 2000, // final price after coupon discount (NOT basePriceCents 3000)
+          status: 'pending',
+        },
+      })
+    ).id;
+    await prisma.payment.create({
+      data: {
+        tenantId: ids.tenant,
+        appointmentId: ids.apptCoupon,
+        method: 'pix',
+        status: 'paid',
+        amountCents: 2000,
+        paidAt: new Date(),
+      },
+    });
+
+    const paymentService = new PaymentService(
+      prisma as never,
+      provider,
+      mpStub,
+      jobsStub,
+      notifierStub,
+    );
+    const emailStub = { sendBookingCancelled: jest.fn().mockResolvedValue({ ok: true }) } as never;
+    const customersStub = {
+      ensureForUser: jest.fn().mockResolvedValue({ customerId: ids.customer, email: userEmail }),
+    } as never;
+    const couponsStub = { releaseReservation: jest.fn().mockResolvedValue(undefined) } as never;
+
+    controller = new MeCustomerAppointmentsController(
+      prisma as never,
+      emailStub,
+      customersStub,
+      couponsStub,
+      paymentService,
+    );
+  });
+
+  afterAll(async () => {
+    await prisma.tenant.deleteMany({ where: { id: ids.tenant } });
+    await prisma.appUser.deleteMany({ where: { id: ids.user } });
+    await prisma.customer.deleteMany({ where: { id: ids.customer } });
+  });
+
+  it('cancel usa priceCents=2000 → feeCents=1000, não 1500 de basePriceCents', async () => {
+    const user = { id: ids.user!, email: `u-${ids.user}@test.invalid`, raw: {} };
+    await controller.cancel(user as never, ids.apptCoupon!);
+
+    const pay = await prisma.payment.findUnique({
+      where: { appointmentId: ids.apptCoupon! },
+      select: { status: true, cancelFeeCents: true },
+    });
+
+    // fee = round(2000 * 50/100) = 1000, NOT 1500 (which would be basePriceCents-based)
+    expect(pay?.status).toBe('refunded');
+    expect(pay?.cancelFeeCents).toBe(1000);
+  });
+
+  it('list preview também mostra feeCents=1000 para o agendamento com cupom (cancelled)', async () => {
+    const user = { id: ids.user!, email: `u-${ids.user}@test.invalid`, raw: {} };
+    const items = await controller.list(user as never);
+
+    const couponItem = items.find((i) => i.id === ids.apptCoupon);
+    expect(couponItem).toBeDefined();
+    // list uses r.priceCents=2000 → feeCents=1000
+    expect(couponItem!.cancellation.feeCents).toBe(1000);
+  });
+});

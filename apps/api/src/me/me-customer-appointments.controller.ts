@@ -163,9 +163,10 @@ export class MeCustomerAppointmentsController {
         tenantId: true,
         status: true,
         startAt: true,
+        priceCents: true,
         customerName: true,
         customerEmail: true,
-        service: { select: { name: true, durationMin: true, basePriceCents: true } },
+        service: { select: { name: true, durationMin: true } },
         barber: { select: { displayName: true } },
       },
     });
@@ -196,7 +197,7 @@ export class MeCustomerAppointmentsController {
       select: { lateCancelFeePct: true },
     });
     const feeCents = isLate
-      ? Math.round((appt.service.basePriceCents * (shop?.lateCancelFeePct ?? 50)) / 100)
+      ? Math.round((appt.priceCents * (shop?.lateCancelFeePct ?? 50)) / 100)
       : 0;
     await this.payment.refund(id, feeCents);
 
@@ -239,7 +240,7 @@ export class MeCustomerAppointmentsController {
         durationLabel: formatDuration(appt.service.durationMin),
         serviceName: appt.service.name,
         barberName: appt.barber.displayName,
-        priceLabel: formatPriceBRL(appt.service.basePriceCents),
+        priceLabel: formatPriceBRL(appt.priceCents),
         ...tenantContactVars(tenant),
       },
     });

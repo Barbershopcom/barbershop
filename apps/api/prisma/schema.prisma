@@ -141,6 +141,8 @@ model Barbershop {
   /// Rating agregado (cache; fonte = tabela reviews). ADR-019 §2.
   ratingAvg   Float?   @map("rating_avg")
   ratingCount Int      @default(0) @map("rating_count")
+  /// Multa de cancelamento tardio (<24h), % do preço do serviço. ADR-016.
+  lateCancelFeePct Int     @default(50) @map("late_cancel_fee_pct")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -383,6 +385,8 @@ model Payment {
   feeCents          Int       @default(0) @map("fee_cents")
   /// Comissão da plataforma (split futuro; calculada mas não cobrada no mock)
   platformFeeCents  Int       @default(0) @map("platform_fee_cents")
+  /// Multa retida no cancelamento tardio (reembolso = amountCents - cancelFeeCents).
+  cancelFeeCents    Int       @default(0) @map("cancel_fee_cents")
   /// ID do pagamento no PSP (mock gera fake)
   providerPaymentId String?   @map("provider_payment_id")
   /// Resposta/webhook do PSP (auditoria + reconciliação)

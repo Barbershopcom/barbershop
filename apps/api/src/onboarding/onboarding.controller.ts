@@ -22,21 +22,14 @@ export class OnboardingController {
   @Post('tenant')
   @HttpCode(HttpStatus.CREATED)
   @ApiResponse({ status: 201, description: 'Tenant criado com cadeia Org→Location→Barbershop.' })
-  @ApiResponse({ status: 409, description: 'Slug já em uso, ou user já tem tenant.' })
+  @ApiResponse({ status: 409, description: 'Slug já em uso.' })
   async createTenant(
     @Tx() ctx: TenantContextValue,
     @Body(new ZodValidationPipe(createTenantOnboardingSchema))
     body: CreateTenantOnboardingInput,
   ) {
-    // Regra MVP: 1 user = 1 tenant. Quando precisar de "barbeiro em 2 barbearias"
-    // (ADR-001), abrir endpoint separado pra criar membership extra.
-    const existing = await ctx.tx.tenantMembership.findFirst({
-      where: { userId: ctx.userId },
-      select: { tenantId: true },
-    });
-    if (existing) {
-      throw new ConflictException('Usuário já está vinculado a um tenant.');
-    }
+    // Um usuário pode criar/gerenciar N barbearias (cada uma vira um tenant
+    // próprio com membership admin). A unicidade fica só no slug do tenant.
 
     // Gera UUID no app para evitar RETURNING no tenant INSERT.
     // RETURNING aplica a SELECT policy na linha recém-criada, e

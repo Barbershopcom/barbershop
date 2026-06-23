@@ -35,6 +35,7 @@ export const updateTenantProfileSchema = z.object({
         .regex(/^[A-Za-z0-9_.]{1,30}$/, 'Instagram handle inválido (letras, números, _ e .)')
         .nullable(),
     ),
+  lateCancelFeePct: z.coerce.number().int().min(0).max(100).optional(),
 });
 
 export type UpdateTenantProfileInput = z.infer<typeof updateTenantProfileSchema>;

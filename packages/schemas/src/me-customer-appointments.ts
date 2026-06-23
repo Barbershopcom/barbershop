@@ -18,4 +18,9 @@ export interface MyCustomerAppointmentItem {
   tenant: { id: string; slug: string; name: string; timezone: string };
   /** Já avaliado? Só relevante quando status='completed' (ADR-019 §1). */
   hasReview: boolean;
+  cancellation: {
+    isLate: boolean;
+    feeCents: number;
+    refundCents: number;
+  };
 }

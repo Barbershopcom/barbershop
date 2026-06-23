@@ -46,6 +46,7 @@ const locationBlock = z.object({
 const barbershopBlock = z.object({
   name: nonEmpty(100),
   description: emptyToUndefined(z.string().trim().max(500).optional()),
+  lateCancelFeePct: z.coerce.number().int().min(0).max(100).default(50),
 });
 
 export const createTenantOnboardingSchema = z.object({

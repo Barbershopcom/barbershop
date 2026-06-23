@@ -21,6 +21,7 @@ import { CouponsService } from '../coupons/coupons.service';
 import { EmailService } from '../email/email.service';
 import { formatPriceBRL, tenantContactVars } from '../email/format';
 import { formatDate, formatDuration, formatTime } from '../common/formatters';
+import { PaymentService } from '../payment/payment.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CustomerService } from './customer.service';
 
@@ -46,6 +47,7 @@ export class MeCustomerAppointmentsController {
     private readonly email: EmailService,
     private readonly customers: CustomerService,
     private readonly coupons: CouponsService,
+    private readonly payment: PaymentService,
   ) {}
 
   @Get()
@@ -85,6 +87,7 @@ export class MeCustomerAppointmentsController {
         cancelReason: true,
         customerId: true, // validação pós-query
         customerEmail: true,
+        priceCents: true,
         service: { select: { id: true, name: true, durationMin: true } },
         barber: { select: { id: true, displayName: true } },
         review: { select: { id: true } },
@@ -107,8 +110,26 @@ export class MeCustomerAppointmentsController {
     });
     const tenantById = new Map(tenants.map((t) => [t.id, t]));
 
+    // Carrega lateCancelFeePct por tenant e pagamentos por appointment (batch).
+    const shops = await this.prisma.barbershop.findMany({
+      where: { tenantId: { in: tenantIds } },
+      select: { tenantId: true, lateCancelFeePct: true },
+    });
+    const pctByTenant = new Map(shops.map((s) => [s.tenantId, s.lateCancelFeePct]));
+
+    const payments = await this.prisma.payment.findMany({
+      where: { appointmentId: { in: validated.map((r) => r.id) } },
+      select: { appointmentId: true, amountCents: true },
+    });
+    const paidByAppt = new Map(payments.map((p) => [p.appointmentId, p.amountCents]));
+
     return validated.map((r) => {
       const t = tenantById.get(r.tenantId);
+      const isLate = new Date(r.startAt).getTime() < Date.now() + 24 * 60 * 60 * 1000;
+      const feeCents = isLate
+        ? Math.round((r.priceCents * (pctByTenant.get(r.tenantId) ?? 50)) / 100)
+        : 0;
+      const paid = paidByAppt.get(r.id) ?? r.priceCents;
       return {
         id: r.id,
         startAt: r.startAt.toISOString(),
@@ -120,6 +141,7 @@ export class MeCustomerAppointmentsController {
         barber: r.barber,
         tenant: t ?? { id: r.tenantId, slug: '', name: '', timezone: 'America/Sao_Paulo' },
         hasReview: r.review !== null,
+        cancellation: { isLate, feeCents, refundCents: Math.max(0, paid - feeCents) },
       };
     });
   }
@@ -158,15 +180,6 @@ export class MeCustomerAppointmentsController {
       );
     }
 
-    // Validar janela de cancelamento: 24h antes do appointment
-    const cancellationDeadlineMs = appt.startAt.getTime() - 24 * 60 * 60 * 1000;
-    const canCancel = Date.now() <= cancellationDeadlineMs;
-    if (!canCancel) {
-      throw new ForbiddenException(
-        'Só é possível cancelar com 24h de antecedência.',
-      );
-    }
-
     await this.prisma.appointment.update({
       where: { id },
       data: {
@@ -175,6 +188,17 @@ export class MeCustomerAppointmentsController {
         cancelledAt: new Date(),
       },
     });
+
+    // Calcular multa de cancelamento tardio (<24h antes do agendamento).
+    const isLate = Date.now() > appt.startAt.getTime() - 24 * 60 * 60 * 1000;
+    const shop = await this.prisma.barbershop.findFirst({
+      where: { tenantId: appt.tenantId },
+      select: { lateCancelFeePct: true },
+    });
+    const feeCents = isLate
+      ? Math.round((appt.service.basePriceCents * (shop?.lateCancelFeePct ?? 50)) / 100)
+      : 0;
+    await this.payment.refund(id, feeCents);
 
     // Liberar coupon reservation se houver (best-effort).
     try {

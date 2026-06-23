@@ -6,9 +6,9 @@ import {
   createTenantOnboardingSchema,
 } from '@barbearia/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
@@ -26,13 +26,47 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
+  useFormField,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Seal } from '@/components/ui/seal';
 import { api, ApiError } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
+
+// Ícone de alerta exibido na ponta da label quando o campo tem erro de
+// validação. No hover/focus abre um tooltip (CSS puro) com a mensagem.
+function FieldError() {
+  const { error } = useFormField();
+  if (!error) return null;
+  const message = String(error.message ?? 'Campo inválido');
+  return (
+    <span
+      className="group relative inline-flex shrink-0 cursor-help text-destructive outline-none"
+      tabIndex={0}
+      role="img"
+      aria-label={message}
+    >
+      <AlertCircle className="h-4 w-4" aria-hidden />
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute right-0 top-6 z-20 hidden w-max max-w-[240px] rounded-md bg-foreground px-2 py-1 text-xs font-medium leading-snug text-background shadow-md group-hover:block group-focus:block"
+      >
+        {message}
+      </span>
+    </span>
+  );
+}
+
+// Linha de label: texto à esquerda, ícone de erro (com tooltip) à direita.
+function FieldLabel({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <FormLabel>{children}</FormLabel>
+      <FieldError />
+    </div>
+  );
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -190,7 +224,7 @@ export default function OnboardingPage() {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Rail navy (desktop) — Seal + passos + stripe barber-pole. */}
-      <aside className="relative hidden w-80 shrink-0 overflow-hidden bg-primary p-10 text-papel lg:flex lg:flex-col">
+      <aside className="relative hidden w-80 shrink-0 overflow-hidden bg-primary p-6 text-papel lg:flex lg:flex-col">
         <div
           className="absolute inset-0 opacity-[0.07]"
           style={{
@@ -296,7 +330,7 @@ export default function OnboardingPage() {
                         name="tenant.slug"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Slug (URL pública)</FormLabel>
+                            <FieldLabel>Slug (URL pública)</FieldLabel>
                             <FormControl>
                               <Input
                                 placeholder="Barbearia do Jajá"
@@ -317,7 +351,6 @@ export default function OnboardingPage() {
                             <FormDescription>
                               Vai virar appbarbeariab.com/b/{field.value || 'seu-slug'}
                             </FormDescription>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -326,7 +359,7 @@ export default function OnboardingPage() {
                         name="tenant.name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Nome de fantasia</FormLabel>
+                            <FieldLabel>Nome de fantasia</FieldLabel>
                             <FormControl>
                               <Input
                                 placeholder="Barbearia do Jajá"
@@ -341,7 +374,6 @@ export default function OnboardingPage() {
                                 }}
                               />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -350,11 +382,10 @@ export default function OnboardingPage() {
                         name="organization.name"
                         render={({ field }) => (
                           <FormItem className="sm:col-span-2">
-                            <FormLabel>Nome da marca</FormLabel>
+                            <FieldLabel>Nome da marca</FieldLabel>
                             <FormControl>
                               <Input placeholder="Barbearia do Jajá" {...field} />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -372,11 +403,10 @@ export default function OnboardingPage() {
                         name="location.name"
                         render={({ field }) => (
                           <FormItem className="sm:col-span-3">
-                            <FormLabel>Apelido da unidade</FormLabel>
+                            <FieldLabel>Apelido da unidade</FieldLabel>
                             <FormControl>
                               <Input placeholder="Matriz / Filial Centro" {...field} />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -385,11 +415,10 @@ export default function OnboardingPage() {
                         name="location.addressLine1"
                         render={({ field }) => (
                           <FormItem className="sm:col-span-3">
-                            <FormLabel>Endereço</FormLabel>
+                            <FieldLabel>Endereço</FieldLabel>
                             <FormControl>
                               <Input placeholder="Rua, número" {...field} />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -398,11 +427,10 @@ export default function OnboardingPage() {
                         name="location.addressLine2"
                         render={({ field }) => (
                           <FormItem className="sm:col-span-6">
-                            <FormLabel>Complemento (opcional)</FormLabel>
+                            <FieldLabel>Complemento (opcional)</FieldLabel>
                             <FormControl>
                               <Input placeholder="Sala, andar, ponto de referência" {...field} />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -411,11 +439,10 @@ export default function OnboardingPage() {
                         name="location.city"
                         render={({ field }) => (
                           <FormItem className="sm:col-span-2">
-                            <FormLabel>Cidade</FormLabel>
+                            <FieldLabel>Cidade</FieldLabel>
                             <FormControl>
                               <Input {...field} disabled={cepFilled} />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -424,7 +451,7 @@ export default function OnboardingPage() {
                         name="location.state"
                         render={({ field }) => (
                           <FormItem className="sm:col-span-1">
-                            <FormLabel>UF</FormLabel>
+                            <FieldLabel>UF</FieldLabel>
                             <FormControl>
                               <select
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
@@ -438,7 +465,6 @@ export default function OnboardingPage() {
                                 ))}
                               </select>
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -447,7 +473,7 @@ export default function OnboardingPage() {
                         name="location.postalCode"
                         render={({ field }) => (
                           <FormItem className="sm:col-span-3">
-                            <FormLabel>CEP</FormLabel>
+                            <FieldLabel>CEP</FieldLabel>
                             <FormControl>
                               <div className="relative">
                                 <Input
@@ -470,7 +496,6 @@ export default function OnboardingPage() {
                               </div>
                             </FormControl>
                             {cepError && <p className="text-xs text-destructive mt-1">{cepError}</p>}
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -488,11 +513,10 @@ export default function OnboardingPage() {
                         name="barbershop.name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Nome da barbearia</FormLabel>
+                            <FieldLabel>Nome da barbearia</FieldLabel>
                             <FormControl>
                               <Input placeholder="Barbearia do Jajá — Unidade 1" {...field} />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -501,7 +525,7 @@ export default function OnboardingPage() {
                         name="barbershop.lateCancelFeePct"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Multa de cancelamento tardio (%)</FormLabel>
+                            <FieldLabel>Multa de cancelamento tardio (%)</FieldLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -514,7 +538,6 @@ export default function OnboardingPage() {
                             <FormDescription>
                               % do valor do serviço cobrada quando o cliente cancela com menos de 24h. Padrão: 15%.
                             </FormDescription>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />

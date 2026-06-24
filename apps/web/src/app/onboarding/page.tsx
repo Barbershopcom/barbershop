@@ -85,10 +85,6 @@ export default function OnboardingPage() {
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState<string | null>(null);
   const [cepFilled, setCepFilled] = useState(false);
-  // Texto cru exibido no campo de slug (como o usuário digita: maiúsculas,
-  // espaços). O valor salvo em tenant.slug é o resultado slugificado.
-  const [slugDisplay, setSlugDisplay] = useState('');
-
   // Conta do dono: o onboarding cria a conta (Supabase) + a barbearia num
   // fluxo só. Se já houver sessão, escondemos os campos de conta.
   // null = ainda verificando; true/false = resultado.
@@ -342,18 +338,14 @@ export default function OnboardingPage() {
                             </FieldLabel>
                             <FormControl>
                               <Input
-                                placeholder="Barbearia do Jajá"
+                                placeholder="seu-slug"
                                 name={field.name}
                                 ref={field.ref}
-                                value={slugDisplay}
-                                onChange={(e) => {
-                                  setSlugDisplay(e.target.value);
-                                  form.setValue(
-                                    'tenant.slug',
-                                    generateSlugFromName(e.target.value),
-                                    { shouldValidate: true },
-                                  );
-                                }}
+                                value={field.value}
+                                readOnly
+                                tabIndex={-1}
+                                aria-readonly="true"
+                                className="cursor-not-allowed bg-muted/40 text-muted-foreground"
                                 onBlur={field.onBlur}
                               />
                             </FormControl>
@@ -372,10 +364,11 @@ export default function OnboardingPage() {
                                 {...field}
                                 onChange={(e) => {
                                   field.onChange(e);
-                                  setSlugDisplay(e.target.value);
+                                  // Slug é derivado e travado: minúsculo, espaço→traço.
                                   form.setValue(
                                     'tenant.slug',
                                     generateSlugFromName(e.target.value),
+                                    { shouldValidate: true },
                                   );
                                 }}
                               />

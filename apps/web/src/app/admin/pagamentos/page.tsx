@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { useActiveTenant } from '@/lib/active-tenant';
 import { api, ApiError } from '@/lib/api';
 
 interface MpStatus {
@@ -21,6 +22,7 @@ interface MpStatus {
 }
 
 export default function PagamentosPage() {
+  const { tenant } = useActiveTenant();
   const [status, setStatus] = useState<MpStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
@@ -28,7 +30,7 @@ export default function PagamentosPage() {
 
   async function loadStatus() {
     try {
-      const data = await api.get<MpStatus>('/admin/mp/status');
+      const data = await api.get<MpStatus>('/admin/mp/status', { tenantId: tenant.id });
       setStatus(data);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erro ao carregar status do Mercado Pago.');
@@ -39,13 +41,16 @@ export default function PagamentosPage() {
 
   useEffect(() => {
     void loadStatus();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenant.id]);
 
   async function handleConnect() {
     setError(null);
     setActing(true);
     try {
-      const { url } = await api.get<{ url: string }>('/admin/mp/connect-url');
+      const { url } = await api.get<{ url: string }>('/admin/mp/connect-url', {
+        tenantId: tenant.id,
+      });
       // Redireciona o admin pro Mercado Pago pra autorizar; volta no /admin/mp/callback.
       window.location.href = url;
     } catch (err) {
@@ -58,7 +63,7 @@ export default function PagamentosPage() {
     setError(null);
     setActing(true);
     try {
-      await api.post('/admin/mp/disconnect');
+      await api.post('/admin/mp/disconnect', undefined, { tenantId: tenant.id });
       await loadStatus();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível desconectar.');

@@ -6,6 +6,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useActiveTenant } from '@/lib/active-tenant';
 import { api, ApiError } from '@/lib/api';
 
 type State =
@@ -21,6 +22,7 @@ type State =
 function CallbackInner() {
   const router = useRouter();
   const params = useSearchParams();
+  const { tenant } = useActiveTenant();
   const [state, setState] = useState<State>({ kind: 'processing' });
   // StrictMode monta o efeito 2x em dev; evita trocar o code duas vezes.
   const startedRef = useRef(false);
@@ -43,7 +45,7 @@ function CallbackInner() {
     }
 
     api
-      .post('/admin/mp/connect', { code, state: stateParam })
+      .post('/admin/mp/connect', { code, state: stateParam }, { tenantId: tenant.id })
       .then(() => {
         setState({ kind: 'success' });
         setTimeout(() => router.replace('/admin/pagamentos'), 1500);
@@ -54,7 +56,7 @@ function CallbackInner() {
           message: err instanceof ApiError ? err.message : 'Falha ao conectar a conta Mercado Pago.',
         });
       });
-  }, [params, router]);
+  }, [params, router, tenant.id]);
 
   return (
     <div className="mx-auto max-w-md py-12">

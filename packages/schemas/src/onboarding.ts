@@ -86,7 +86,11 @@ export const createTenantOnboardingSchema = z.object({
   organization: organizationBlock,
   location: locationBlock,
   barbershop: barbershopBlock,
-  billingCycle: z.enum(Object.keys(BILLING_PLAN) as [string, ...string[]]),
+  // Deriva de BILLING_PLAN mantendo o union literal ('monthly' | 'annual'),
+  // não alargando pra string — preserva o tipo BillingCycle nos call sites.
+  billingCycle: z.enum(
+    Object.keys(BILLING_PLAN) as [keyof typeof BILLING_PLAN, ...Array<keyof typeof BILLING_PLAN>],
+  ),
   cardTokenId: z.string().min(1),
 });
 

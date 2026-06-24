@@ -242,6 +242,11 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
 
 const METHOD_ORDER: PaymentMethod[] = ['pix', 'credit', 'debit'];
 
+interface PayResponse {
+  pixQrCode?: string;
+  pixQrCodeBase64?: string;
+}
+
 function Checkout({
   slug,
   timezone,
@@ -262,6 +267,10 @@ function Checkout({
   const [method, setMethod] = useState<PaymentMethod>('pix');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // PIX real: nasce pending; mostramos o QR e fazemos polling até o webhook confirmar.
+  const [pix, setPix] = useState<{ code: string | null; base64: string | null } | null>(null);
+  const [pixStatus, setPixStatus] = useState('Aguardando pagamento…');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -284,17 +293,27 @@ function Checkout({
     setError(null);
     setBusy(true);
     try {
+      // possessionToken (H3): prova de posse do agendamento gerada no booking
+      // (BookedAppointment.cancelToken). Sem ele a API rejeita o /pay (400).
       const res = await fetch(
         `${API_URL}/public/appointments/${booking.id}/payment/pay`,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json', accept: 'application/json' },
-          body: JSON.stringify({ method }),
+          body: JSON.stringify({ method, possessionToken: booking.cancelToken }),
         },
       );
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { message?: string } | null;
         setError(body?.message ?? `Erro ${res.status} no pagamento.`);
+        setBusy(false);
+        return;
+      }
+      const payload = (await res.json()) as PayResponse;
+      // PIX real volta o QR e fica pending — mostra o QR e poll-a o status.
+      // Mock/aprovação imediata (sem QR) segue direto pro sucesso.
+      if (method === 'pix' && (payload.pixQrCode || payload.pixQrCodeBase64)) {
+        setPix({ code: payload.pixQrCode ?? null, base64: payload.pixQrCodeBase64 ?? null });
         setBusy(false);
         return;
       }
@@ -304,6 +323,101 @@ function Checkout({
       setError(err instanceof Error ? err.message : 'Erro de rede no pagamento.');
       setBusy(false);
     }
+  }
+
+  // Polling do status enquanto o QR PIX está na tela (confirma via webhook).
+  useEffect(() => {
+    if (!pix) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const r = await fetch(`${API_URL}/public/appointments/${booking.id}/payment`, {
+          headers: { accept: 'application/json' },
+        });
+        if (!r.ok || cancelled) return;
+        const s = (await r.json()) as { status: string | null; appointmentStatus: string };
+        if (cancelled) return;
+        if (s.status === 'paid' || s.appointmentStatus !== 'awaiting_payment') {
+          setPixStatus('Pagamento confirmado!');
+          clearInterval(timer);
+          saveSuccessPayload({ booking, serviceName, timezone });
+          setTimeout(() => {
+            if (!cancelled) router.push(`/b/${encodeURIComponent(slug)}/sucesso?id=${booking.id}`);
+          }, 1200);
+        } else if (s.status === 'failed' || s.status === 'expired') {
+          setPixStatus('Pagamento não concluído. Tente novamente.');
+          clearInterval(timer);
+        }
+      } catch {
+        // rede instável — mantém o polling
+      }
+    };
+    const timer = setInterval(poll, 3000);
+    void poll();
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [pix, booking, serviceName, timezone, slug, router]);
+
+  function copyPix() {
+    if (pix?.code) {
+      void navigator.clipboard.writeText(pix.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  if (pix) {
+    return (
+      <section className="rounded-lg border border-border bg-card p-5 md:p-6">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">Pagar com Pix</p>
+        <p className="mt-1 text-base font-medium md:text-lg">
+          {options ? formatBRL(options.pix.amountCents) : ''} · {serviceName}
+        </p>
+
+        <div className="mt-6 flex flex-col items-center">
+          <div className="flex h-52 w-52 items-center justify-center rounded-lg bg-white p-4 shadow-sm">
+            {pix.base64 ? (
+              <img
+                src={`data:image/png;base64,${pix.base64}`}
+                alt="QR Code Pix"
+                width={192}
+                height={192}
+              />
+            ) : (
+              <p className="text-center text-xs text-muted-foreground">
+                QR indisponível — use o copia e cola abaixo.
+              </p>
+            )}
+          </div>
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            Escaneie com o app do seu banco
+          </p>
+        </div>
+
+        {pix.code ? (
+          <div className="mt-6">
+            <p className="mb-2 text-sm font-medium">Pix copia e cola</p>
+            <div className="flex items-center gap-2 rounded-md border border-input bg-muted/30 px-3 py-2">
+              <span className="flex-1 truncate font-mono text-xs">{pix.code}</span>
+              <button
+                type="button"
+                onClick={copyPix}
+                className="shrink-0 rounded-md border border-input px-2 py-1 text-xs hover:bg-accent"
+              >
+                {copied ? 'Copiado!' : 'Copiar'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-emerald-600">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+          {pixStatus}
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -381,7 +495,7 @@ function Checkout({
       </button>
 
       <p className="mt-4 text-center text-[11px] text-muted-foreground">
-        Pagamento simulado (ambiente de testes). Nenhuma cobrança real é feita.
+        Pagamento processado com segurança via Mercado Pago.
       </p>
     </section>
   );

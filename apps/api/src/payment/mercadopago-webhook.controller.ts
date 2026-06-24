@@ -86,27 +86,44 @@ export class MercadoPagoWebhookController {
     }
 
     try {
-      // Descobre o appointment (external_reference) e o token do vendedor.
+      // C2 (segurança): exige que já exista um Payment local gravado na
+      // hora da cobrança (pay()) com providerPaymentId === dataId.
+      // Se não existir, o webhook é de um pagamento que nunca foi criado
+      // por nós — pode ser forjado. No-op imediato, sem chamar getPayment
+      // com o token da plataforma.
       const existing = await this.prisma.payment.findFirst({
         where: { providerPaymentId: dataId },
         select: { appointmentId: true, tenantId: true },
       });
-      let sellerToken: string | undefined;
-      if (existing) {
-        const tenant = await this.prisma.tenant.findUnique({
-          where: { id: existing.tenantId },
-          select: { mpAccessToken: true },
-        });
-        sellerToken = tenant?.mpAccessToken ?? undefined;
+      if (!existing) {
+        MercadoPagoWebhookController.logger.warn(
+          `Webhook MP ignorado — nenhum Payment local para providerPaymentId=${dataId}. ` +
+            `Possível webhook forjado ou pagamento externo; requer reconciliação manual.`,
+        );
+        return { ok: true };
       }
 
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: existing.tenantId },
+        select: { mpAccessToken: true },
+      });
+      const sellerToken = tenant?.mpAccessToken ?? undefined;
+
       const mp = await this.provider.getPayment(dataId, sellerToken);
-      const appointmentId =
-        existing?.appointmentId ?? (mp.external_reference as string | undefined);
-      if (!appointmentId) return { ok: true };
+      // appointmentId vem SEMPRE do registro local (nunca de external_reference
+      // buscado via token de plataforma — C2).
+      const appointmentId = existing.appointmentId;
 
       if (mp.status === 'approved') {
-        await this.payments.markPaid(appointmentId, mp as Record<string, unknown>);
+        await this.payments.markPaid(
+          appointmentId,
+          mp as Record<string, unknown>,
+          // C1: repassa valor/moeda verificados do MP para validação em markPaid.
+          {
+            transactionAmount: mp.transaction_amount as number,
+            currencyId: mp.currency_id as string,
+          },
+        );
       } else if (mp.status === 'rejected' || mp.status === 'cancelled') {
         await this.payments.markFailed(appointmentId);
       }

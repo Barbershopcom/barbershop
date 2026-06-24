@@ -264,10 +264,16 @@ export class PaymentService {
    *
    * É o equivalente, disparado pelo webhook, do caminho `paid` do pay()
    * (que no mock acontecia na hora). A state machine não muda.
+   *
+   * C1 (segurança): `verified` deve conter o `transaction_amount` e
+   * `currency_id` re-buscados do MP. Se o valor não bate com o
+   * `amountCents` gravado na cobrança, ou a moeda não é BRL, o
+   * pagamento NÃO é marcado como pago (log para reconciliação manual).
    */
   async markPaid(
     appointmentId: string,
     providerPayload?: Record<string, unknown>,
+    verified?: { transactionAmount: number; currencyId: string },
   ): Promise<void> {
     const appt = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
@@ -275,11 +281,25 @@ export class PaymentService {
         id: true,
         status: true,
         startAt: true,
-        payment: { select: { status: true } },
+        payment: { select: { status: true, amountCents: true } },
       },
     });
     if (!appt || !appt.payment) return; // desconhecido / sem cobrança
     if (appt.payment.status === 'paid') return; // idempotente
+
+    // C1 — verifica valor e moeda antes de confirmar (anti under-payment).
+    if (verified) {
+      const paidCents = Math.round(verified.transactionAmount * 100);
+      if (verified.currencyId !== 'BRL' || paidCents !== appt.payment.amountCents) {
+        PaymentService.logger.warn(
+          `markPaid BLOQUEADO — valor divergente appt=${appointmentId}: ` +
+            `esperado=${appt.payment.amountCents}c BRL, ` +
+            `recebido=${paidCents}c ${verified.currencyId}. ` +
+            `Requer reconciliação manual.`,
+        );
+        return;
+      }
+    }
 
     const confirmDeadline = new Date(
       Math.min(Date.now() + CONFIRM_WINDOW_MS, appt.startAt.getTime()),

@@ -195,6 +195,77 @@ export class MercadoPagoProvider implements PaymentProvider {
     return (await res.json()) as MpPaymentResponse;
   }
 
+  // ── Assinaturas (Preapproval) — plataforma cobra o tenant ──────────────
+
+  private platformToken(): string {
+    return this.config.get<string>('MERCADOPAGO_ACCESS_TOKEN') ?? '';
+  }
+
+  async createPreapproval(input: {
+    reason: string;
+    externalReference: string;
+    payerEmail: string;
+    cardTokenId: string;
+    amountCents: number;
+    frequency: number;
+    frequencyType: string;
+    trialDays: number;
+    backUrl: string;
+  }): Promise<{ id: string; status: string }> {
+    const body = {
+      reason: input.reason,
+      external_reference: input.externalReference,
+      payer_email: input.payerEmail,
+      card_token_id: input.cardTokenId,
+      back_url: input.backUrl,
+      status: 'authorized',
+      auto_recurring: {
+        frequency: input.frequency,
+        frequency_type: input.frequencyType,
+        transaction_amount: input.amountCents / 100,
+        currency_id: 'BRL',
+        free_trial: { frequency: input.trialDays, frequency_type: 'days' },
+      },
+    };
+    const res = await fetch(`${this.baseUrl}/preapproval`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${this.platformToken()}`, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = (await res.json().catch(() => ({}))) as { id?: string; status?: string };
+    if (!res.ok || !json.id) {
+      MercadoPagoProvider.logger.error(`MP preapproval create → ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
+      throw new Error('Falha ao criar a assinatura (cartão recusado ou dados inválidos).');
+    }
+    return { id: json.id, status: json.status ?? 'authorized' };
+  }
+
+  async getPreapproval(id: string): Promise<{ id: string; status: string; external_reference?: string }> {
+    const res = await fetch(`${this.baseUrl}/preapproval/${id}`, {
+      headers: { authorization: `Bearer ${this.platformToken()}` },
+    });
+    if (!res.ok) throw new Error(`MP getPreapproval ${id} → ${res.status}`);
+    return (await res.json()) as { id: string; status: string; external_reference?: string };
+  }
+
+  async updatePreapprovalCard(id: string, cardTokenId: string): Promise<void> {
+    const res = await fetch(`${this.baseUrl}/preapproval/${id}`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${this.platformToken()}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ card_token_id: cardTokenId }),
+    });
+    if (!res.ok) throw new Error(`MP updatePreapprovalCard ${id} → ${res.status}`);
+  }
+
+  async cancelPreapproval(id: string): Promise<void> {
+    const res = await fetch(`${this.baseUrl}/preapproval/${id}`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${this.platformToken()}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled' }),
+    });
+    if (!res.ok) throw new Error(`MP cancelPreapproval ${id} → ${res.status}`);
+  }
+
   private async post(
     path: string,
     body: Record<string, unknown>,

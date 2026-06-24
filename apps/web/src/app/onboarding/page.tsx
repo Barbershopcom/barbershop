@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
+import { BarberPoleStripe } from '@/components/ui/barber-pole-stripe';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -257,13 +258,7 @@ export default function OnboardingPage() {
             tudo depois.
           </p>
         </div>
-        <div
-          className="relative mt-auto h-[7px] rounded-full"
-          style={{
-            background:
-              'repeating-linear-gradient(-45deg, #bf212f 0 13px, #fffcf5 13px 26px, #1a365d 26px 39px, #fffcf5 39px 52px)',
-          }}
-        />
+        <BarberPoleStripe />
       </aside>
 
       {/* Conteúdo */}

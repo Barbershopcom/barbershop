@@ -80,3 +80,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Faixa barber-pole — viewport 7px; SVG interno mais largo p/ scroll. */
+  .barber-pole-stripe {
+    @apply relative mt-auto h-[7px] shrink-0 overflow-hidden rounded-full;
+  }
+
+  .barber-pole-stripe__svg {
+    display: block;
+    width: calc(100% + 104px);
+    height: 7px;
+    animation: barber-pole-marquee 3.2s linear infinite;
+    will-change: transform;
+  }
+
+  @keyframes barber-pole-marquee {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-52px, 0, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .barber-pole-stripe__svg {
+      animation: none;
+      width: 100%;
+    }
+  }
+}

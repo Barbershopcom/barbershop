@@ -83,8 +83,8 @@ export default function PagamentoScreen() {
         throw new Error('Token de posse ausente na resposta do booking.');
       }
       const pay = await api.post<PayResponse>(
-        `/public/appointments/${booked.id}/payment/pay?token=${encodeURIComponent(possessionToken)}`,
-        { method },
+        `/public/appointments/${booked.id}/payment/pay`,
+        { method, possessionToken },
       );
 
       if (method === 'pix') {

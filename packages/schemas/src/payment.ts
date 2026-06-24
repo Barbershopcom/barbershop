@@ -114,6 +114,7 @@ export function computeAllMethodBreakdowns(
 /** Input do POST de confirmação de pagamento (mock). */
 export const confirmPaymentSchema = z.object({
   method: paymentMethodSchema,
+  possessionToken: z.string().min(1),
 });
 export type ConfirmPaymentInput = z.infer<typeof confirmPaymentSchema>;
 

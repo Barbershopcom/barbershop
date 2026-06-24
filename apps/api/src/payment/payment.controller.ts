@@ -9,11 +9,10 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
-  Query,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiOkResponse, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import {
   computeAllMethodBreakdowns,
@@ -90,23 +89,17 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiParam({ name: 'id', description: 'UUID do appointment.' })
-  @ApiQuery({
-    name: 'token',
-    required: true,
-    description:
-      'Token HMAC de posse do agendamento, emitido no momento do booking (H3 secfix).',
-  })
   @ApiOkResponse({ description: 'Pagamento processado; appointment vira pending.' })
   async pay(
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('token') token: string | undefined,
     @Body(new ZodValidationPipe(confirmPaymentSchema)) body: ConfirmPaymentInput,
   ): Promise<{ payment: PaymentDto; pixQrCode?: string; pixQrCodeBase64?: string }> {
-    // H3 fix: verify possession token before charging.
+    // H3 fix: verify possession token before charging (token now in body, not query string).
     const secret = this.config.get<string>('APPOINTMENT_CANCEL_SECRET');
     if (!secret) {
       throw new Error('APPOINTMENT_CANCEL_SECRET não configurado.');
     }
+    const token = body.possessionToken;
     if (!token) {
       throw new ForbiddenException('Token de posse ausente.');
     }

@@ -392,8 +392,9 @@ describe('H3 — POST /pay exige token de posse (anti-griefing)', () => {
       const charge = jest.fn().mockResolvedValue({ status: 'paid', providerPaymentId: 'mock-h3-notoken', payload: {} });
       const ctrl = buildPaymentController(charge);
 
+      // Token absent: send body without possessionToken (cast to bypass TS).
       await expect(
-        ctrl.pay(appt, undefined, { method: 'pix' }),
+        ctrl.pay(appt, { method: 'pix', possessionToken: '' } as never),
       ).rejects.toMatchObject({ status: 403 });
 
       // Provider must NOT have been called.
@@ -418,7 +419,7 @@ describe('H3 — POST /pay exige token de posse (anti-griefing)', () => {
       );
 
       await expect(
-        ctrl.pay(appt, badToken, { method: 'pix' }),
+        ctrl.pay(appt, { method: 'pix', possessionToken: badToken }),
       ).rejects.toMatchObject({ status: 403 });
 
       expect(charge).not.toHaveBeenCalled();
@@ -443,7 +444,7 @@ describe('H3 — POST /pay exige token de posse (anti-griefing)', () => {
       );
 
       await expect(
-        ctrl.pay(appt, wrongIdToken, { method: 'pix' }),
+        ctrl.pay(appt, { method: 'pix', possessionToken: wrongIdToken }),
       ).rejects.toMatchObject({ status: 403 });
 
       expect(charge).not.toHaveBeenCalled();
@@ -471,7 +472,7 @@ describe('H3 — POST /pay exige token de posse (anti-griefing)', () => {
         CANCEL_SECRET,
       );
 
-      const result = await ctrl.pay(appt, validToken, { method: 'pix' });
+      const result = await ctrl.pay(appt, { method: 'pix', possessionToken: validToken });
 
       expect(result.payment).toBeDefined();
       expect(result.payment.status).toBe('paid');

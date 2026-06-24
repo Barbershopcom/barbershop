@@ -38,6 +38,16 @@ const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000; // 5min
 export class PaymentService {
   private static readonly logger = new Logger(PaymentService.name);
 
+  /**
+   * M2: mutex em processo por tenant pro refresh de token OAuth. Sem isso,
+   * dois charges concorrentes do mesmo vendedor renovam ao mesmo tempo
+   * (read-modify-write), e o refresh_token de um invalida o do outro no MP
+   * → 401. Coalesce: o segundo aguarda o refresh do primeiro em vez de
+   * disparar outro. Por-processo (não cobre múltiplas instâncias), mas
+   * cobre o caso comum de concorrência na mesma instância.
+   */
+  private readonly refreshLocks = new Map<string, Promise<string>>();
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
@@ -67,8 +77,32 @@ export class PaymentService {
       expiresAt != null && expiresAt - Date.now() <= TOKEN_REFRESH_BUFFER_MS;
     if (!needsRefresh || !tenant?.mpRefreshToken) return token;
 
+    // M2: serializa o refresh por tenant. Se já há um em andamento, aguarda
+    // o mesmo Promise em vez de disparar outro read-modify-write concorrente.
+    const inFlight = this.refreshLocks.get(tenantId);
+    if (inFlight) return inFlight;
+
+    const refreshPromise = this.refreshSellerToken(
+      tenantId,
+      tenant.mpRefreshToken,
+      token,
+    ).finally(() => this.refreshLocks.delete(tenantId));
+    this.refreshLocks.set(tenantId, refreshPromise);
+    return refreshPromise;
+  }
+
+  /**
+   * Renova o token OAuth do vendedor e persiste. Best-effort: se o refresh
+   * falhar, devolve o token atual (fallback). Sempre chamado através do
+   * mutex de {@link refreshLocks} (M2) — nunca diretamente.
+   */
+  private async refreshSellerToken(
+    tenantId: string,
+    refreshToken: string,
+    currentToken: string,
+  ): Promise<string> {
     try {
-      const refreshed = await this.mp.refreshOAuthToken(tenant.mpRefreshToken);
+      const refreshed = await this.mp.refreshOAuthToken(refreshToken);
       const newExpiresAt = refreshed.expires_in
         ? new Date(Date.now() + refreshed.expires_in * 1000)
         : null;
@@ -76,7 +110,7 @@ export class PaymentService {
         where: { id: tenantId },
         data: {
           mpAccessToken: refreshed.access_token,
-          mpRefreshToken: refreshed.refresh_token ?? tenant.mpRefreshToken,
+          mpRefreshToken: refreshed.refresh_token ?? refreshToken,
           mpTokenExpiresAt: newExpiresAt,
         },
       });
@@ -86,7 +120,7 @@ export class PaymentService {
       PaymentService.logger.warn(
         `Refresh do token MP falhou tenant=${tenantId}; usando o atual: ${err instanceof Error ? err.message : err}`,
       );
-      return token;
+      return currentToken;
     }
   }
 

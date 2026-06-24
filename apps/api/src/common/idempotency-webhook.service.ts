@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -31,8 +33,9 @@ export class IdempotencyWebhookService {
       });
       return true; // Primeira vez
     } catch (err) {
-      // Unique constraint violado = já processado
-      if (err instanceof Error && err.message.includes('unique')) {
+      // Unique constraint violado (P2002) = já processado. Checa pelo código
+      // do Prisma, não pela string da mensagem (frágil entre versões/locales).
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         IdempotencyWebhookService.logger.debug(
           `Webhook duplicate detectado: tipo=${webhookType} requestId=${requestId}`,
         );

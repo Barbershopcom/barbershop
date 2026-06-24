@@ -72,19 +72,6 @@ export class MercadoPagoWebhookController {
       return { ok: true }; // 200 pra não gerar retry infinito de spoof
     }
 
-    // 2. Deduplicação DEPOIS da signature verification
-    // Evita reprocessamento se MP re-envia webhook autenticado
-    if (xRequestId) {
-      const isFirst = await this.webhookIdempotency.isFirstProcessing(
-        'mercadopago_payment',
-        xRequestId,
-      );
-      if (!isFirst) {
-        // Já processado — responde 200 sem fazer nada
-        return { ok: true };
-      }
-    }
-
     try {
       // C2 (segurança): exige que já exista um Payment local gravado na
       // hora da cobrança (pay()) com providerPaymentId === dataId.
@@ -113,6 +100,16 @@ export class MercadoPagoWebhookController {
       // appointmentId vem SEMPRE do registro local (nunca de external_reference
       // buscado via token de plataforma — C2).
       const appointmentId = existing.appointmentId;
+
+      // Dedup estável (M1): chave = pagamento + status, independente do
+      // x-request-id (que pode vir ausente num replay). Permite a transição
+      // pending→approved (chaves distintas) e barra re-entregas do mesmo
+      // evento. markPaid/markFailed também são idempotentes (backstop).
+      const isFirst = await this.webhookIdempotency.isFirstProcessing(
+        'mercadopago_payment',
+        `${dataId}:${mp.status}`,
+      );
+      if (!isFirst) return { ok: true };
 
       if (mp.status === 'approved') {
         await this.payments.markPaid(

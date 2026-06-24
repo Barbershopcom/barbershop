@@ -15,6 +15,7 @@
     "dev": "tsc --watch",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
+    "test": "jest",
     "clean": "rimraf dist"
   },
   "dependencies": {
@@ -23,8 +24,11 @@
   "devDependencies": {
     "@barbearia/eslint-config": "workspace:*",
     "@barbearia/tsconfig": "workspace:*",
+    "@types/jest": "^29.5.14",
     "eslint": "^9.15.0",
+    "jest": "^29.7.0",
     "rimraf": "^6.0.1",
+    "ts-jest": "^29.2.5",
     "typescript": "^5.6.3"
   }
 }

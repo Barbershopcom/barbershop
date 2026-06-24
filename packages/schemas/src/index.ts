@@ -9,6 +9,7 @@ export * from './appointments';
 export * from './barber-actions';
 export * from './barber-time-off';
 export * from './barbershop-hours';
+export * from './billing';
 export * from './book-appointment';
 export * from './capabilities';
 export * from './common';

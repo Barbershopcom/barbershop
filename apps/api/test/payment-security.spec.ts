@@ -13,9 +13,11 @@ jest.mock('../src/jobs/jobs-worker.service', () => ({
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 
+import { PaymentController } from '../src/payment/payment.controller';
 import { PaymentService } from '../src/payment/payment.service';
 import { MercadoPagoWebhookController } from '../src/payment/mercadopago-webhook.controller';
 import { buildMpSignature } from '../src/payment/mercadopago-signature';
+import { encodeCancelToken } from '../src/slots/cancel-token';
 
 // Real PrismaClient against local test DB (loaded via setup-env.ts).
 const prisma = new PrismaClient();
@@ -346,6 +348,140 @@ describe('C2 — webhook exige Payment local por providerPaymentId (anti foreign
         select: { status: true },
       });
       expect(pay?.status).toBe('paid');
+      expect(a?.status).toBe('pending');
+    } finally {
+      await cleanup(tenant, user);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// H3 — Public pay endpoint must verify a possession token (HMAC cancel-token).
+// Without a valid token the endpoint must reject (403); with a valid one it
+// must proceed and charge.  Provider is mocked so no real money moves.
+// ---------------------------------------------------------------------------
+describe('H3 — POST /pay exige token de posse (anti-griefing)', () => {
+  const CANCEL_SECRET = 'h3-test-cancel-secret-32charsplus';
+
+  function buildPaymentController(chargeImpl: jest.Mock): PaymentController {
+    const chargeProvider = {
+      name: 'mock',
+      charge: chargeImpl,
+      refund: jest.fn().mockResolvedValue(undefined),
+    } as never;
+    const configStub = {
+      get: (k: string) =>
+        k === 'APPOINTMENT_CANCEL_SECRET' ? CANCEL_SECRET : undefined,
+    } as never;
+    const service = new PaymentService(
+      prisma as never,
+      chargeProvider,
+      mpStub,
+      jobsStub,
+      notifierStub,
+    );
+    return new PaymentController(service, prisma as never, configStub);
+  }
+
+  it('rejeita (ForbiddenException) quando token está ausente', async () => {
+    const { tenant, appt, user } = await seedAppointment({
+      amountCents: 3000,
+      withPayment: false,
+    });
+    try {
+      const charge = jest.fn().mockResolvedValue({ status: 'paid', providerPaymentId: 'mock-h3-notoken', payload: {} });
+      const ctrl = buildPaymentController(charge);
+
+      await expect(
+        ctrl.pay(appt, undefined, { method: 'pix' }),
+      ).rejects.toMatchObject({ status: 403 });
+
+      // Provider must NOT have been called.
+      expect(charge).not.toHaveBeenCalled();
+    } finally {
+      await cleanup(tenant, user);
+    }
+  });
+
+  it('rejeita (ForbiddenException) quando token é inválido (assinatura errada)', async () => {
+    const { tenant, appt, user } = await seedAppointment({
+      amountCents: 3000,
+      withPayment: false,
+    });
+    try {
+      const charge = jest.fn().mockResolvedValue({ status: 'paid', providerPaymentId: 'mock-h3-badtoken', payload: {} });
+      const ctrl = buildPaymentController(charge);
+
+      const badToken = encodeCancelToken(
+        { apptId: appt, exp: Math.floor(Date.now() / 1000) + 3600 },
+        'wrong-secret-totally-different',
+      );
+
+      await expect(
+        ctrl.pay(appt, badToken, { method: 'pix' }),
+      ).rejects.toMatchObject({ status: 403 });
+
+      expect(charge).not.toHaveBeenCalled();
+    } finally {
+      await cleanup(tenant, user);
+    }
+  });
+
+  it('rejeita (ForbiddenException) quando token aponta para outro apptId', async () => {
+    const { tenant, appt, user } = await seedAppointment({
+      amountCents: 3000,
+      withPayment: false,
+    });
+    try {
+      const charge = jest.fn().mockResolvedValue({ status: 'paid', providerPaymentId: 'mock-h3-wrongid', payload: {} });
+      const ctrl = buildPaymentController(charge);
+
+      // Token signed for a DIFFERENT appointment UUID.
+      const wrongIdToken = encodeCancelToken(
+        { apptId: randomUUID(), exp: Math.floor(Date.now() / 1000) + 3600 },
+        CANCEL_SECRET,
+      );
+
+      await expect(
+        ctrl.pay(appt, wrongIdToken, { method: 'pix' }),
+      ).rejects.toMatchObject({ status: 403 });
+
+      expect(charge).not.toHaveBeenCalled();
+    } finally {
+      await cleanup(tenant, user);
+    }
+  });
+
+  it('autoriza e cobra quando token é válido e apptId bate', async () => {
+    const { tenant, appt, user } = await seedAppointment({
+      amountCents: 3000,
+      withPayment: false,
+    });
+    try {
+      const charge = jest.fn().mockResolvedValue({
+        status: 'paid',
+        providerPaymentId: `mock-h3-valid-${appt}`,
+        payload: {},
+      });
+      const ctrl = buildPaymentController(charge);
+
+      // Token signed with the correct secret and matching apptId.
+      const validToken = encodeCancelToken(
+        { apptId: appt, exp: Math.floor(Date.now() / 1000) + 3600 },
+        CANCEL_SECRET,
+      );
+
+      const result = await ctrl.pay(appt, validToken, { method: 'pix' });
+
+      expect(result.payment).toBeDefined();
+      expect(result.payment.status).toBe('paid');
+      expect(charge).toHaveBeenCalledTimes(1);
+
+      // Confirm DB state.
+      const a = await prisma.appointment.findUnique({
+        where: { id: appt },
+        select: { status: true },
+      });
       expect(a?.status).toBe('pending');
     } finally {
       await cleanup(tenant, user);

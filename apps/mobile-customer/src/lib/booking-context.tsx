@@ -20,6 +20,11 @@ export interface BookingState {
   selectedTime: string | null;
   totalPrice: number;
   appointmentId: string | null;
+  /**
+   * Token HMAC de posse do agendamento (H3 secfix). Retornado pelo POST
+   * de booking; deve ser passado como ?token= no POST /payment/pay.
+   */
+  paymentToken: string | null;
   /** Dados do cliente confirmados no checkout (vão no POST de booking). */
   customerName: string | null;
   customerPhone: string | null;
@@ -38,6 +43,7 @@ interface BookingContextValue {
   setBarber: (id: string, name: string, ratingAvg?: number) => void;
   setDateTime: (date: Date, time: string) => void;
   setAppointmentId: (id: string) => void;
+  setPaymentToken: (token: string | null) => void;
   setCustomer: (name: string, phone: string, email: string | null) => void;
   setPixPayload: (qrCode: string | null, qrCodeBase64: string | null) => void;
   reset: () => void;
@@ -64,6 +70,7 @@ const initialState: BookingState = {
   selectedTime: null,
   totalPrice: 0,
   appointmentId: null,
+  paymentToken: null,
   customerName: null,
   customerPhone: null,
   customerEmail: null,
@@ -167,6 +174,13 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const setPaymentToken = (token: string | null) => {
+    setState((prev) => ({
+      ...prev,
+      paymentToken: token,
+    }));
+  };
+
   const setCustomer = (name: string, phone: string, email: string | null) => {
     setState((prev) => ({
       ...prev,
@@ -190,7 +204,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
 
   return (
     <BookingContext.Provider
-      value={{ state, setBarbershop, setAvailableServices, toggleService, selectServices, setBarber, setDateTime, setAppointmentId, setCustomer, setPixPayload, reset }}
+      value={{ state, setBarbershop, setAvailableServices, toggleService, selectServices, setBarber, setDateTime, setAppointmentId, setPaymentToken, setCustomer, setPixPayload, reset }}
     >
       {children}
     </BookingContext.Provider>

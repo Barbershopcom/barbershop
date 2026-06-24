@@ -229,6 +229,16 @@ export class BookingService {
       });
     }
 
+    // Gera o token de posse (mesmo mecanismo do cancel-token — H3 fix ADR-secfix-01).
+    // Expira no startAt do appointment (mesmo TTL do cancel token).
+    const cancelSecret = this.config.get<string>('APPOINTMENT_CANCEL_SECRET');
+    const cancelToken = cancelSecret
+      ? encodeCancelToken(
+          { apptId: created.id, exp: Math.floor(created.startAt.getTime() / 1000) },
+          cancelSecret,
+        )
+      : undefined;
+
     const response: BookedAppointment = {
       id: created.id,
       serviceId: created.serviceId,
@@ -240,6 +250,7 @@ export class BookingService {
       customerName: created.customerName,
       customerPhone: created.customerPhone ?? body.customerPhone,
       customerEmail: created.customerEmail,
+      cancelToken,
     };
 
     // 4.5. Upsert device pro Expo Push (ADR-010 §5/§8). Best-effort.

@@ -71,11 +71,19 @@ export default function PagamentoScreen() {
         { idempotencyKey: idemKeyRef.current },
       );
       booking.setAppointmentId(booked.id);
+      // Persiste o token de posse no contexto (H3 secfix).
+      booking.setPaymentToken(booked.cancelToken ?? null);
 
       // 2. Cobra via método escolhido (mock aprova na hora → pending).
       const method: PaymentMethod = paymentMethod === 'pix' ? 'pix' : 'credit';
+      const possessionToken = booked.cancelToken;
+      if (!possessionToken) {
+        // Server não emitiu token — não deve acontecer em prod;
+        // falha explícita pra não chamar pay sem posse.
+        throw new Error('Token de posse ausente na resposta do booking.');
+      }
       const pay = await api.post<PayResponse>(
-        `/public/appointments/${booked.id}/payment/pay`,
+        `/public/appointments/${booked.id}/payment/pay?token=${encodeURIComponent(possessionToken)}`,
         { method },
       );
 

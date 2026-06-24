@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -8,9 +9,11 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
+import { ApiOkResponse, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import {
   computeAllMethodBreakdowns,
@@ -24,6 +27,7 @@ import {
 import { Public } from '../auth/auth.decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { PrismaService } from '../prisma/prisma.service';
+import { decodeCancelToken } from '../slots/cancel-token';
 import { PaymentError, PaymentService } from './payment.service';
 
 /**
@@ -42,6 +46,7 @@ export class PaymentController {
   constructor(
     private readonly payment: PaymentService,
     private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
   ) {}
 
   @Get('options')
@@ -85,11 +90,31 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiParam({ name: 'id', description: 'UUID do appointment.' })
+  @ApiQuery({
+    name: 'token',
+    required: true,
+    description:
+      'Token HMAC de posse do agendamento, emitido no momento do booking (H3 secfix).',
+  })
   @ApiOkResponse({ description: 'Pagamento processado; appointment vira pending.' })
   async pay(
     @Param('id', ParseUUIDPipe) id: string,
+    @Query('token') token: string | undefined,
     @Body(new ZodValidationPipe(confirmPaymentSchema)) body: ConfirmPaymentInput,
   ): Promise<{ payment: PaymentDto; pixQrCode?: string; pixQrCodeBase64?: string }> {
+    // H3 fix: verify possession token before charging.
+    const secret = this.config.get<string>('APPOINTMENT_CANCEL_SECRET');
+    if (!secret) {
+      throw new Error('APPOINTMENT_CANCEL_SECRET não configurado.');
+    }
+    if (!token) {
+      throw new ForbiddenException('Token de posse ausente.');
+    }
+    const decoded = decodeCancelToken(token, secret);
+    if (!decoded.ok || decoded.payload.apptId !== id) {
+      throw new ForbiddenException('Token de posse inválido ou expirado.');
+    }
+
     try {
       return await this.payment.pay({
         appointmentId: id,

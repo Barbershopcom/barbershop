@@ -60,6 +60,14 @@ export const bookedAppointmentSchema = z.object({
    */
   customerPhone: phoneE164Schema.nullable(),
   customerEmail: emailSchema.nullable(),
+  /**
+   * Token HMAC de posse do agendamento (mesmo mecanismo do cancel-token).
+   * Obrigatório para chamar POST /public/appointments/:id/payment/pay —
+   * prova que o caller fez o booking. Gerado server-side, expirado no startAt.
+   * Ausente na resposta de admin bookAsAdmin (não passa por fluxo de pagamento
+   * online).
+   */
+  cancelToken: z.string().optional(),
 });
 
 export type BookedAppointment = z.infer<typeof bookedAppointmentSchema>;

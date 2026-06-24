@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { slugSchema, timezoneSchema } from './common';
+import { BILLING_PLAN } from './billing';
 
 const nonEmpty = (max: number) => z.string().trim().min(2).max(max);
 
@@ -85,6 +86,8 @@ export const createTenantOnboardingSchema = z.object({
   organization: organizationBlock,
   location: locationBlock,
   barbershop: barbershopBlock,
+  billingCycle: z.enum(Object.keys(BILLING_PLAN) as [string, ...string[]]),
+  cardTokenId: z.string().min(1),
 });
 
 export type CreateTenantOnboardingInput = z.infer<typeof createTenantOnboardingSchema>;

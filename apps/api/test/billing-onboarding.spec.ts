@@ -21,7 +21,7 @@ import { randomUUID } from 'node:crypto';
 import { OnboardingController } from '../src/onboarding/onboarding.controller';
 import type { MercadoPagoProvider } from '../src/payment/mercadopago.provider';
 import type { TenantContextValue } from '../src/tenancy/tenant-context';
-import type { CreateTenantOnboardingInput } from '@barbearia/schemas';
+import { type CreateTenantOnboardingInput, planForCycle } from '@barbearia/schemas';
 
 const prisma = new PrismaClient();
 
@@ -117,7 +117,7 @@ describe('Onboarding — cria preapproval + Subscription (happy path)', () => {
     expect(sub).not.toBeNull();
     expect(sub!.status).toBe('trialing');
     expect(sub!.mpPreapprovalId).toBe('pre_x');
-    expect(sub!.priceCents).toBe(9990); // planForCycle('monthly').priceCents
+    expect(sub!.priceCents).toBe(planForCycle('monthly').priceCents);
     expect(sub!.billingCycle).toBe('monthly');
     expect(sub!.trialEndsAt).toBeInstanceOf(Date);
 
@@ -157,7 +157,7 @@ describe('Onboarding — createPreapproval falha → rollback total', () => {
 
     await expect(
       runInTx(userId, (ctx) => controller.createTenant(ctx, body)),
-    ).rejects.toThrow();
+    ).rejects.toThrow('MP recusou o cartão');
 
     // Nenhum tenant deve ter sido criado
     const tenants = await prisma.tenant.findMany({

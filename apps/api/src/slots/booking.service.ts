@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
@@ -16,6 +17,8 @@ import {
   type BookedAppointment,
   couponReasonLabel,
   slotOccupyingStatuses,
+  subscriptionAllowsPublicBooking,
+  type SubscriptionStatus,
 } from '@barbearia/schemas';
 
 import { CouponsService } from '../coupons/coupons.service';
@@ -64,6 +67,17 @@ export class BookingService {
     const { slug, idempotencyKey, body } = args;
 
     const tenant = await this.repo.resolveTenant(slug);
+
+    // Gating de assinatura: tenants com status 'suspended'/'cancelled' não
+    // aceitam novos agendamentos públicos. null = tenant legado sem linha de
+    // subscription — não bloqueia (&&  garante isso).
+    const subStatus = await this.repo.getSubscriptionStatus(tenant.id);
+    if (subStatus && !subscriptionAllowsPublicBooking(subStatus as SubscriptionStatus)) {
+      throw new ForbiddenException(
+        'Esta barbearia está temporariamente indisponível para novos agendamentos.',
+      );
+    }
+
     const service = await this.repo.resolveActiveService(tenant.id, body.serviceId);
 
     const requestHash = hashRequest(body);

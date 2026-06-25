@@ -81,6 +81,18 @@ export class SlotsRepository {
   }
 
   /**
+   * Status da assinatura do tenant (RLS bypassado por design — filtra por tenantId).
+   * Retorna null se não houver linha de subscription (tenant legado — não bloqueia).
+   */
+  async getSubscriptionStatus(tenantId: string): Promise<string | null> {
+    const sub = await this.prisma.subscription.findUnique({
+      where: { tenantId },
+      select: { status: true },
+    });
+    return sub?.status ?? null;
+  }
+
+  /**
    * Carrega todos os dados necessários pra calcular slots em uma janela.
    *
    * @param fromDateUtc instante UTC do início do dia `from` no tz do tenant

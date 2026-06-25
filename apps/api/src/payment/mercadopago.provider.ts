@@ -244,8 +244,14 @@ export class MercadoPagoProvider implements PaymentProvider {
     const res = await fetch(`${this.baseUrl}/preapproval/${id}`, {
       headers: { authorization: `Bearer ${this.platformToken()}` },
     });
+    // Drena o body antes de ramificar (evita socket leak do undici sob carga).
+    const json = (await res.json().catch(() => ({}))) as {
+      id: string;
+      status: string;
+      external_reference?: string;
+    };
     if (!res.ok) throw new Error(`MP getPreapproval ${id} → ${res.status}`);
-    return (await res.json()) as { id: string; status: string; external_reference?: string };
+    return json;
   }
 
   async updatePreapprovalCard(id: string, cardTokenId: string): Promise<void> {
@@ -254,6 +260,7 @@ export class MercadoPagoProvider implements PaymentProvider {
       headers: { authorization: `Bearer ${this.platformToken()}`, 'content-type': 'application/json' },
       body: JSON.stringify({ card_token_id: cardTokenId }),
     });
+    await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`MP updatePreapprovalCard ${id} → ${res.status}`);
   }
 
@@ -263,6 +270,7 @@ export class MercadoPagoProvider implements PaymentProvider {
       headers: { authorization: `Bearer ${this.platformToken()}`, 'content-type': 'application/json' },
       body: JSON.stringify({ status: 'cancelled' }),
     });
+    await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`MP cancelPreapproval ${id} → ${res.status}`);
   }
 

@@ -28,8 +28,12 @@ describe('MercadoPagoProvider.createPreapproval', () => {
     const [, init] = call;
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body.auto_recurring.transaction_amount).toBe(99.9);
+    expect(body.auto_recurring.currency_id).toBe('BRL');
     expect(body.auto_recurring.free_trial).toEqual({ frequency: 14, frequency_type: 'days' });
     expect(body.external_reference).toBe('tenant-1');
+    // A cobrança da assinatura SEMPRE usa o token da plataforma (nunca o do vendedor).
+    const headers = (init as RequestInit).headers as Record<string, string>;
+    expect(headers['authorization']).toBe('Bearer APP_USR_x');
   });
 
   it('lança quando o MP recusa', async () => {

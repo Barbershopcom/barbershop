@@ -115,6 +115,8 @@ describe('BookingService — subscription gating', () => {
         body: minimalBody as never,
       }),
     ).rejects.toThrow(ForbiddenException);
+
+    expect(repo.getSubscriptionStatus).toHaveBeenCalledWith(TENANT_ID);
   });
 
   it('does NOT throw ForbiddenException when subscription status is "active" (proceeds past gate)', async () => {
@@ -129,6 +131,21 @@ describe('BookingService — subscription gating', () => {
       service.book({
         slug: TENANT_SLUG,
         idempotencyKey: 'idem-key-active',
+        body: minimalBody as never,
+      }),
+    ).rejects.not.toThrow(ForbiddenException);
+  });
+
+  it('does NOT throw ForbiddenException when subscription status is "past_due"', async () => {
+    // past_due está na janela de graça (dunning) — agendamento ainda liberado.
+    const repo = makeRepo('past_due');
+    repo.resolveActiveService = jest.fn().mockRejectedValue(new Error('service-not-found-stub'));
+    const service = makeService(repo);
+
+    await expect(
+      service.book({
+        slug: TENANT_SLUG,
+        idempotencyKey: 'idem-key-past-due',
         body: minimalBody as never,
       }),
     ).rejects.not.toThrow(ForbiddenException);

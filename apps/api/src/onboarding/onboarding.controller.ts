@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -7,11 +8,18 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { type CreateTenantOnboardingInput, createTenantOnboardingSchema } from '@barbearia/schemas';
+import {
+  type BillingCycle,
+  type CreateTenantOnboardingInput,
+  createTenantOnboardingSchema,
+  planForCycle,
+  TRIAL_DAYS,
+} from '@barbearia/schemas';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { MercadoPagoProvider } from '../payment/mercadopago.provider';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -19,6 +27,8 @@ import { Tx } from '../tenancy/tenancy.decorators';
 @ApiBearerAuth()
 @Controller('onboarding')
 export class OnboardingController {
+  constructor(private readonly mp: MercadoPagoProvider) {}
+
   @Post('tenant')
   @HttpCode(HttpStatus.CREATED)
   @ApiResponse({ status: 201, description: 'Tenant criado com cadeia Org→Location→Barbershop.' })
@@ -39,6 +49,35 @@ export class OnboardingController {
     // ID pré-gerado + raw INSERT sem RETURNING evita esse galho.
     const tenantId = randomUUID();
     const timezone = body.tenant.timezone;
+    const plan = planForCycle(body.billingCycle as BillingCycle);
+    const webUrl = process.env.PUBLIC_WEB_URL ?? 'https://appbarbeariab.com';
+
+    // Resolve owner email ANTES de chamar o MP (MP exige payer_email).
+    // ctx.tx já está na transação ativa (TenantInterceptor); a query usa
+    // BYPASSRLS para app_users (owner lê o próprio registro).
+    const owner = await ctx.tx.appUser.findUnique({
+      where: { id: ctx.userId },
+      select: { email: true },
+    });
+    if (!owner?.email) {
+      throw new BadRequestException(
+        'Conta sem email — não foi possível criar a assinatura.',
+      );
+    }
+
+    // Cria o preapproval no MP ANTES dos INSERTs de banco. Se o DB falhar
+    // depois daqui, o catch cancela o preapproval (compensating transaction).
+    const preapproval = await this.mp.createPreapproval({
+      reason: `Assinatura Navalha — ${body.tenant.name}`,
+      externalReference: tenantId,
+      payerEmail: owner.email,
+      cardTokenId: body.cardTokenId,
+      amountCents: plan.priceCents,
+      frequency: plan.mpFrequency,
+      frequencyType: plan.mpFrequencyType,
+      trialDays: TRIAL_DAYS,
+      backUrl: `${webUrl}/admin/assinatura`,
+    });
 
     try {
       // 0) vincula o CPF ao usuário. O UNIQUE em app_users.cpf bloqueia que
@@ -101,6 +140,18 @@ export class OnboardingController {
         },
       });
 
+      // 7) subscription (status trialing, preapproval já criado no MP)
+      await ctx.tx.subscription.create({
+        data: {
+          tenantId,
+          billingCycle: body.billingCycle,
+          status: 'trialing',
+          priceCents: plan.priceCents,
+          mpPreapprovalId: preapproval.id,
+          trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
+        },
+      });
+
       return {
         tenant: {
           id: tenantId,
@@ -113,6 +164,13 @@ export class OnboardingController {
         barbershopId: barbershop.id,
       };
     } catch (err) {
+      // Best-effort: cancela o preapproval MP para não deixar assinatura órfã
+      // caso o DB tenha falhado após a criação externa.
+      try {
+        await this.mp.cancelPreapproval(preapproval.id);
+      } catch {
+        // log only — não mascarar o erro original
+      }
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         const target = Array.isArray(err.meta?.target)
           ? (err.meta.target as string[]).join(',')

@@ -70,9 +70,13 @@ export class MercadoPagoWebhookController {
     }
 
     // Só processamos eventos de pagamento marketplace ou tópicos de assinatura.
-    const isMarketplacePayment = eventType?.includes('payment') ?? false;
     const isSubscriptionPayment = eventType === 'subscription_authorized_payment';
     const isSubscriptionPreapproval = eventType === 'subscription_preapproval';
+    // 'subscription_authorized_payment' contém a substring 'payment'; exclui-o
+    // explicitamente pra que o flag de marketplace seja semanticamente correto
+    // mesmo se as branches forem reordenadas no futuro.
+    const isMarketplacePayment =
+      (eventType?.includes('payment') ?? false) && !isSubscriptionPayment;
 
     if (!isMarketplacePayment && !isSubscriptionPayment && !isSubscriptionPreapproval) {
       return { ok: true };
@@ -103,6 +107,10 @@ export class MercadoPagoWebhookController {
             `${dataId}:${pay.status}`,
           );
           if (first) await this.billing.applyRecurringPayment(preapprovalId, approved, new Date());
+        } else {
+          MercadoPagoWebhookController.logger.warn(
+            `subscription_authorized_payment ${dataId}: preapproval_id ausente no payload — ignorado.`,
+          );
         }
       } catch (err) {
         MercadoPagoWebhookController.logger.error(

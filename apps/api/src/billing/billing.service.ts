@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { BillingCycle, SubscriptionStatus } from '@barbearia/schemas';
 import { addMonths } from 'date-fns';
 
-import { MercadoPagoProvider } from '../payment/mercadopago.provider';
 import { PrismaService } from '../prisma/prisma.service';
 
 export function mapPreapprovalStatus(mpStatus: string): SubscriptionStatus | null {
@@ -19,10 +18,7 @@ export function computeNextPeriodEnd(cycle: BillingCycle, from: Date): Date {
 export class BillingService {
   private static readonly logger = new Logger(BillingService.name);
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly mp: MercadoPagoProvider,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   getByPreapprovalId(mpPreapprovalId: string) {
     return this.prisma.subscription.findFirst({ where: { mpPreapprovalId } });
@@ -35,7 +31,6 @@ export class BillingService {
   async applyRecurringPayment(
     mpPreapprovalId: string,
     approved: boolean,
-    cycle: BillingCycle,
     when: Date,
   ): Promise<void> {
     const sub = await this.getByPreapprovalId(mpPreapprovalId);
@@ -46,16 +41,15 @@ export class BillingService {
       return;
     }
     if (approved) {
+      // O ciclo vem SEMPRE da Subscription local (billing_cycle é NOT NULL),
+      // nunca de um valor externo — período de renovação correto por contrato.
       await this.prisma.subscription.update({
         where: { id: sub.id },
         data: {
           status: 'active',
           lastPaymentStatus: 'approved',
           lastChargedAt: when,
-          currentPeriodEnd: computeNextPeriodEnd(
-            (sub.billingCycle as BillingCycle) ?? cycle,
-            when,
-          ),
+          currentPeriodEnd: computeNextPeriodEnd(sub.billingCycle as BillingCycle, when),
         },
       });
     } else {
@@ -70,7 +64,12 @@ export class BillingService {
     const mapped = mapPreapprovalStatus(mpStatus);
     if (!mapped) return;
     const sub = await this.getByPreapprovalId(mpPreapprovalId);
-    if (!sub) return;
+    if (!sub) {
+      BillingService.logger.warn(
+        `Status de preapproval sem Subscription local: preapproval=${mpPreapprovalId} status=${mpStatus}`,
+      );
+      return;
+    }
     await this.prisma.subscription.update({ where: { id: sub.id }, data: { status: mapped } });
   }
 }

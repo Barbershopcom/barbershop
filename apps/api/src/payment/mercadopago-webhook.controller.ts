@@ -13,6 +13,7 @@ import { ApiExcludeEndpoint } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { Public } from '../auth/auth.decorators';
+import { BillingService } from '../billing/billing.service';
 import { IdempotencyWebhookService } from '../common/idempotency-webhook.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { verifyMpWebhookSignature } from './mercadopago-signature';
@@ -26,6 +27,11 @@ import { PaymentService } from './payment.service';
  * id;request-id;ts) E re-busca o pagamento na API do MP — não confia no
  * corpo. Idempotente: markPaid/markFailed são no-op se já no estado final.
  * Responde 200 rápido; o MP reenfileira em caso de erro.
+ *
+ * Tópicos de assinatura (billing):
+ *   subscription_authorized_payment → applyRecurringPayment
+ *   subscription_preapproval        → applyPreapprovalStatus
+ * A verificação de assinatura corre ANTES de qualquer branch.
  */
 @Public()
 @Controller('webhooks/mercadopago')
@@ -38,6 +44,7 @@ export class MercadoPagoWebhookController {
     private readonly payments: PaymentService,
     private readonly prisma: PrismaService,
     private readonly webhookIdempotency: IdempotencyWebhookService,
+    private readonly billing: BillingService,
   ) {}
 
   @Post()
@@ -58,19 +65,74 @@ export class MercadoPagoWebhookController {
     const eventType = type ?? body.type ?? body.action;
     const dataId = String(dataIdQuery ?? body.data?.id ?? '');
 
-    // Só nos interessa evento de pagamento.
-    if (!dataId || !(eventType?.includes('payment'))) {
+    if (!dataId) {
       return { ok: true };
     }
 
-    // 1. Validar assinatura PRIMEIRO (antes de dedup)
+    // Só processamos eventos de pagamento marketplace ou tópicos de assinatura.
+    const isMarketplacePayment = eventType?.includes('payment') ?? false;
+    const isSubscriptionPayment = eventType === 'subscription_authorized_payment';
+    const isSubscriptionPreapproval = eventType === 'subscription_preapproval';
+
+    if (!isMarketplacePayment && !isSubscriptionPayment && !isSubscriptionPreapproval) {
+      return { ok: true };
+    }
+
+    // 1. Validar assinatura PRIMEIRO (antes de dedup) para TODOS os eventos.
     // Só webhooks autenticados podem ser dedupados.
     if (!this.verifySignature(dataId, xRequestId, xSignature)) {
       MercadoPagoWebhookController.logger.warn(
-        `Assinatura inválida no webhook MP (payment ${dataId}) — ignorado.`,
+        `Assinatura inválida no webhook MP (${eventType} ${dataId}) — ignorado.`,
       );
       return { ok: true }; // 200 pra não gerar retry infinito de spoof
     }
+
+    // ── Tópicos de assinatura (billing) — separados do pagamento marketplace ──
+
+    if (isSubscriptionPayment) {
+      try {
+        // dataId = id do pagamento recorrente; busca o pagamento p/ status + preapproval.
+        // Usa token de plataforma (sem sellerToken) — assinaturas são cobradas pela plataforma.
+        const pay = await this.provider.getPayment(dataId);
+        const preapprovalId = String((pay as Record<string, unknown>).preapproval_id ?? '');
+        const approved = pay.status === 'approved';
+        if (preapprovalId) {
+          // Dedup estável por pagamento+status (mesmo padrão M1).
+          const first = await this.webhookIdempotency.isFirstProcessing(
+            'mp_sub_payment',
+            `${dataId}:${pay.status}`,
+          );
+          if (first) await this.billing.applyRecurringPayment(preapprovalId, approved, new Date());
+        }
+      } catch (err) {
+        MercadoPagoWebhookController.logger.error(
+          `Falha processando subscription_authorized_payment (payment ${dataId}): ${err instanceof Error ? err.message : err}`,
+        );
+      }
+      return { ok: true };
+    }
+
+    if (isSubscriptionPreapproval) {
+      try {
+        const pre = await this.provider.getPreapproval(dataId);
+        const first = await this.webhookIdempotency.isFirstProcessing(
+          'mp_sub_preapproval',
+          `${dataId}:${pre.status}`,
+        );
+        if (first) await this.billing.applyPreapprovalStatus(dataId, pre.status);
+      } catch (err) {
+        MercadoPagoWebhookController.logger.error(
+          `Falha processando subscription_preapproval (preapproval ${dataId}): ${err instanceof Error ? err.message : err}`,
+        );
+      }
+      return { ok: true };
+    }
+
+    // ── Pagamento marketplace ──────────────────────────────────────────────────
+
+    // subscription_authorized_payment contains 'payment' so isMarketplacePayment is also true.
+    // We've already handled it above; reaching here means it's a pure marketplace payment event.
+    // Guard: subscription events that coincidentally include 'payment' were handled above.
 
     try {
       // C2 (segurança): exige que já exista um Payment local gravado na

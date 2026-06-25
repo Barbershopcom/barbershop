@@ -259,12 +259,17 @@ describe('C2 — webhook exige Payment local por providerPaymentId (anti foreign
     const idempotency = {
       isFirstProcessing: jest.fn().mockResolvedValue(true),
     } as never;
+    const billingStub = {
+      applyRecurringPayment: jest.fn(),
+      applyPreapprovalStatus: jest.fn(),
+    } as never;
     const controller = new MercadoPagoWebhookController(
       config,
       providerWebhook,
       payments,
       prisma as never,
       idempotency,
+      billingStub,
     );
     return { controller, provider: providerWebhook as never };
   }

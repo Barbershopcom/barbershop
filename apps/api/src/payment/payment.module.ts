@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { AppointmentsModule } from '../appointments/appointments.module';
+import { BillingModule } from '../billing/billing.module';
 import { CommonModule } from '../common/common.module';
 import { AdminMpController } from './admin-mp.controller';
 import { MercadoPagoWebhookController } from './mercadopago-webhook.controller';
@@ -22,7 +23,7 @@ import { PaymentService } from './payment.service';
  * PrismaService é global (PrismaModule), então não precisa importar aqui.
  */
 @Module({
-  imports: [forwardRef(() => AppointmentsModule), CommonModule],
+  imports: [forwardRef(() => AppointmentsModule), CommonModule, BillingModule],
   controllers: [PaymentController, MercadoPagoWebhookController, AdminMpController],
   providers: [
     PaymentService,

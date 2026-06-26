@@ -57,7 +57,7 @@ export default function PerfilPage() {
   useEffect(() => {
     let cancelled = false;
     api
-      .get<TenantProfile>('/admin/tenant/me')
+      .get<TenantProfile>('/admin/tenant/me', { tenantId: tenant.id })
       .then((data) => {
         if (cancelled) return;
         setName(data.name);
@@ -76,7 +76,7 @@ export default function PerfilPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [tenant.id]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,13 +96,17 @@ export default function PerfilPage() {
 
     setSaving(true);
     try {
-      await api.patch('/admin/tenant/me', {
-        name: trimmedName,
-        phoneE164: phoneNormalized,
-        addressLine: address.trim() ? address.trim() : null,
-        instagramHandle: instagram.trim() ? instagram.trim() : null,
-        lateCancelFeePct,
-      });
+      await api.patch(
+        '/admin/tenant/me',
+        {
+          name: trimmedName,
+          phoneE164: phoneNormalized,
+          addressLine: address.trim() ? address.trim() : null,
+          instagramHandle: instagram.trim() ? instagram.trim() : null,
+          lateCancelFeePct,
+        },
+        { tenantId: tenant.id },
+      );
       setSuccess(true);
       await refresh();
       setTimeout(() => setSuccess(false), 3000);

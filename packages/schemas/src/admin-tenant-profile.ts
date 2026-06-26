@@ -24,17 +24,14 @@ export const updateTenantProfileSchema = z.object({
     .nullable()
     .optional()
     .transform((v) => {
-      if (!v) return v ?? null;
-      // Aceita "@handle" ou "handle" — normaliza removendo @
-      const cleaned = v.startsWith('@') ? v.slice(1) : v;
-      return cleaned === '' ? null : cleaned;
-    })
-    .pipe(
-      z
-        .string()
-        .regex(/^[A-Za-z0-9_.]{1,30}$/, 'Instagram handle inválido (letras, números, _ e .)')
-        .nullable(),
-    ),
+      if (!v) return null;
+      // Aceita "@handle", "handle" ou URL (instagram.com/handle) — extrai o
+      // handle e aceita o que vier (sem regex estrita), limitado a 30 chars.
+      let h = v.trim();
+      h = h.replace(/^https?:\/\//i, '').replace(/^(www\.)?instagram\.com\//i, '');
+      h = h.replace(/^@/, '').replace(/\/+$/, '').trim();
+      return h === '' ? null : h.slice(0, 30);
+    }),
   lateCancelFeePct: z.coerce.number().int().min(0).max(100).optional(),
 });
 

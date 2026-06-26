@@ -39,8 +39,10 @@ export const MpCardFields = forwardRef<MpCardFieldsHandle>(function MpCardFields
         mpRef.current = mp;
         setReady(true);
       } catch (err) {
+        // Detalhe técnico só no console; usuário vê mensagem amigável em PT.
+        console.error('[MercadoPago] falha ao montar campos de cartão:', err);
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Falha ao carregar o formulário de cartão.');
+          setError('Não foi possível carregar o pagamento agora. Recarregue a página e tente de novo.');
         }
       }
     })();
@@ -55,13 +57,20 @@ export const MpCardFields = forwardRef<MpCardFieldsHandle>(function MpCardFields
       ready,
       tokenize: async (cardholderName: string, cpf: string) => {
         const mp = mpRef.current;
-        if (!mp) throw new Error('Formulário de cartão ainda não carregou.');
-        const token = await mp.fields.createCardToken({
-          cardholderName,
-          identificationType: 'CPF',
-          identificationNumber: cpf.replace(/\D/g, ''),
-        });
-        if (!token?.id) throw new Error('Não foi possível validar o cartão.');
+        if (!mp) throw new Error('O formulário de cartão ainda está carregando. Aguarde um instante e tente de novo.');
+        let token: { id: string };
+        try {
+          token = await mp.fields.createCardToken({
+            cardholderName,
+            identificationType: 'CPF',
+            identificationNumber: cpf.replace(/\D/g, ''),
+          });
+        } catch (err) {
+          // MP pode devolver erro técnico/inglês; loga e mostra PT amigável.
+          console.error('[MercadoPago] createCardToken falhou:', err);
+          throw new Error('Não foi possível validar o cartão. Confira o número, validade e CVV e tente de novo.');
+        }
+        if (!token?.id) throw new Error('Não foi possível validar o cartão. Confira os dados e tente de novo.');
         return token.id;
       },
     }),

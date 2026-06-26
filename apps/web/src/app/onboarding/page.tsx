@@ -103,6 +103,8 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Email pendente de confirmação (signup ok mas projeto exige confirmar email).
+  const [confirmEmailSent, setConfirmEmailSent] = useState<string | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState<string | null>(null);
   const [cepFilled, setCepFilled] = useState(false);
@@ -240,11 +242,11 @@ export default function OnboardingPage() {
           return;
         }
         // Sem session = projeto exige confirmação de email. Não dá pra
-        // criar a barbearia ainda (o POST iria dar 401).
+        // criar a barbearia ainda (o POST iria dar 401). Mostra a tela de
+        // "confirme seu email" (sucesso, no topo) em vez do card de erro.
         if (!data.session) {
-          setSubmitError(
-            'Conta criada! Confirme seu email (verifique a caixa de entrada) e depois entre em /login para criar sua barbearia.',
-          );
+          setConfirmEmailSent(email);
+          if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
         }
         setHasSession(true);
@@ -339,6 +341,24 @@ export default function OnboardingPage() {
           </p>
         </div>
 
+        {confirmEmailSent ? (
+          <Card className="border-emerald-500 bg-emerald-50">
+            <CardHeader>
+              <CardTitle className="text-base text-emerald-800">
+                Conta criada! Confirme seu email ✉️
+              </CardTitle>
+              <CardDescription className="text-emerald-700">
+                Enviamos um link de confirmação para <strong>{confirmEmailSent}</strong>. Abra seu
+                email, confirme a conta e depois entre em{' '}
+                <a href="/login" className="font-semibold underline underline-offset-2">
+                  /login
+                </a>{' '}
+                pra terminar de criar sua barbearia. Não achou? Veja a caixa de spam.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ) : null}
+
         <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit, (errors) => {
@@ -349,7 +369,7 @@ export default function OnboardingPage() {
               .join(' · ');
             setSubmitError(`Validação falhou — ${flat}`);
           })}
-          className="space-y-6"
+          className={confirmEmailSent ? 'hidden' : 'space-y-6'}
         >
           {hasSession === false ? (
             <Card>

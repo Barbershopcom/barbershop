@@ -74,11 +74,20 @@ export class PublicEmailVerificationController {
     const decoded = decodeEmailVerifyToken(body.token, secret);
     if (!decoded.ok) return { ok: false };
     // Endpoint público (sem TenantInterceptor) roda no role default (BYPASSRLS),
-    // então o update no app_users do dono do token funciona sem sessão.
+    // então os updates abaixo funcionam sem sessão.
     await this.prisma.appUser.update({
       where: { id: decoded.payload.userId },
       data: { emailVerified: true },
     });
+    // Ativa as barbearias pendentes que esse dono administra.
+    await this.prisma.$executeRaw`
+      UPDATE tenants SET status = 'active', updated_at = now()
+      WHERE status = 'pending'
+        AND id IN (
+          SELECT tenant_id FROM tenant_memberships
+          WHERE user_id = ${decoded.payload.userId}::uuid AND 'admin' = ANY(roles)
+        )
+    `;
     return { ok: true };
   }
 }

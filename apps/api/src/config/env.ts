@@ -11,6 +11,9 @@ const schema = z
     DIRECT_URL: z.string().url(),
 
     SUPABASE_URL: z.string().url().optional(),
+    /// Service-role key (admin) — usada só pela faxina pra apagar o usuário no
+    /// Supabase Auth. Opcional: sem ela, a faxina pula essa parte.
+    SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
     SUPABASE_JWKS_URL: z.string().url().optional(),
     SUPABASE_JWT_AUDIENCE: z.string().default('authenticated'),
     SUPABASE_JWT_ISSUER: z.string().url().optional(),

@@ -54,6 +54,9 @@ model Tenant {
   slug      String   @unique
   name      String
   timezone  String   @default("America/Sao_Paulo")
+  /// 'pending' (email do dono não confirmado) | 'active'. Pending não recebe
+  /// agendamento público; é apagado pela faxina se não confirmar em 3 dias.
+  status    String   @default("active")
   /// Perfil público — campos opcionais usados em landing/email (ADR-012).
   phoneE164       String? @map("phone_e164")
   addressLine     String? @map("address_line")

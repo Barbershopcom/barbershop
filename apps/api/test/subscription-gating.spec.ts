@@ -35,6 +35,7 @@ const fakeTenant = {
   slug: TENANT_SLUG,
   name: 'Minha Barbearia',
   timezone: 'America/Sao_Paulo',
+  status: 'active',
   phoneE164: null,
   addressLine: null,
   instagramHandle: null,
@@ -89,6 +90,20 @@ function makeService(repo: RepoStub): BookingService {
 // ---------------------------------------------------------------------------
 
 describe('BookingService — subscription gating', () => {
+  it('throws ForbiddenException when tenant.status is "pending" (email não confirmado)', async () => {
+    const repo = makeRepo('active');
+    repo.resolveTenant = jest.fn().mockResolvedValue({ ...fakeTenant, status: 'pending' });
+    const service = makeService(repo);
+
+    await expect(
+      service.book({
+        slug: TENANT_SLUG,
+        idempotencyKey: 'idem-key-pending',
+        body: minimalBody as never,
+      }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
   it('throws ForbiddenException when subscription status is "suspended"', async () => {
     const repo = makeRepo('suspended');
     const service = makeService(repo);

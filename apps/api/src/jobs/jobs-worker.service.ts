@@ -77,6 +77,12 @@ export class JobsWorkerService implements OnApplicationBootstrap {
     // Agenda cleanup recorrente: 4am UTC todo dia.
     await boss.schedule(IDEMPOTENCY_CLEANUP_QUEUE, '0 4 * * *', undefined, { tz: 'UTC' });
     JobsWorkerService.logger.log('Cleanup recorrente agendado: 0 4 * * * UTC');
+
+    // Faxina de barbearias pendentes (email não confirmado em 3 dias).
+    await boss.createQueue(PENDING_TENANT_CLEANUP_QUEUE);
+    await boss.work(PENDING_TENANT_CLEANUP_QUEUE, async () => this.handlePendingTenantCleanup());
+    await boss.schedule(PENDING_TENANT_CLEANUP_QUEUE, '30 4 * * *', undefined, { tz: 'UTC' });
+    JobsWorkerService.logger.log(`Worker + agenda: ${PENDING_TENANT_CLEANUP_QUEUE} (30 4 * * * UTC)`);
   }
 
   private async handleReminder(payload: ReminderPayload): Promise<void> {
@@ -256,10 +262,68 @@ export class JobsWorkerService implements OnApplicationBootstrap {
       );
     }
   }
+
+  /**
+   * Faxina de barbearias `pending` (email do dono não confirmado) com mais de
+   * 3 dias: apaga o tenant (cascade) e, se o dono não tiver mais nenhuma
+   * barbearia, apaga o app_user + o usuário no Supabase Auth (best-effort).
+   */
+  private async handlePendingTenantCleanup(): Promise<void> {
+    const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const pending = await this.prisma.tenant.findMany({
+      where: { status: 'pending', createdAt: { lt: cutoff } },
+      select: { id: true, memberships: { select: { userId: true } } },
+    });
+    if (pending.length === 0) return;
+
+    const tenantIds = pending.map((t) => t.id);
+    const candidateUserIds = [
+      ...new Set(pending.flatMap((t) => t.memberships.map((m) => m.userId))),
+    ];
+
+    // Apaga os tenants (cascade leva org/location/barbershop/subscription/membership).
+    await this.prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
+    JobsWorkerService.logger.log(
+      `Faxina: ${tenantIds.length} barbearia(s) pendente(s) > 3 dias apagada(s).`,
+    );
+
+    // Dono que ficou sem nenhuma barbearia → apaga a conta (DB + Supabase Auth).
+    for (const userId of candidateUserIds) {
+      const remaining = await this.prisma.tenantMembership.count({ where: { userId } });
+      if (remaining > 0) continue;
+      await this.prisma.appUser.delete({ where: { id: userId } }).catch((err) => {
+        JobsWorkerService.logger.warn(
+          `Faxina: falha ao apagar app_user ${userId}: ${err instanceof Error ? err.message : err}`,
+        );
+      });
+      await this.deleteSupabaseAuthUser(userId);
+    }
+  }
+
+  /** Apaga o usuário no Supabase Auth via admin API (best-effort). */
+  private async deleteSupabaseAuthUser(userId: string): Promise<void> {
+    const url = this.config.get<string>('SUPABASE_URL');
+    const key = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
+    if (!url || !key) return; // sem service-role key → pula (deixa órfão)
+    try {
+      const res = await fetch(`${url.replace(/\/$/, '')}/auth/v1/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { apikey: key, authorization: `Bearer ${key}` },
+      });
+      if (!res.ok) {
+        JobsWorkerService.logger.warn(`Faxina: Supabase admin delete ${userId} → ${res.status}`);
+      }
+    } catch (err) {
+      JobsWorkerService.logger.warn(
+        `Faxina: erro ao apagar usuário Supabase ${userId}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
 }
 
 export const APPOINTMENT_REMINDER_QUEUE = 'appointment-reminder';
 export const IDEMPOTENCY_CLEANUP_QUEUE = 'idempotency-cleanup';
+export const PENDING_TENANT_CLEANUP_QUEUE = 'pending-tenant-cleanup';
 export const APPOINTMENT_EXPIRATION_QUEUE = 'appointment-expiration';
 
 export interface ReminderPayload {

@@ -30,6 +30,7 @@ export class SlotsRepository {
     slug: string;
     name: string;
     timezone: string;
+    status: string;
     phoneE164: string | null;
     addressLine: string | null;
     instagramHandle: string | null;
@@ -41,6 +42,7 @@ export class SlotsRepository {
         slug: true,
         name: true,
         timezone: true,
+        status: true,
         phoneE164: true,
         addressLine: true,
         instagramHandle: true,

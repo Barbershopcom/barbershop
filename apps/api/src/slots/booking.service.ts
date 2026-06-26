@@ -68,6 +68,14 @@ export class BookingService {
 
     const tenant = await this.repo.resolveTenant(slug);
 
+    // Gating de ativação: barbearia 'pending' (email do dono não confirmado)
+    // ainda não está no ar — não recebe agendamento público.
+    if (tenant.status !== 'active') {
+      throw new ForbiddenException(
+        'Esta barbearia ainda não foi ativada. O dono precisa confirmar o email do cadastro.',
+      );
+    }
+
     // Gating de assinatura: tenants com status 'suspended'/'cancelled' não
     // aceitam novos agendamentos públicos. null = tenant legado sem linha de
     // subscription — não bloqueia (&&  garante isso).

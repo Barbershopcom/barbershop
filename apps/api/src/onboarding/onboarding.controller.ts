@@ -94,9 +94,11 @@ export class OnboardingController {
 
       // 1) tenant — INSERT raw, sem RETURNING (inclui owner_cpf + trial).
       //    trial_ends_at = null no Free (legado; a verdade do trial é a Subscription).
+      //    status='pending' até o dono confirmar o email (ativa via /verify-email;
+      //    a faxina apaga se não confirmar em 3 dias).
       await ctx.tx.$executeRaw`
-        INSERT INTO tenants (id, slug, name, timezone, owner_cpf, trial_ends_at, updated_at)
-        VALUES (${tenantId}::uuid, ${body.tenant.slug}, ${body.tenant.name}, ${timezone}, ${body.ownerCpf}, ${trialEndsAt}, now())
+        INSERT INTO tenants (id, slug, name, timezone, status, owner_cpf, trial_ends_at, updated_at)
+        VALUES (${tenantId}::uuid, ${body.tenant.slug}, ${body.tenant.name}, ${timezone}, 'pending', ${body.ownerCpf}, ${trialEndsAt}, now())
       `;
 
       // 2) membership pro criador como admin

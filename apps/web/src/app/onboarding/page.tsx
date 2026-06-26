@@ -286,6 +286,8 @@ export default function OnboardingPage() {
         },
       };
       await api.post('/onboarding/tenant', payload);
+      // Dispara o email de verificação (soft, não bloqueia) — best-effort.
+      await api.post('/me/email/send-verification').catch(() => {});
       router.replace('/admin');
     } catch (err) {
       if (err instanceof ApiError) {

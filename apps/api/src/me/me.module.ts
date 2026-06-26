@@ -4,6 +4,10 @@ import { AppointmentsModule } from '../appointments/appointments.module';
 import { CouponsModule } from '../coupons/coupons.module';
 import { PaymentModule } from '../payment/payment.module';
 import { CustomerService } from './customer.service';
+import {
+  EmailVerificationController,
+  PublicEmailVerificationController,
+} from './email-verification.controller';
 import { MeAppointmentsController } from './me-appointments.controller';
 import { MeCustomerController } from './me-customer.controller';
 import { MeCustomerAppointmentsController } from './me-customer-appointments.controller';
@@ -22,6 +26,8 @@ import { MeController } from './me.controller';
     MeCustomerController,
     MeCustomerAppointmentsController,
     MeTimeOffController,
+    EmailVerificationController,
+    PublicEmailVerificationController,
   ],
   providers: [CustomerService],
 })

@@ -61,6 +61,51 @@ function SubscriptionBanner({ tenantId }: { tenantId: string }) {
   );
 }
 
+/** Banner enquanto o email do dono não foi confirmado (soft, não bloqueia). */
+function EmailVerifyBanner() {
+  const [verified, setVerified] = useState<boolean | null>(null);
+  const [resent, setResent] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ emailVerified: boolean }>('/me/email/status')
+      .then((r) => {
+        if (!cancelled) setVerified(r.emailVerified);
+      })
+      .catch(() => {
+        /* best-effort */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (verified !== false) return null;
+
+  async function resend() {
+    try {
+      await api.post('/me/email/send-verification');
+      setResent(true);
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  return (
+    <div className="bg-amber-100 px-6 py-2 text-center text-sm text-amber-900">
+      Confirme seu email para ativar sua conta.{' '}
+      {resent ? (
+        <span className="font-semibold">Email reenviado ✓</span>
+      ) : (
+        <button onClick={resend} className="font-semibold underline underline-offset-2">
+          Reenviar link
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function AdminShell({ children }: { children: ReactNode }) {
   const { tenant } = useActiveTenant();
   const pathname = usePathname();
@@ -123,6 +168,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
+      <EmailVerifyBanner />
       <SubscriptionBanner tenantId={tenant.id} />
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">{children}</main>
     </div>

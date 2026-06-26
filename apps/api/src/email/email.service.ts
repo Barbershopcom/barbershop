@@ -183,6 +183,48 @@ export class EmailService {
     });
   }
 
+  async sendEmailVerification(args: {
+    to: string;
+    verifyUrl: string;
+  }): Promise<{ ok: boolean; error?: string }> {
+    const { to, verifyUrl } = args;
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #333; line-height: 1.6; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { color: #1a365d; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+    .button { display: inline-block; background-color: #1a365d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
+    .footer { color: #8a8073; font-size: 12px; margin-top: 40px; border-top: 1px solid #e5ddd0; padding-top: 20px; }
+    code { background: #f5f5f5; padding: 8px 12px; display: inline-block; border-radius: 4px; font-family: monospace; font-size: 13px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">Confirme seu email 💈</div>
+    <p>Olá! Confirme seu email pra ativar de vez sua conta na Barbearia.</p>
+    <center>
+      <a href="${this.escapeHtml(verifyUrl)}" class="button">Confirmar email</a>
+    </center>
+    <p style="color: #666; font-size: 14px; margin-top: 30px;">
+      Se o botão não funcionar, abra este link:<br>
+      <code>${this.escapeHtml(verifyUrl)}</code>
+    </p>
+    <p style="color: #666; margin-top: 30px;">Se você não criou essa conta, ignore este email.</p>
+    <div class="footer">
+      <p>© 2026 Barbearia. Todos os direitos reservados.</p>
+    </div>
+  </div>
+</body>
+</html>
+    `.trim();
+
+    return this.send({ to, subject: 'Confirme seu email — Barbearia', html });
+  }
+
   private async send(args: {
     to: string;
     subject: string;

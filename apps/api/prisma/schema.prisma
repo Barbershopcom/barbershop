@@ -34,6 +34,9 @@ model AppUser {
   /// CPF do responsável (só dígitos). UNIQUE = uma pessoa só abre 1 conta/
   /// trial (anti-abuso). NULLs múltiplos são permitidos no Postgres.
   cpf         String?  @unique
+  /// Verificação de email "soft" (nossa, não bloqueia login). Banner no admin
+  /// até confirmar via link enviado por email (Resend).
+  emailVerified Boolean @default(false) @map("email_verified")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

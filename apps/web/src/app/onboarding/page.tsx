@@ -53,7 +53,7 @@ function TooltipIcon({ message, variant }: { message: string; variant: 'error' |
       <Icon className="h-4 w-4" aria-hidden />
       <span
         role="tooltip"
-        className="pointer-events-none absolute right-0 top-6 z-20 hidden w-max max-w-[240px] rounded-md bg-foreground px-2 py-1 text-xs font-medium leading-snug text-background shadow-md group-hover:block group-focus:block"
+        className="pointer-events-none absolute right-0 top-6 z-20 hidden w-max max-w-[240px] whitespace-pre-line rounded-md bg-foreground px-2 py-1 text-xs font-medium leading-snug text-background shadow-md group-hover:block group-focus:block"
       >
         {message}
       </span>
@@ -67,6 +67,24 @@ function FieldError() {
   if (!error) return null;
   return <TooltipIcon variant="error" message={String(error.message ?? 'Campo inválido')} />;
 }
+
+// O que cada tier inclui (espelha a landing) — mostrado no tooltip ⓘ do card.
+const TIER_FEATURES: Record<PlanTier, string> = {
+  free: ['1 barbeiro', 'Agenda online + página pública', 'Pagamento no Pix'].join('\n'),
+  basic: [
+    'Até 5 barbeiros',
+    'Tudo do Free',
+    'Lembretes que derrubam o no-show',
+    'Promoções e cupons',
+  ].join('\n'),
+  pro: [
+    'Barbeiros ilimitados',
+    'Tudo do Basic',
+    'Relatórios e repasse completos',
+    'Avaliações e reputação',
+    'Suporte prioritário',
+  ].join('\n'),
+};
 
 // Linha de label: texto à esquerda; à direita, dica (info) e/ou erro.
 function FieldLabel({ children, info }: { children: ReactNode; info?: string }) {
@@ -664,25 +682,30 @@ export default function OnboardingPage() {
                       currency: 'BRL',
                     })}/mês`;
                     return (
-                      <button
-                        key={tier}
-                        type="button"
-                        onClick={() => setTier(tier)}
-                        disabled={submitting}
-                        className={`rounded-md border px-4 py-3 text-left transition-colors ${
-                          selected ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40'
-                        }`}
-                      >
-                        <span className="block text-sm font-semibold">{label}</span>
-                        <span className="block text-sm">{priceLabel}</span>
-                        {tier !== 'free' ? (
-                          <span className="block text-[11px] text-muted-foreground">
-                            14 dias grátis
-                          </span>
-                        ) : (
-                          <span className="block text-[11px] text-muted-foreground">sem cartão</span>
-                        )}
-                      </button>
+                      <div key={tier} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setTier(tier)}
+                          disabled={submitting}
+                          className={`w-full rounded-md border px-4 py-3 pr-9 text-left transition-colors ${
+                            selected ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40'
+                          }`}
+                        >
+                          <span className="block text-sm font-semibold">{label}</span>
+                          <span className="block text-sm">{priceLabel}</span>
+                          {tier !== 'free' ? (
+                            <span className="block text-[11px] text-muted-foreground">
+                              14 dias grátis
+                            </span>
+                          ) : (
+                            <span className="block text-[11px] text-muted-foreground">sem cartão</span>
+                          )}
+                        </button>
+                        {/* ⓘ com o que o plano inclui (irmão do botão p/ não aninhar interativos) */}
+                        <span className="absolute right-2 top-2">
+                          <TooltipIcon variant="info" message={TIER_FEATURES[tier]} />
+                        </span>
+                      </div>
                     );
                   })}
                 </div>

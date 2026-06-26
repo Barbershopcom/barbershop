@@ -12,7 +12,8 @@ import {
   type BillingCycle,
   type CreateTenantOnboardingInput,
   createTenantOnboardingSchema,
-  planForCycle,
+  type PlanTier,
+  planForTier,
   TRIAL_DAYS,
 } from '@barbearia/schemas';
 import { Prisma } from '@prisma/client';
@@ -49,35 +50,38 @@ export class OnboardingController {
     // ID pré-gerado + raw INSERT sem RETURNING evita esse galho.
     const tenantId = randomUUID();
     const timezone = body.tenant.timezone;
-    const plan = planForCycle(body.billingCycle as BillingCycle);
+    const plan = planForTier(body.tier as PlanTier, body.billingCycle as BillingCycle);
+    const isPaid = plan.requiresCard; // Free não cobra nem cria preapproval.
+    const trialEndsAt = isPaid ? new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000) : null;
     const webUrl = process.env.PUBLIC_WEB_URL ?? 'https://appbarbeariab.com';
 
-    // Resolve owner email ANTES de chamar o MP (MP exige payer_email).
-    // ctx.tx já está na transação ativa (TenantInterceptor); a query usa
-    // BYPASSRLS para app_users (owner lê o próprio registro).
-    const owner = await ctx.tx.appUser.findUnique({
-      where: { id: ctx.userId },
-      select: { email: true },
-    });
-    if (!owner?.email) {
-      throw new BadRequestException(
-        'Conta sem email — não foi possível criar a assinatura.',
-      );
+    // Só os tiers pagos criam preapproval no MP (exige cartão + email do dono).
+    // O preapproval nasce ANTES dos INSERTs; se o DB falhar, o catch cancela.
+    let preapprovalId: string | null = null;
+    if (isPaid) {
+      const owner = await ctx.tx.appUser.findUnique({
+        where: { id: ctx.userId },
+        select: { email: true },
+      });
+      if (!owner?.email) {
+        throw new BadRequestException('Conta sem email — não foi possível criar a assinatura.');
+      }
+      if (!body.cardTokenId) {
+        throw new BadRequestException('Cartão obrigatório para planos pagos.');
+      }
+      const preapproval = await this.mp.createPreapproval({
+        reason: `Assinatura Navalha — ${body.tenant.name}`,
+        externalReference: tenantId,
+        payerEmail: owner.email,
+        cardTokenId: body.cardTokenId,
+        amountCents: plan.priceCents,
+        frequency: plan.mpFrequency,
+        frequencyType: plan.mpFrequencyType,
+        trialDays: TRIAL_DAYS,
+        backUrl: `${webUrl}/admin/assinatura`,
+      });
+      preapprovalId = preapproval.id;
     }
-
-    // Cria o preapproval no MP ANTES dos INSERTs de banco. Se o DB falhar
-    // depois daqui, o catch cancela o preapproval (compensating transaction).
-    const preapproval = await this.mp.createPreapproval({
-      reason: `Assinatura Navalha — ${body.tenant.name}`,
-      externalReference: tenantId,
-      payerEmail: owner.email,
-      cardTokenId: body.cardTokenId,
-      amountCents: plan.priceCents,
-      frequency: plan.mpFrequency,
-      frequencyType: plan.mpFrequencyType,
-      trialDays: TRIAL_DAYS,
-      backUrl: `${webUrl}/admin/assinatura`,
-    });
 
     try {
       // 0) vincula o CPF ao usuário. O UNIQUE em app_users.cpf bloqueia que
@@ -88,10 +92,11 @@ export class OnboardingController {
         data: { cpf: body.ownerCpf },
       });
 
-      // 1) tenant — INSERT raw, sem RETURNING (inclui owner_cpf + trial 14d)
+      // 1) tenant — INSERT raw, sem RETURNING (inclui owner_cpf + trial).
+      //    trial_ends_at = null no Free (legado; a verdade do trial é a Subscription).
       await ctx.tx.$executeRaw`
         INSERT INTO tenants (id, slug, name, timezone, owner_cpf, trial_ends_at, updated_at)
-        VALUES (${tenantId}::uuid, ${body.tenant.slug}, ${body.tenant.name}, ${timezone}, ${body.ownerCpf}, now() + interval '14 days', now())
+        VALUES (${tenantId}::uuid, ${body.tenant.slug}, ${body.tenant.name}, ${timezone}, ${body.ownerCpf}, ${trialEndsAt}, now())
       `;
 
       // 2) membership pro criador como admin
@@ -140,15 +145,17 @@ export class OnboardingController {
         },
       });
 
-      // 7) subscription (status trialing, preapproval já criado no MP)
+      // 7) subscription. Free nasce 'active' (sem cobrança/trial); pago nasce
+      //    'trialing' com preapproval e trial de 14 dias.
       await ctx.tx.subscription.create({
         data: {
           tenantId,
+          tier: body.tier,
           billingCycle: body.billingCycle,
-          status: 'trialing',
+          status: isPaid ? 'trialing' : 'active',
           priceCents: plan.priceCents,
-          mpPreapprovalId: preapproval.id,
-          trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
+          mpPreapprovalId: preapprovalId,
+          trialEndsAt,
         },
       });
 
@@ -164,12 +171,14 @@ export class OnboardingController {
         barbershopId: barbershop.id,
       };
     } catch (err) {
-      // Best-effort: cancela o preapproval MP para não deixar assinatura órfã
-      // caso o DB tenha falhado após a criação externa.
-      try {
-        await this.mp.cancelPreapproval(preapproval.id);
-      } catch {
-        // log only — não mascarar o erro original
+      // Best-effort: cancela o preapproval MP (se houve — só pagos) para não
+      // deixar assinatura órfã caso o DB tenha falhado após a criação externa.
+      if (preapprovalId) {
+        try {
+          await this.mp.cancelPreapproval(preapprovalId);
+        } catch {
+          // log only — não mascarar o erro original
+        }
       }
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         const target = Array.isArray(err.meta?.target)

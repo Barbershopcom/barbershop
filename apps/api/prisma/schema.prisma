@@ -83,6 +83,8 @@ model Tenant {
 model Subscription {
   id                String    @id @default(uuid()) @db.Uuid
   tenantId          String    @unique @map("tenant_id") @db.Uuid
+  /// 'free' | 'basic' | 'pro'
+  tier              String
   /// 'monthly' | 'annual'
   billingCycle      String    @map("billing_cycle")
   /// 'trialing' | 'active' | 'past_due' | 'suspended' | 'cancelled'
@@ -90,7 +92,8 @@ model Subscription {
   priceCents        Int       @map("price_cents")
   /// id do preapproval no Mercado Pago (resolve webhook). SEGREDO operacional.
   mpPreapprovalId   String?   @map("mp_preapproval_id")
-  trialEndsAt       DateTime  @map("trial_ends_at") @db.Timestamptz(6)
+  /// Fim do trial (now+14d) — null no Free (sem trial).
+  trialEndsAt       DateTime? @map("trial_ends_at") @db.Timestamptz(6)
   currentPeriodEnd  DateTime? @map("current_period_end") @db.Timestamptz(6)
   lastPaymentStatus String?   @map("last_payment_status")
   lastChargedAt     DateTime? @map("last_charged_at") @db.Timestamptz(6)

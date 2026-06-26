@@ -66,6 +66,7 @@ beforeAll(async () => {
   const sub = await prisma.subscription.create({
     data: {
       tenantId,
+      tier: 'pro',
       billingCycle: 'monthly',
       status: 'trialing',
       priceCents: 9900,

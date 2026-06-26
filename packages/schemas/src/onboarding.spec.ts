@@ -8,12 +8,39 @@ const base = {
   barbershop: { name: 'Barbearia X', lateCancelFeePct: 15 },
 };
 
-describe('createTenantOnboardingSchema billing', () => {
-  it('rejeita sem billingCycle/cardTokenId', () => {
-    expect(createTenantOnboardingSchema.safeParse(base).success).toBe(false);
-  });
-  it('aceita com billingCycle e cardTokenId', () => {
-    const r = createTenantOnboardingSchema.safeParse({ ...base, billingCycle: 'annual', cardTokenId: 'tok_123' });
+describe('createTenantOnboardingSchema tiers', () => {
+  it('free não exige cardTokenId', () => {
+    const r = createTenantOnboardingSchema.safeParse({
+      ...base,
+      tier: 'free',
+      billingCycle: 'monthly',
+    });
     expect(r.success).toBe(true);
+  });
+
+  it('basic/pro exigem cardTokenId', () => {
+    const semCartao = createTenantOnboardingSchema.safeParse({
+      ...base,
+      tier: 'basic',
+      billingCycle: 'monthly',
+    });
+    expect(semCartao.success).toBe(false);
+
+    const comCartao = createTenantOnboardingSchema.safeParse({
+      ...base,
+      tier: 'pro',
+      billingCycle: 'annual',
+      cardTokenId: 'tok_123',
+    });
+    expect(comCartao.success).toBe(true);
+  });
+
+  it('rejeita tier inválido', () => {
+    const r = createTenantOnboardingSchema.safeParse({
+      ...base,
+      tier: 'enterprise',
+      billingCycle: 'monthly',
+    });
+    expect(r.success).toBe(false);
   });
 });

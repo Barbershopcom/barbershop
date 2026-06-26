@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { slugSchema, timezoneSchema } from './common';
-import { BILLING_PLAN } from './billing';
+import { BILLING_TIERS } from './billing';
 
 const nonEmpty = (max: number) => z.string().trim().min(2).max(max);
 
@@ -78,21 +78,30 @@ const barbershopBlock = z.object({
   lateCancelFeePct: z.coerce.number().int().min(0).max(100).default(50),
 });
 
-export const createTenantOnboardingSchema = z.object({
-  /** CPF do responsável — usado para identidade e liberar o teste grátis
-   *  uma única vez por pessoa (anti-abuso). Saída normalizada (11 dígitos). */
-  ownerCpf: cpfSchema,
-  tenant: tenantBlock,
-  organization: organizationBlock,
-  location: locationBlock,
-  barbershop: barbershopBlock,
-  // Deriva de BILLING_PLAN mantendo o union literal ('monthly' | 'annual'),
-  // não alargando pra string — preserva o tipo BillingCycle nos call sites.
-  billingCycle: z.enum(
-    Object.keys(BILLING_PLAN) as [keyof typeof BILLING_PLAN, ...Array<keyof typeof BILLING_PLAN>],
-  ),
-  cardTokenId: z.string().min(1),
-});
+export const createTenantOnboardingSchema = z
+  .object({
+    /** CPF do responsável — usado para identidade e liberar o teste grátis
+     *  uma única vez por pessoa (anti-abuso). Saída normalizada (11 dígitos). */
+    ownerCpf: cpfSchema,
+    tenant: tenantBlock,
+    organization: organizationBlock,
+    location: locationBlock,
+    barbershop: barbershopBlock,
+    tier: z.enum(['free', 'basic', 'pro']),
+    billingCycle: z.enum(['monthly', 'annual']),
+    // Cartão é condicional: obrigatório só pros tiers que exigem (Basic/Pro).
+    // O superRefine abaixo valida isso conforme BILLING_TIERS[tier].requiresCard.
+    cardTokenId: z.string().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (BILLING_TIERS[val.tier].requiresCard && !val.cardTokenId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['cardTokenId'],
+        message: 'cardTokenId é obrigatório para planos pagos.',
+      });
+    }
+  });
 
 export type CreateTenantOnboardingInput = z.infer<typeof createTenantOnboardingSchema>;
 

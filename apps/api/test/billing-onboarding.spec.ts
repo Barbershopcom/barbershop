@@ -21,13 +21,13 @@ import { randomUUID } from 'node:crypto';
 import { OnboardingController } from '../src/onboarding/onboarding.controller';
 import type { MercadoPagoProvider } from '../src/payment/mercadopago.provider';
 import type { TenantContextValue } from '../src/tenancy/tenant-context';
-import { type CreateTenantOnboardingInput, planForCycle } from '@barbearia/schemas';
+import { type CreateTenantOnboardingInput, type PlanTier, priceForTier } from '@barbearia/schemas';
 
 const prisma = new PrismaClient();
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-function makeBody(suffix: string): CreateTenantOnboardingInput {
+function makeBody(suffix: string, tier: PlanTier = 'basic'): CreateTenantOnboardingInput {
   return {
     ownerCpf: '529.982.247-25', // CPF válido para testes
     tenant: {
@@ -45,8 +45,10 @@ function makeBody(suffix: string): CreateTenantOnboardingInput {
       country: 'BR',
     },
     barbershop: { name: `Shop ${suffix}`, lateCancelFeePct: 15 },
+    tier,
     billingCycle: 'monthly',
-    cardTokenId: 'tok_test_abc',
+    // Free não manda cartão; pagos mandam.
+    ...(tier === 'free' ? {} : { cardTokenId: 'tok_test_abc' }),
   };
 }
 
@@ -115,9 +117,10 @@ describe('Onboarding — cria preapproval + Subscription (happy path)', () => {
       where: { tenantId: result.tenant.id },
     });
     expect(sub).not.toBeNull();
+    expect(sub!.tier).toBe('basic');
     expect(sub!.status).toBe('trialing');
     expect(sub!.mpPreapprovalId).toBe('pre_x');
-    expect(sub!.priceCents).toBe(planForCycle('monthly').priceCents);
+    expect(sub!.priceCents).toBe(priceForTier('basic', 'monthly'));
     expect(sub!.billingCycle).toBe('monthly');
     expect(sub!.trialEndsAt).toBeInstanceOf(Date);
 
@@ -127,12 +130,47 @@ describe('Onboarding — cria preapproval + Subscription (happy path)', () => {
       expect.objectContaining({
         payerEmail: userEmail,
         cardTokenId: 'tok_test_abc',
-        amountCents: 9990,
+        amountCents: priceForTier('basic', 'monthly'),
         trialDays: 14,
       }),
     );
 
     // cleanup user
+    await prisma.appUser.deleteMany({ where: { id: userId } });
+  });
+});
+
+// ── tier Free: sem cartão, sem preapproval ───────────────────────────────────
+
+describe('Onboarding — tier free não chama o MP e nasce active', () => {
+  it('cria Subscription tier=free status=active sem preapproval, sem chamar createPreapproval', async () => {
+    const userId = randomUUID();
+    const userEmail = `ob-free-${userId}@test.invalid`;
+    await prisma.appUser.create({ data: { id: userId, email: userEmail } });
+
+    const mpMock = {
+      createPreapproval: jest.fn().mockResolvedValue({ id: 'pre_never', status: 'authorized' }),
+      cancelPreapproval: jest.fn().mockResolvedValue(undefined),
+    } as unknown as MercadoPagoProvider;
+
+    const controller = new OnboardingController(mpMock);
+    const suffix = `free${userId.slice(0, 7)}`;
+    const body = makeBody(suffix, 'free');
+
+    const result = (await runInTx(userId, (ctx) => controller.createTenant(ctx, body))) as {
+      tenant: { id: string };
+    };
+    createdTenants.push(result.tenant.id);
+
+    const sub = await prisma.subscription.findUnique({ where: { tenantId: result.tenant.id } });
+    expect(sub).not.toBeNull();
+    expect(sub!.tier).toBe('free');
+    expect(sub!.status).toBe('active');
+    expect(sub!.mpPreapprovalId).toBeNull();
+    expect(sub!.priceCents).toBe(0);
+    expect(sub!.trialEndsAt).toBeNull();
+    expect(mpMock.createPreapproval).not.toHaveBeenCalled();
+
     await prisma.appUser.deleteMany({ where: { id: userId } });
   });
 });

@@ -1,3 +1,4 @@
+import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
@@ -7,8 +8,11 @@ export default function SemVinculoScreen() {
   const { state, retryLink, signOut } = useSession();
   const [busy, setBusy] = useState(false);
 
+  // Se o estado mudou (ex.: "Sair" → anonymous, ou retry vinculou → linked),
+  // volta pro index, que re-roteia (anonymous → /login, linked → /inicio).
+  // Antes era `return null` → tela branca presa quando deslogava aqui.
   if (state.status !== 'link-failed') {
-    return null;
+    return <Redirect href="/" />;
   }
 
   async function handleRetry() {

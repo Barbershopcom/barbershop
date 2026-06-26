@@ -57,7 +57,7 @@ function RootLayoutNav() {
   const { state } = useSession();
   const tenant = useTenant();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     BebasNeue_400Regular,
     Lora_400Regular_Italic,
     Inter_400Regular,
@@ -68,15 +68,23 @@ function RootLayoutNav() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
+    // Esconde o splash mesmo se a fonte falhar (ex.: offline no web) — senão
+    // ficaria preso no splash/branco.
+    if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
   useEffect(() => {
     (async () => {
-      const done = await AsyncStorage.getItem('onboarding_done');
-      setOnboardingDone(done === 'true');
+      try {
+        const done = await AsyncStorage.getItem('onboarding_done');
+        setOnboardingDone(done === 'true');
+      } catch {
+        // Se o storage falhar (ex.: web sem polyfill), não trava o app em
+        // branco — segue como "onboarding não feito".
+        setOnboardingDone(false);
+      }
     })();
   }, []);
 

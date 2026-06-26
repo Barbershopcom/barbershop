@@ -18,12 +18,15 @@ import { useActiveTenant } from '@/lib/active-tenant';
 import { api, ApiError } from '@/lib/api';
 
 interface SubscriptionDto {
+  tier: string;
   status: string;
   billingCycle: string;
   priceCents: number;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
 }
+
+const TIER_LABEL: Record<string, string> = { free: 'Free', basic: 'Basic', pro: 'Pro' };
 
 const STATUS_LABEL: Record<string, string> = {
   trialing: 'Em teste grátis',
@@ -137,7 +140,10 @@ export default function AssinaturaPage() {
               <div>
                 <dt className="text-muted-foreground">Plano</dt>
                 <dd className="font-medium">
-                  {sub.billingCycle === 'annual' ? 'Anual' : 'Mensal'} · {formatBRL(sub.priceCents)}
+                  {TIER_LABEL[sub.tier] ?? sub.tier}
+                  {sub.tier === 'free'
+                    ? ' · grátis'
+                    : ` · ${sub.billingCycle === 'annual' ? 'Anual' : 'Mensal'} · ${formatBRL(sub.priceCents)}`}
                 </dd>
               </div>
               <div>
@@ -190,7 +196,7 @@ export default function AssinaturaPage() {
             </div>
           ) : null}
         </CardContent>
-        {sub && !editingCard ? (
+        {sub && sub.tier !== 'free' && !editingCard ? (
           <CardFooter className="justify-end gap-2">
             <Button variant="outline" onClick={() => setEditingCard(true)} disabled={acting}>
               Atualizar cartão

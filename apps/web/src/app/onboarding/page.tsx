@@ -1,11 +1,11 @@
 'use client';
 
 import {
-  BILLING_PLAN,
+  BILLING_TIERS,
   brazilianStates,
-  type BillingCycle,
   type CreateTenantOnboardingInput,
   createTenantOnboardingSchema,
+  type PlanTier,
 } from '@barbearia/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Info, Loader2 } from 'lucide-react';
@@ -118,9 +118,10 @@ export default function OnboardingPage() {
         country: 'BR',
       },
       barbershop: { name: '', description: '', lateCancelFeePct: 15 },
+      tier: 'pro',
       billingCycle: 'monthly',
-      // Placeholder p/ satisfazer o zod (min 1); o token real é gerado no
-      // submit via Secure Fields do MP e sobrescrito no payload.
+      // Pro exige cartão → placeholder p/ satisfazer o zod (o token real é
+      // gerado no submit). Pra Free vira undefined (ver setTier abaixo).
       cardTokenId: 'pending',
     },
     mode: 'onBlur',
@@ -129,6 +130,28 @@ export default function OnboardingPage() {
   // Cartão da assinatura (tokenizado no cliente — PAN nunca toca o backend).
   const cardFieldsRef = useRef<MpCardFieldsHandle>(null);
   const [cardholderName, setCardholderName] = useState('');
+
+  const selectedTier = form.watch('tier') as PlanTier;
+  const requiresCard = BILLING_TIERS[selectedTier].requiresCard;
+
+  // Troca de tier: ajusta o placeholder do cardTokenId (Free não precisa).
+  function setTier(tier: PlanTier) {
+    form.setValue('tier', tier, { shouldValidate: false });
+    form.setValue('cardTokenId', BILLING_TIERS[tier].requiresCard ? 'pending' : undefined, {
+      shouldValidate: false,
+    });
+  }
+
+  // Pré-seleção vinda da landing (?plan=basic&cycle=anual). Client-only.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const plan = params.get('plan');
+    const cycle = params.get('cycle');
+    if (plan && plan in BILLING_TIERS) setTier(plan as PlanTier);
+    if (cycle === 'anual' || cycle === 'annual') form.setValue('billingCycle', 'annual');
+    else if (cycle === 'mensal' || cycle === 'monthly') form.setValue('billingCycle', 'monthly');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function generateSlugFromName(name: string): string {
     return name
@@ -209,19 +232,19 @@ export default function OnboardingPage() {
         setHasSession(true);
       }
 
-      // Tokeniza o cartão (Secure Fields do MP) — gera o cardTokenId real.
-      if (!cardholderName.trim()) {
-        setSubmitError('Informe o nome impresso no cartão.');
-        return;
-      }
-      let cardTokenId: string;
-      try {
-        cardTokenId = await cardFieldsRef.current!.tokenize(cardholderName.trim(), values.ownerCpf);
-      } catch (err) {
-        setSubmitError(
-          err instanceof Error ? `Cartão inválido: ${err.message}` : 'Não foi possível validar o cartão.',
-        );
-        return;
+      // Tokeniza o cartão só nos planos pagos (Free não exige cartão).
+      let cardTokenId: string | undefined;
+      if (BILLING_TIERS[values.tier as PlanTier].requiresCard) {
+        if (!cardholderName.trim()) {
+          setSubmitError('Informe o nome impresso no cartão.');
+          return;
+        }
+        try {
+          cardTokenId = await cardFieldsRef.current!.tokenize(cardholderName.trim(), values.ownerCpf);
+        } catch (err) {
+          setSubmitError(err instanceof Error ? err.message : 'Não foi possível validar o cartão.');
+          return;
+        }
       }
 
       // Limpa campos opcionais vazios antes de enviar
@@ -607,51 +630,86 @@ export default function OnboardingPage() {
                 <h2 className="text-xs font-extrabold uppercase tracking-[0.16em] text-destructive">
                   Plano e pagamento
                 </h2>
-                <p className="text-sm text-muted-foreground">
-                  14 dias grátis. Você só é cobrado quando o teste acabar — cancele quando quiser.
-                </p>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {(Object.keys(BILLING_PLAN) as BillingCycle[]).map((cycle) => {
-                    const selected = form.watch('billingCycle') === cycle;
-                    const price = (BILLING_PLAN[cycle].priceCents / 100).toLocaleString('pt-BR', {
+                {/* Ciclo (só afeta os planos pagos) */}
+                <div className="inline-flex items-center gap-1 rounded-full bg-secondary p-1">
+                  {(['monthly', 'annual'] as const).map((cycle) => (
+                    <button
+                      key={cycle}
+                      type="button"
+                      onClick={() => form.setValue('billingCycle', cycle)}
+                      disabled={submitting}
+                      className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+                        form.watch('billingCycle') === cycle
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {cycle === 'annual' ? 'Anual −20%' : 'Mensal'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tiers */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {(['free', 'basic', 'pro'] as PlanTier[]).map((tier) => {
+                    const selected = selectedTier === tier;
+                    const isAnnual = form.watch('billingCycle') === 'annual';
+                    const cents = BILLING_TIERS[tier][isAnnual ? 'annual' : 'monthly'];
+                    // No anual mostramos o equivalente por mês (total/12).
+                    const perMonthCents = tier === 'free' ? 0 : isAnnual ? cents / 12 : cents;
+                    const label = tier === 'free' ? 'Free' : tier === 'basic' ? 'Basic' : 'Pro';
+                    const priceLabel = `${(perMonthCents / 100).toLocaleString('pt-BR', {
                       style: 'currency',
                       currency: 'BRL',
-                    });
+                    })}/mês`;
                     return (
                       <button
-                        key={cycle}
+                        key={tier}
                         type="button"
-                        onClick={() => form.setValue('billingCycle', cycle, { shouldValidate: true })}
+                        onClick={() => setTier(tier)}
                         disabled={submitting}
                         className={`rounded-md border px-4 py-3 text-left transition-colors ${
                           selected ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40'
                         }`}
                       >
-                        <span className="block text-sm font-semibold">
-                          {cycle === 'annual' ? 'Anual' : 'Mensal'}
-                        </span>
-                        <span className="block text-sm">
-                          {price}
-                          {cycle === 'annual' ? ' /ano (2 meses grátis)' : ' /mês'}
-                        </span>
+                        <span className="block text-sm font-semibold">{label}</span>
+                        <span className="block text-sm">{priceLabel}</span>
+                        {tier !== 'free' ? (
+                          <span className="block text-[11px] text-muted-foreground">
+                            14 dias grátis
+                          </span>
+                        ) : (
+                          <span className="block text-[11px] text-muted-foreground">sem cartão</span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="cardholder-name">Nome impresso no cartão</Label>
-                  <Input
-                    id="cardholder-name"
-                    placeholder="Como está no cartão"
-                    value={cardholderName}
-                    onChange={(e) => setCardholderName(e.target.value)}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <MpCardFields ref={cardFieldsRef} />
+                {/* Cartão — só nos planos pagos */}
+                {requiresCard ? (
+                  <div className="space-y-3 pt-1">
+                    <p className="text-sm text-muted-foreground">
+                      14 dias grátis. Você só é cobrado quando o teste acabar — cancele quando quiser.
+                    </p>
+                    <div className="space-y-2">
+                      <Label htmlFor="cardholder-name">Nome impresso no cartão</Label>
+                      <Input
+                        id="cardholder-name"
+                        placeholder="Como está no cartão"
+                        value={cardholderName}
+                        onChange={(e) => setCardholderName(e.target.value)}
+                        disabled={submitting}
+                      />
+                    </div>
+                    <MpCardFields ref={cardFieldsRef} />
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Plano grátis — sem cartão. Você pode fazer upgrade quando quiser.
+                  </p>
+                )}
               </section>
             </CardContent>
           </Card>

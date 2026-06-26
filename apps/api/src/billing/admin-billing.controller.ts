@@ -19,6 +19,7 @@ export class AdminBillingController {
     const sub = await ctx.tx.subscription.findUnique({ where: { tenantId } });
     if (!sub) return null;
     return {
+      tier: sub.tier,
       status: sub.status,
       billingCycle: sub.billingCycle,
       priceCents: sub.priceCents,

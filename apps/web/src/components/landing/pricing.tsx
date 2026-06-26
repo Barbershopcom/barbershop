@@ -147,7 +147,7 @@ export function PricingSection() {
               </ul>
 
               <Link
-                href="/onboarding"
+                href={`/onboarding?plan=${p.name.toLowerCase()}&cycle=${cycle}`}
                 className={cn(
                   'inline-flex h-12 items-center justify-center rounded-xl text-sm font-bold transition-transform hover:-translate-y-0.5',
                   p.popular

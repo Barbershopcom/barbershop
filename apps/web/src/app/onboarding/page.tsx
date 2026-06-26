@@ -1,16 +1,19 @@
 'use client';
 
 import {
+  BILLING_PLAN,
   brazilianStates,
+  type BillingCycle,
   type CreateTenantOnboardingInput,
   createTenantOnboardingSchema,
 } from '@barbearia/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Info, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
+import { MpCardFields, type MpCardFieldsHandle } from '@/components/mp-card-fields';
 import { BarberPoleStripe } from '@/components/ui/barber-pole-stripe';
 import { Button } from '@/components/ui/button';
 import {
@@ -115,9 +118,17 @@ export default function OnboardingPage() {
         country: 'BR',
       },
       barbershop: { name: '', description: '', lateCancelFeePct: 15 },
+      billingCycle: 'monthly',
+      // Placeholder p/ satisfazer o zod (min 1); o token real é gerado no
+      // submit via Secure Fields do MP e sobrescrito no payload.
+      cardTokenId: 'pending',
     },
     mode: 'onBlur',
   });
+
+  // Cartão da assinatura (tokenizado no cliente — PAN nunca toca o backend).
+  const cardFieldsRef = useRef<MpCardFieldsHandle>(null);
+  const [cardholderName, setCardholderName] = useState('');
 
   function generateSlugFromName(name: string): string {
     return name
@@ -198,9 +209,25 @@ export default function OnboardingPage() {
         setHasSession(true);
       }
 
+      // Tokeniza o cartão (Secure Fields do MP) — gera o cardTokenId real.
+      if (!cardholderName.trim()) {
+        setSubmitError('Informe o nome impresso no cartão.');
+        return;
+      }
+      let cardTokenId: string;
+      try {
+        cardTokenId = await cardFieldsRef.current!.tokenize(cardholderName.trim(), values.ownerCpf);
+      } catch (err) {
+        setSubmitError(
+          err instanceof Error ? `Cartão inválido: ${err.message}` : 'Não foi possível validar o cartão.',
+        );
+        return;
+      }
+
       // Limpa campos opcionais vazios antes de enviar
       const payload = {
         ...values,
+        cardTokenId,
         organization: {
           ...values.organization,
           description: values.organization.description?.trim() || undefined,
@@ -569,6 +596,62 @@ export default function OnboardingPage() {
                         )}
                       />
                 </div>
+              </section>
+            </CardContent>
+          </Card>
+
+          {/* --- Plano e pagamento --- */}
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <section className="space-y-3">
+                <h2 className="text-xs font-extrabold uppercase tracking-[0.16em] text-destructive">
+                  Plano e pagamento
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  14 dias grátis. Você só é cobrado quando o teste acabar — cancele quando quiser.
+                </p>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {(Object.keys(BILLING_PLAN) as BillingCycle[]).map((cycle) => {
+                    const selected = form.watch('billingCycle') === cycle;
+                    const price = (BILLING_PLAN[cycle].priceCents / 100).toLocaleString('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    });
+                    return (
+                      <button
+                        key={cycle}
+                        type="button"
+                        onClick={() => form.setValue('billingCycle', cycle, { shouldValidate: true })}
+                        disabled={submitting}
+                        className={`rounded-md border px-4 py-3 text-left transition-colors ${
+                          selected ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40'
+                        }`}
+                      >
+                        <span className="block text-sm font-semibold">
+                          {cycle === 'annual' ? 'Anual' : 'Mensal'}
+                        </span>
+                        <span className="block text-sm">
+                          {price}
+                          {cycle === 'annual' ? ' /ano (2 meses grátis)' : ' /mês'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cardholder-name">Nome impresso no cartão</Label>
+                  <Input
+                    id="cardholder-name"
+                    placeholder="Como está no cartão"
+                    value={cardholderName}
+                    onChange={(e) => setCardholderName(e.target.value)}
+                    disabled={submitting}
+                  />
+                </div>
+
+                <MpCardFields ref={cardFieldsRef} />
               </section>
             </CardContent>
           </Card>

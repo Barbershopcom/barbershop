@@ -53,6 +53,24 @@ export class TenantInterceptor implements NestInterceptor {
   ): Promise<unknown> {
     return this.prisma.$transaction(
       async (tx) => {
+        // ?? não trata string vazia — Supabase JWT manda phone='' pra users
+        // sem telefone. NULL real evita colisão no UNIQUE de phone_e164/email.
+        const safeEmail = user.email && user.email.trim() !== '' ? user.email : null;
+        const safePhone = user.phone && user.phone.trim() !== '' ? user.phone : null;
+
+        // Reconciliação ANTES de trocar de role (aqui ainda somos o role dono,
+        // BYPASSRLS): se o email/phone do JWT está preso a OUTRO id (linha órfã
+        // de cadastro antigo / usuário Supabase recriado), libera antes do
+        // upsert. O Supabase é a fonte de verdade do dono do email — sem isso o
+        // ON CONFLICT (id) não cobre o UNIQUE de email e TODA request
+        // autenticada quebra (23505).
+        if (safeEmail) {
+          await tx.$executeRaw`UPDATE app_users SET email = NULL, updated_at = now() WHERE email = ${safeEmail} AND id <> ${user.id}::uuid`;
+        }
+        if (safePhone) {
+          await tx.$executeRaw`UPDATE app_users SET phone_e164 = NULL, updated_at = now() WHERE phone_e164 = ${safePhone} AND id <> ${user.id}::uuid`;
+        }
+
         await tx.$executeRawUnsafe('SET LOCAL ROLE app_user');
         await tx.$executeRaw`SELECT set_config('app.user_id', ${user.id}, true)`;
         // app.user_email habilita as policies de auto-link de Employee.
@@ -60,13 +78,7 @@ export class TenantInterceptor implements NestInterceptor {
         await tx.$executeRaw`SELECT set_config('app.user_email', ${user.email ?? ''}, true)`;
 
         // Lazy sync: garante que app_users tem linha pra esse user.
-        // Policy app_users_self_insert exige id = current_setting('app.user_id'),
-        // o que já foi setado acima.
-        // ?? não trata string vazia — Supabase JWT manda phone='' pra users
-        // sem telefone. Usar || ou check explícito pra mandar NULL real,
-        // senão UNIQUE constraint em phone_e164 conflita entre vários users.
-        const safeEmail = user.email && user.email.trim() !== '' ? user.email : null;
-        const safePhone = user.phone && user.phone.trim() !== '' ? user.phone : null;
+        // Policy app_users_self_insert exige id = current_setting('app.user_id').
         await tx.$executeRaw`
           INSERT INTO app_users (id, email, phone_e164, updated_at)
           VALUES (${user.id}::uuid, ${safeEmail}, ${safePhone}, now())

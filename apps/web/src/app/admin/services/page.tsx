@@ -48,6 +48,9 @@ export default function ServicesPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  // Chips de preço rápido. Ao selecionar um, o valor que estava no input toma
+  // o lugar do chip clicado (swap) — não perde o valor digitado.
+  const [priceChips, setPriceChips] = useState<number[]>([6000, 4500, 5000, 3500, 2000]);
 
   const form = useForm<CreateServiceInput>({
     resolver: zodResolver(createServiceSchema),
@@ -232,13 +235,23 @@ export default function ServicesPage() {
                           </div>
                         </FormControl>
                         <div className="flex flex-wrap gap-2 pt-1">
-                          {[6000, 4500, 5000, 3500, 2000].map((cents) => (
+                          {priceChips.map((cents, i) => (
                             <Button
-                              key={cents}
+                              key={i}
                               type="button"
                               variant={field.value === cents ? 'default' : 'outline'}
                               size="sm"
-                              onClick={() => field.onChange(cents)}
+                              onClick={() => {
+                                const prev = field.value ?? 0;
+                                // Swap: o chip clicado vai pro input; o valor que
+                                // estava no input toma o lugar do chip (se > 0).
+                                if (prev > 0 && prev !== cents) {
+                                  setPriceChips((chips) =>
+                                    chips.map((c, idx) => (idx === i ? prev : c)),
+                                  );
+                                }
+                                field.onChange(cents);
+                              }}
                             >
                               {brl(cents)}
                             </Button>

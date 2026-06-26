@@ -130,7 +130,7 @@ export default function HomePage() {
             </div>
             <div className="mt-4 flex items-center gap-2 text-[13px] text-muted-foreground">
               <Check className="h-4 w-4 text-emerald-600" />
-              Sem cartão pra começar · cancele quando quiser
+              14 dias grátis · cancele quando quiser
             </div>
           </div>
           <div className="hidden md:flex md:justify-center">

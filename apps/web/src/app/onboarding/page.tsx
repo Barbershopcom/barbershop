@@ -6,6 +6,7 @@ import {
   type CreateTenantOnboardingInput,
   createTenantOnboardingSchema,
   type PlanTier,
+  TRIAL_DAYS,
 } from '@barbearia/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Info, Loader2 } from 'lucide-react';
@@ -717,7 +718,7 @@ export default function OnboardingPage() {
                           <span className="block text-sm">{priceLabel}</span>
                           {tier !== 'free' ? (
                             <span className="block text-[11px] text-muted-foreground">
-                              14 dias grátis
+                              {TRIAL_DAYS} dias grátis
                             </span>
                           ) : (
                             <span className="block text-[11px] text-muted-foreground">sem cartão</span>
@@ -736,7 +737,8 @@ export default function OnboardingPage() {
                 {requiresCard ? (
                   <div className="space-y-3 pt-1">
                     <p className="text-sm text-muted-foreground">
-                      14 dias grátis. Você só é cobrado quando o teste acabar — cancele quando quiser.
+                      {TRIAL_DAYS} dias grátis. Você só é cobrado quando o teste acabar — cancele
+                      quando quiser.
                     </p>
                     <div className="space-y-2">
                       <Label htmlFor="cardholder-name">Nome impresso no cartão</Label>

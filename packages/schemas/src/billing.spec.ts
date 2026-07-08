@@ -18,7 +18,7 @@ describe('billing tiers/helpers', () => {
     expect(BILLING_TIERS.basic.annual).toBe(46800);
     expect(BILLING_TIERS.pro.monthly).toBe(9900);
     expect(BILLING_TIERS.pro.annual).toBe(94800);
-    expect(TRIAL_DAYS).toBe(14);
+    expect(TRIAL_DAYS).toBe(7);
     expect(BILLING_GRACE_DAYS).toBe(7);
   });
 

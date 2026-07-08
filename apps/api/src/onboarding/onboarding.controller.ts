@@ -150,7 +150,7 @@ export class OnboardingController {
       });
 
       // 7) subscription. Free nasce 'active' (sem cobrança/trial); pago nasce
-      //    'trialing' com preapproval e trial de 14 dias.
+      //    'trialing' com preapproval e trial de TRIAL_DAYS dias.
       await ctx.tx.subscription.create({
         data: {
           tenantId,

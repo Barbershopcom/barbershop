@@ -18,6 +18,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { TRIAL_DAYS } from '@barbearia/schemas';
+
 import { AppDemoPanel } from '@/components/landing/app-demo-panel';
 import { HeroPhones } from '@/components/landing/phone-demo';
 import { PricingSection } from '@/components/landing/pricing';
@@ -55,7 +57,7 @@ const QUOTES = [
 ];
 
 const FAQ = [
-  { q: 'Preciso de cartão pra testar?', a: 'Não. Você cria sua barbearia e usa 14 dias grátis sem informar cartão. Só cobra se você decidir continuar.' },
+  { q: 'Preciso de cartão pra testar?', a: `Não. Você cria sua barbearia e usa ${TRIAL_DAYS} dias grátis sem informar cartão. Só cobra se você decidir continuar.` },
   { q: 'Como funciona o Pix?', a: 'O cliente paga pelo app e a confirmação é instantânea, sem taxa. O valor cai direto na conta da barbearia.' },
   { q: 'Posso cadastrar vários barbeiros?', a: 'Sim. No Basic até 5 barbeiros e no Pro ilimitado, cada um com agenda, serviços e folgas próprios.' },
   { q: 'Tem fidelidade ou multa?', a: 'Nenhuma. É mensal e você cancela quando quiser, sem multa nem letra miúda.' },
@@ -121,7 +123,7 @@ export default function HomePage() {
                 href="/onboarding"
                 className="inline-flex h-[50px] items-center gap-2 rounded-xl bg-destructive px-6 text-sm font-bold text-destructive-foreground shadow-card transition-transform hover:-translate-y-0.5"
               >
-                Teste grátis por 14 dias <ArrowRight className="h-4 w-4" />
+                Teste grátis por {TRIAL_DAYS} dias <ArrowRight className="h-4 w-4" />
               </Link>
               <a
                 href="#apps"
@@ -132,7 +134,7 @@ export default function HomePage() {
             </div>
             <div className="mt-4 flex items-center gap-2 text-[13px] text-muted-foreground">
               <Check className="h-4 w-4 text-emerald-600" />
-              14 dias grátis · cancele quando quiser
+              {TRIAL_DAYS} dias grátis · cancele quando quiser
             </div>
           </div>
           <div className="hidden md:flex md:justify-center">
@@ -322,7 +324,7 @@ export default function HomePage() {
             Sua agenda lotada começa hoje.
           </h2>
           <p className="mt-3 font-serif text-lg italic text-muted-foreground">
-            14 dias grátis. Configuração em 5 minutos. Sem fidelidade.
+            {TRIAL_DAYS} dias grátis. Configuração em 5 minutos. Sem fidelidade.
           </p>
           <Link
             href="/onboarding"

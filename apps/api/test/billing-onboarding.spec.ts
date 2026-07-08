@@ -21,7 +21,12 @@ import { randomUUID } from 'node:crypto';
 import { OnboardingController } from '../src/onboarding/onboarding.controller';
 import type { MercadoPagoProvider } from '../src/payment/mercadopago.provider';
 import type { TenantContextValue } from '../src/tenancy/tenant-context';
-import { type CreateTenantOnboardingInput, type PlanTier, priceForTier } from '@barbearia/schemas';
+import {
+  type CreateTenantOnboardingInput,
+  type PlanTier,
+  priceForTier,
+  TRIAL_DAYS,
+} from '@barbearia/schemas';
 
 const prisma = new PrismaClient();
 
@@ -73,6 +78,15 @@ async function runInTx(
 // ── shared state ────────────────────────────────────────────────────────────
 
 const createdTenants: string[] = [];
+
+// O CPF do makeBody é fixo (UNIQUE em app_users.cpf). Se uma rodada anterior
+// falhou entre o create e o cleanup do próprio teste, o dono órfão fica preso
+// no banco e envenena as próximas rodadas — limpa antes de começar.
+beforeAll(async () => {
+  await prisma.appUser.deleteMany({
+    where: { cpf: { in: ['529.982.247-25', '52998224725'] } },
+  });
+});
 
 afterAll(async () => {
   if (createdTenants.length) {
@@ -131,7 +145,7 @@ describe('Onboarding — cria preapproval + Subscription (happy path)', () => {
         payerEmail: userEmail,
         cardTokenId: 'tok_test_abc',
         amountCents: priceForTier('basic', 'monthly'),
-        trialDays: 14,
+        trialDays: TRIAL_DAYS,
       }),
     );
 

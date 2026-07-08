@@ -73,7 +73,7 @@ model Tenant {
   /// CPF do criador (só dígitos), desnormalizado p/ suporte/admin. A garantia
   /// anti-abuso fica no UNIQUE de app_users.cpf.
   ownerCpf    String?   @map("owner_cpf")
-  /// Fim do período de teste grátis (createdAt + 14 dias). Base p/ billing.
+  /// Fim do período de teste grátis (createdAt + TRIAL_DAYS). Base p/ billing.
   trialEndsAt DateTime? @map("trial_ends_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -98,7 +98,7 @@ model Subscription {
   priceCents        Int       @map("price_cents")
   /// id do preapproval no Mercado Pago (resolve webhook). SEGREDO operacional.
   mpPreapprovalId   String?   @map("mp_preapproval_id")
-  /// Fim do trial (now+14d) — null no Free (sem trial).
+  /// Fim do trial (now+TRIAL_DAYS) — null no Free (sem trial).
   trialEndsAt       DateTime? @map("trial_ends_at") @db.Timestamptz(6)
   currentPeriodEnd  DateTime? @map("current_period_end") @db.Timestamptz(6)
   lastPaymentStatus String?   @map("last_payment_status")

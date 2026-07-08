@@ -1,4 +1,4 @@
-export const TRIAL_DAYS = 14; // só tiers pagos
+export const TRIAL_DAYS = 7; // só tiers pagos
 export const BILLING_GRACE_DAYS = 7;
 
 export type BillingCycle = 'monthly' | 'annual';

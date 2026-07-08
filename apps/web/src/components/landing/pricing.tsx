@@ -1,6 +1,6 @@
 'use client';
 
-import { PLAN_LIMITS } from '@barbearia/schemas';
+import { PLAN_LIMITS, TRIAL_DAYS } from '@barbearia/schemas';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
@@ -49,7 +49,7 @@ const PLANS: Plan[] = [
       { label: 'Promoções e cupons' },
       { label: 'Relatórios e repasse', off: true },
     ],
-    cta: 'Testar 14 dias grátis',
+    cta: `Testar ${TRIAL_DAYS} dias grátis`,
   },
   {
     name: 'Pro',
@@ -65,7 +65,7 @@ const PLANS: Plan[] = [
       { label: 'Avaliações e reputação' },
       { label: 'Suporte prioritário' },
     ],
-    cta: 'Testar 14 dias grátis',
+    cta: `Testar ${TRIAL_DAYS} dias grátis`,
   },
 ];
 

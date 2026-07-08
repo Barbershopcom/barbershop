@@ -1,5 +1,6 @@
 'use client';
 
+import { BILLING_TIERS, PLAN_LIMITS, type PlanTier } from '@barbearia/schemas';
 import { useEffect, useRef, useState } from 'react';
 
 import { MpCardFields, type MpCardFieldsHandle } from '@/components/mp-card-fields';
@@ -58,6 +59,13 @@ export default function AssinaturaPage() {
   const [cpf, setCpf] = useState('');
   const [cardMsg, setCardMsg] = useState<string | null>(null);
 
+  // Troca de plano. free→pago exige cartão (MpCardFields no mesmo padrão acima).
+  const [pendingTier, setPendingTier] = useState<PlanTier | null>(null);
+  const [planMsg, setPlanMsg] = useState<string | null>(null);
+  const upgradeCardRef = useRef<MpCardFieldsHandle>(null);
+  const [upName, setUpName] = useState('');
+  const [upCpf, setUpCpf] = useState('');
+
   async function load() {
     try {
       const data = await api.get<SubscriptionDto | null>('/admin/subscription', {
@@ -85,6 +93,54 @@ export default function AssinaturaPage() {
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível cancelar.');
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function changePlan(tier: PlanTier) {
+    if (!sub) return;
+    setPlanMsg(null);
+
+    // free → pago: precisa tokenizar cartão primeiro (abre o bloco de cartão).
+    const needsCard = sub.tier === 'free' && tier !== 'free';
+    if (needsCard && pendingTier !== tier) {
+      setPendingTier(tier);
+      return;
+    }
+
+    let cardTokenId: string | undefined;
+    if (needsCard) {
+      if (!upName.trim() || upCpf.replace(/\D/g, '').length !== 11) {
+        setPlanMsg('Informe o nome no cartão e um CPF válido.');
+        return;
+      }
+    } else {
+      const label = TIER_LABEL[tier] ?? tier;
+      if (!confirm(`Mudar para o plano ${label}? A cobrança é ajustada no Mercado Pago.`)) return;
+    }
+
+    setActing(true);
+    try {
+      if (needsCard) {
+        cardTokenId = await upgradeCardRef.current!.tokenize(upName.trim(), upCpf);
+      }
+      await api.post(
+        '/admin/subscription/change-plan',
+        { tier, ...(cardTokenId ? { cardTokenId } : {}) },
+        { tenantId: tenant.id },
+      );
+      setPendingTier(null);
+      setPlanMsg('Plano atualizado.');
+      await load();
+    } catch (err) {
+      setPlanMsg(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Não foi possível mudar o plano.',
+      );
     } finally {
       setActing(false);
     }
@@ -209,6 +265,103 @@ export default function AssinaturaPage() {
           </CardFooter>
         ) : null}
       </Card>
+
+      {sub ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Mudar de plano</CardTitle>
+            <CardDescription>
+              O ciclo de cobrança atual ({sub.billingCycle === 'annual' ? 'Anual' : 'Mensal'}) é
+              mantido. Downgrade exige que unidades e equipe caibam no plano novo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {(Object.keys(BILLING_TIERS) as PlanTier[]).map((tier) => {
+                const limits = PLAN_LIMITS[tier];
+                const price =
+                  sub.billingCycle === 'annual'
+                    ? BILLING_TIERS[tier].annual
+                    : BILLING_TIERS[tier].monthly;
+                const current = sub.tier === tier;
+                return (
+                  <div
+                    key={tier}
+                    className={`rounded-lg border p-4 ${current ? 'border-primary bg-primary/5' : ''}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">{TIER_LABEL[tier]}</span>
+                      {current ? (
+                        <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          Plano atual
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {price === 0 ? 'Grátis' : `${formatBRL(price)}/${sub.billingCycle === 'annual' ? 'ano' : 'mês'}`}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {limits.maxUnits} unidade{limits.maxUnits > 1 ? 's' : ''} · até{' '}
+                      {limits.maxEmployeesPerUnit} barbeiros/unidade
+                    </p>
+                    {!current ? (
+                      <Button
+                        className="mt-3 w-full"
+                        variant="outline"
+                        size="sm"
+                        disabled={acting}
+                        onClick={() => changePlan(tier)}
+                      >
+                        {sub.tier === 'free' && tier !== 'free' ? 'Assinar' : 'Mudar para este'}
+                      </Button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+
+            {pendingTier ? (
+              <div className="space-y-3 rounded-md border border-input p-4">
+                <p className="text-sm font-medium">
+                  Assinar o plano {TIER_LABEL[pendingTier]} — informe o cartão (sem novo teste
+                  grátis).
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="up-name">Nome impresso no cartão</Label>
+                  <Input
+                    id="up-name"
+                    value={upName}
+                    onChange={(e) => setUpName(e.target.value)}
+                    disabled={acting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="up-cpf">CPF do titular</Label>
+                  <Input
+                    id="up-cpf"
+                    inputMode="numeric"
+                    placeholder="000.000.000-00"
+                    value={upCpf}
+                    onChange={(e) => setUpCpf(e.target.value)}
+                    disabled={acting}
+                  />
+                </div>
+                <MpCardFields ref={upgradeCardRef} />
+                <div className="flex gap-2">
+                  <Button onClick={() => changePlan(pendingTier)} disabled={acting}>
+                    {acting ? 'Processando…' : 'Confirmar assinatura'}
+                  </Button>
+                  <Button variant="outline" onClick={() => setPendingTier(null)} disabled={acting}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {planMsg ? <p className="text-sm text-muted-foreground">{planMsg}</p> : null}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

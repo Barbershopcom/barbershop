@@ -18,6 +18,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { AppDemoPanel } from '@/components/landing/app-demo-panel';
+import { HeroPhones } from '@/components/landing/phone-demo';
 import { PricingSection } from '@/components/landing/pricing';
 import { Seal } from '@/components/ui/seal';
 
@@ -139,21 +141,7 @@ export default function HomePage() {
                 className="absolute -right-24 -top-24 h-96 w-96 rounded-full opacity-60"
                 style={{ background: 'radial-gradient(circle, rgba(197,160,89,.18), transparent 65%)' }}
               />
-              <div className="relative flex items-end gap-4">
-                <div className="h-[340px] w-44 rotate-3 rounded-[28px] bg-tinta p-2 opacity-95 shadow-lg">
-                  <div className="h-full w-full rounded-[22px] bg-secondary" />
-                </div>
-                <div className="h-[380px] w-48 -rotate-3 rounded-[30px] bg-tinta p-2 shadow-lg">
-                  <div className="flex h-full w-full flex-col gap-2 rounded-[24px] bg-papel p-3">
-                    <div className="font-display text-2xl tracking-wide text-navy">NAVALHA</div>
-                    <div className="h-2 w-2/3 rounded-full bg-secondary" />
-                    <div className="mt-2 h-16 rounded-lg bg-secondary" />
-                    <div className="h-12 rounded-lg border border-border" />
-                    <div className="h-12 rounded-lg border border-border" />
-                    <div className="mt-auto h-10 rounded-lg bg-destructive" />
-                  </div>
-                </div>
-              </div>
+              <HeroPhones />
             </div>
           </div>
         </div>
@@ -244,17 +232,7 @@ export default function HomePage() {
                   Ver barbearias no app <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="rounded-[14px] border border-papel/15 bg-papel/5 p-6 shadow-lg">
-                <div className="flex flex-col gap-3">
-                  <div className="h-3 w-1/3 rounded-full bg-papel/20" />
-                  <div className="grid grid-cols-4 gap-2">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="h-16 rounded-lg bg-papel/10" />
-                    ))}
-                  </div>
-                  <div className="h-24 rounded-lg bg-papel/10" />
-                </div>
-              </div>
+              <AppDemoPanel />
             </div>
           </div>
         </div>

@@ -103,18 +103,22 @@ export class PublicTenantsController {
     },
   })
   async get(@Param('slug') slug: string): Promise<PublicTenantDto> {
-    const tenant = await this.repo.resolveTenant(slug);
+    const target = await this.repo.resolvePublicTarget(slug);
+    const { tenant } = target;
     const rating = await this.reviews.tenantRating(tenant.id);
     return {
       id: tenant.id,
-      slug: tenant.slug,
-      name: tenant.name,
+      // Mantém o slug PEDIDO (unidade ou tenant) — a web usa pra montar links.
+      slug,
+      name: target.barbershop?.name ?? tenant.name,
       timezone: tenant.timezone,
       phoneE164: tenant.phoneE164,
       addressLine: tenant.addressLine,
       instagramHandle: tenant.instagramHandle,
       ratingAvg: rating.avg,
       ratingCount: rating.count,
+      unit: target.barbershop ? { slug: target.barbershop.slug, name: target.barbershop.name } : null,
+      units: target.units,
     };
   }
 
@@ -224,9 +228,11 @@ export class PublicTenantsController {
     },
   })
   async listServices(@Param('slug') slug: string): Promise<PublicServiceDto[]> {
-    const tenant = await this.repo.resolveTenant(slug);
+    const target = await this.repo.resolvePublicTarget(slug);
+    // Modo seletor (tenant multi-unidade): peça uma unidade antes.
+    if (!target.barbershop) return [];
     const services = await this.prisma.service.findMany({
-      where: { tenantId: tenant.id, isActive: true },
+      where: { tenantId: target.tenant.id, barbershopId: target.barbershop.id, isActive: true },
       select: {
         id: true,
         name: true,
@@ -314,7 +320,8 @@ export class PublicTenantsController {
     @Param('slug') slug: string,
     @Query('services') services?: string,
   ): Promise<Array<{ id: string; displayName: string; ratingAvg: number | null; ratingCount: number }>> {
-    const tenant = await this.repo.resolveTenant(slug);
+    const target = await this.repo.resolvePublicTarget(slug);
+    if (!target.barbershop) return [];
 
     // Filtro opcional por serviços (comma-separated serviceIds)
     const serviceIds = services ? services.split(',').filter(Boolean) : [];
@@ -322,7 +329,8 @@ export class PublicTenantsController {
     // Se tiver serviços específicos, filtrar barbeiros que fazem TODOS os serviços
     const employees = await this.prisma.employee.findMany({
       where: {
-        tenantId: tenant.id,
+        tenantId: target.tenant.id,
+        barbershopId: target.barbershop.id,
         isActive: true,
         ...(serviceIds.length > 0
           ? {

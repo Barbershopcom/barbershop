@@ -43,6 +43,7 @@ const fakeTenant = {
 
 interface RepoStub {
   resolveTenant: jest.Mock;
+  resolvePublicTarget: jest.Mock;
   getSubscriptionStatus: jest.Mock;
   resolveActiveService: jest.Mock;
   loadSlotInputs: jest.Mock;
@@ -51,6 +52,11 @@ interface RepoStub {
 function makeRepo(subscriptionStatus: string | null): RepoStub {
   return {
     resolveTenant: jest.fn().mockResolvedValue(fakeTenant),
+    resolvePublicTarget: jest.fn().mockResolvedValue({
+      tenant: fakeTenant,
+      barbershop: { id: 'shop-1', slug: fakeTenant.slug, name: 'Shop' },
+      units: [],
+    }),
     getSubscriptionStatus: jest.fn().mockResolvedValue(subscriptionStatus),
     resolveActiveService: jest.fn(),
     loadSlotInputs: jest.fn(),
@@ -92,7 +98,11 @@ function makeService(repo: RepoStub): BookingService {
 describe('BookingService — subscription gating', () => {
   it('throws ForbiddenException when tenant.status is "pending" (email não confirmado)', async () => {
     const repo = makeRepo('active');
-    repo.resolveTenant = jest.fn().mockResolvedValue({ ...fakeTenant, status: 'pending' });
+    repo.resolvePublicTarget = jest.fn().mockResolvedValue({
+      tenant: { ...fakeTenant, status: 'pending' },
+      barbershop: { id: 'shop-1', slug: fakeTenant.slug, name: 'Shop' },
+      units: [],
+    });
     const service = makeService(repo);
 
     await expect(

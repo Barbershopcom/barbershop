@@ -12,11 +12,12 @@
  *  3. POST /admin/subscription/cancel chama mp.cancelPreapproval e status vira 'cancelled'.
  */
 
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 
 import { AdminBillingController } from '../src/billing/admin-billing.controller';
+import { PlanLimitsService } from '../src/billing/plan-limits.service';
 import type { AuthenticatedUser } from '../src/auth/auth.decorators';
 import type { TenantContextValue } from '../src/tenancy/tenant-context';
 import type { MercadoPagoProvider } from '../src/payment/mercadopago.provider';
@@ -27,9 +28,11 @@ const prisma = new PrismaClient();
 const mpMock = {
   cancelPreapproval: jest.fn().mockResolvedValue(undefined),
   updatePreapprovalCard: jest.fn().mockResolvedValue(undefined),
+  updatePreapprovalAmount: jest.fn().mockResolvedValue(undefined),
+  createPreapproval: jest.fn().mockResolvedValue({ id: 'new-pre', status: 'authorized' }),
 } as unknown as MercadoPagoProvider;
 
-const controller = new AdminBillingController(mpMock);
+const controller = new AdminBillingController(mpMock, new PlanLimitsService());
 
 // Atores
 const adminId = randomUUID();
@@ -137,7 +140,117 @@ describe('AdminBillingController — GET /admin/subscription', () => {
   });
 });
 
+describe('AdminBillingController — POST /admin/subscription/change-plan', () => {
+  beforeEach(async () => {
+    await prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: {
+        tier: 'pro',
+        status: 'active',
+        priceCents: 9900,
+        mpPreapprovalId: 'preapproval-test-123',
+      },
+    });
+    jest.clearAllMocks();
+  });
+
+  it('downgrade pro→free com uso dentro do teto: cancela preapproval e zera', async () => {
+    const r = await withCtx(adminId, tenantId, (ctx, user) =>
+      controller.changePlan(ctx, user, { tier: 'free' }),
+    );
+    expect(r).toMatchObject({ ok: true, tier: 'free', priceCents: 0 });
+    expect(mpMock.cancelPreapproval).toHaveBeenCalledWith('preapproval-test-123');
+    const sub = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+    expect(sub).toMatchObject({ tier: 'free', priceCents: 0, status: 'active', mpPreapprovalId: null });
+  });
+
+  it('downgrade com funcionários acima do teto → 409 PLAN_LIMIT_REACHED', async () => {
+    // Semeia 1 unidade com 3 funcionários ativos (acima do free = 2/unidade).
+    const org = await prisma.organization.create({ data: { tenantId, name: 'Org' } });
+    const loc = await prisma.location.create({
+      data: {
+        tenantId, organizationId: org.id, name: 'Loc',
+        addressLine1: 'Rua X, 1', city: 'SP', state: 'SP', postalCode: '01000-000', country: 'BR',
+      },
+    });
+    const shop = await prisma.barbershop.create({
+      data: { tenantId, locationId: loc.id, name: 'Shop', slug: `shop-${randomUUID().slice(0, 8)}` },
+    });
+    await prisma.employee.createMany({
+      data: [1, 2, 3].map((n) => ({
+        tenantId, barbershopId: shop.id, displayName: `B${n}`, role: 'barber',
+      })),
+    });
+
+    await expect(
+      withCtx(adminId, tenantId, (ctx, user) => controller.changePlan(ctx, user, { tier: 'free' })),
+    ).rejects.toMatchObject({ response: { code: 'PLAN_LIMIT_REACHED', resource: 'employee' } });
+
+    await prisma.employee.deleteMany({ where: { barbershopId: shop.id } });
+    await prisma.barbershop.delete({ where: { id: shop.id } });
+    await prisma.location.delete({ where: { id: loc.id } });
+    await prisma.organization.delete({ where: { id: org.id } });
+  });
+
+  it('upgrade basic→pro atualiza valor no MP', async () => {
+    await prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: { tier: 'basic', priceCents: 4900 },
+    });
+    const r = await withCtx(adminId, tenantId, (ctx, user) =>
+      controller.changePlan(ctx, user, { tier: 'pro' }),
+    );
+    expect(r).toMatchObject({ ok: true, tier: 'pro', priceCents: 9900 });
+    expect(mpMock.updatePreapprovalAmount).toHaveBeenCalledWith('preapproval-test-123', 9900);
+  });
+
+  it('free→pago cria preapproval sem trial quando tem cartão', async () => {
+    await prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: { tier: 'free', priceCents: 0, mpPreapprovalId: null },
+    });
+    const r = await withCtx(adminId, tenantId, (ctx, user) =>
+      controller.changePlan(ctx, user, { tier: 'basic', cardTokenId: 'tok-1' }),
+    );
+    expect(r).toMatchObject({ ok: true, tier: 'basic', priceCents: 4900 });
+    expect(mpMock.createPreapproval).toHaveBeenCalledWith(
+      expect.objectContaining({ cardTokenId: 'tok-1', amountCents: 4900, trialDays: 0 }),
+    );
+    const sub = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+    expect(sub).toMatchObject({ tier: 'basic', mpPreapprovalId: 'new-pre', status: 'active' });
+  });
+
+  it('free→pago sem cartão → 400; tier igual → 400; tier inválido → 400', async () => {
+    await prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: { tier: 'free', priceCents: 0, mpPreapprovalId: null },
+    });
+    await expect(
+      withCtx(adminId, tenantId, (ctx, user) => controller.changePlan(ctx, user, { tier: 'basic' })),
+    ).rejects.toThrow(BadRequestException);
+    await expect(
+      withCtx(adminId, tenantId, (ctx, user) => controller.changePlan(ctx, user, { tier: 'free' })),
+    ).rejects.toThrow(BadRequestException);
+    await expect(
+      withCtx(adminId, tenantId, (ctx, user) => controller.changePlan(ctx, user, { tier: 'mega' })),
+    ).rejects.toThrow(BadRequestException);
+  });
+});
+
 describe('AdminBillingController — POST /admin/subscription/cancel', () => {
+  beforeEach(async () => {
+    // Restaura o estado semeado — os testes de change-plan mexem na subscription.
+    await prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: {
+        tier: 'pro',
+        status: 'trialing',
+        priceCents: 9900,
+        mpPreapprovalId: 'preapproval-test-123',
+      },
+    });
+  });
+
   it('admin cancela: chama mp.cancelPreapproval e subscription.status vira cancelled', async () => {
     jest.clearAllMocks();
 

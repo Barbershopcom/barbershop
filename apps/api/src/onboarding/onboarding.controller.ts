@@ -141,6 +141,8 @@ export class OnboardingController {
         data: {
           tenantId,
           locationId: location.id,
+          // 1ª unidade herda o slug do tenant (links públicos continuam válidos).
+          slug: body.tenant.slug,
           name: body.barbershop.name,
           description: body.barbershop.description ?? null,
           lateCancelFeePct: body.barbershop.lateCancelFeePct,

@@ -115,6 +115,7 @@ export class AdminAppointmentsController {
       where: {
         startAt: { gte: fromUtc, lt: toUtcExclusive },
         ...(query.barberId ? { barberId: query.barberId } : {}),
+        ...(query.barbershopId ? { barbershopId: query.barbershopId } : {}),
         ...(query.includeAllStatuses
           ? {}
           : { status: { in: [...slotOccupyingStatuses] } }),

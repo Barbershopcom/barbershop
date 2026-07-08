@@ -37,41 +37,66 @@ export class DiscoverController {
     const q = query.q?.trim();
     const now = new Date();
 
-    const tenants = await this.prisma.tenant.findMany({
+    // Multi-unidade (spec 2026-07-07): cada card é uma UNIDADE (barbershop
+    // ativa de tenant público), com slug/endereço próprios. Barbershop não tem
+    // relation Prisma com Tenant — resolve os tenants públicos primeiro.
+    const publicTenants = await this.prisma.tenant.findMany({
+      where: { listedPublicly: true },
+      select: { id: true, name: true },
+    });
+    if (publicTenants.length === 0) return [];
+    const publicTenantIds = publicTenants.map((t) => t.id);
+    // Busca textual também casa com o nome da MARCA (tenant), não só da unidade.
+    const qTenantIds = q
+      ? publicTenants
+          .filter((t) => t.name.toLowerCase().includes(q.toLowerCase()))
+          .map((t) => t.id)
+      : [];
+
+    const shops = await this.prisma.barbershop.findMany({
       where: {
-        listedPublicly: true,
+        isActive: true,
+        tenantId: { in: publicTenantIds },
         ...(q
           ? {
               OR: [
                 { name: { contains: q, mode: 'insensitive' } },
                 { slug: { contains: q, mode: 'insensitive' } },
+                ...(qTenantIds.length > 0 ? [{ tenantId: { in: qTenantIds } }] : []),
               ],
             }
           : {}),
       },
-      select: { id: true, slug: true, name: true, addressLine: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        tenantId: true,
+        location: { select: { addressLine1: true, city: true } },
+      },
       take: MAX_RESULTS,
     });
-    if (tenants.length === 0) return [];
+    if (shops.length === 0) return [];
 
-    const tenantIds = tenants.map((t) => t.id);
+    const shopIds = shops.map((s) => s.id);
+    const tenantIds = [...new Set(shops.map((s) => s.tenantId))];
 
-    // Rating por tenant + menor preço + barbeiros ativos + promoções ativas
+    // Rating/preço/equipe por unidade; promoções seguem tenant-scoped.
     const [ratings, prices, employees, promotions] = await Promise.all([
       this.prisma.review.groupBy({
-        by: ['tenantId'],
-        where: { tenantId: { in: tenantIds } },
+        by: ['barbershopId'],
+        where: { barbershopId: { in: shopIds } },
         _avg: { rating: true },
         _count: { _all: true },
       }),
       this.prisma.service.groupBy({
-        by: ['tenantId'],
-        where: { tenantId: { in: tenantIds }, isActive: true },
+        by: ['barbershopId'],
+        where: { barbershopId: { in: shopIds }, isActive: true },
         _min: { basePriceCents: true },
       }),
       this.prisma.employee.groupBy({
-        by: ['tenantId'],
-        where: { tenantId: { in: tenantIds }, isActive: true },
+        by: ['barbershopId'],
+        where: { barbershopId: { in: shopIds }, isActive: true },
         _count: { _all: true },
       }),
       this.prisma.promotion.findMany({
@@ -87,31 +112,32 @@ export class DiscoverController {
       }),
     ]);
 
-    const ratingByTenant = new Map(
+    const ratingByShop = new Map(
       ratings.map((r) => [
-        r.tenantId,
+        r.barbershopId,
         { avg: round1(r._avg.rating), count: r._count._all },
       ]),
     );
-    const priceByTenant = new Map(
-      prices.map((p) => [p.tenantId, p._min.basePriceCents ?? null]),
+    const priceByShop = new Map(
+      prices.map((p) => [p.barbershopId, p._min.basePriceCents ?? null]),
     );
-    const employeesByTenant = new Map(employees.map((e) => [e.tenantId, e._count._all]));
+    const employeesByShop = new Map(employees.map((e) => [e.barbershopId, e._count._all]));
     const promotionTenantIds = new Set(promotions.map((p) => p.tenantId));
 
-    const items: DiscoverItem[] = tenants.map((t) => {
-      const rating = ratingByTenant.get(t.id);
+    const items: DiscoverItem[] = shops.map((s) => {
+      const rating = ratingByShop.get(s.id);
+      const addressLine = `${s.location.addressLine1} • ${s.location.city}`;
       return {
-        id: t.id,
-        slug: t.slug,
-        name: t.name,
+        id: s.id,
+        slug: s.slug,
+        name: s.name,
         ratingAvg: rating?.avg ?? null,
         ratingCount: rating?.count ?? 0,
-        addressLine: t.addressLine,
-        neighborhood: t.addressLine?.split('•')[1]?.trim() ?? null,
-        priceFromCents: priceByTenant.get(t.id) ?? null,
-        employeeCount: employeesByTenant.get(t.id) ?? 0,
-        hasPromotion: promotionTenantIds.has(t.id),
+        addressLine,
+        neighborhood: s.location.city || null,
+        priceFromCents: priceByShop.get(s.id) ?? null,
+        employeeCount: employeesByShop.get(s.id) ?? 0,
+        hasPromotion: promotionTenantIds.has(s.tenantId),
       };
     });
 

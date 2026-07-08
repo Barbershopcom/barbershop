@@ -66,7 +66,14 @@ export class BookingService {
   }): Promise<{ status: number; body: BookedAppointment | Record<string, unknown> }> {
     const { slug, idempotencyKey, body } = args;
 
-    const tenant = await this.repo.resolveTenant(slug);
+    const target = await this.repo.resolvePublicTarget(slug);
+    if (!target.barbershop) {
+      throw new UnprocessableEntityException({
+        message: 'Escolha uma unidade para agendar.',
+        code: 'unit_required',
+      });
+    }
+    const tenant = target.tenant;
 
     // Gating de ativação: barbearia 'pending' (email do dono não confirmado)
     // ainda não está no ar — não recebe agendamento público.
@@ -86,7 +93,11 @@ export class BookingService {
       );
     }
 
-    const service = await this.repo.resolveActiveService(tenant.id, body.serviceId);
+    const service = await this.repo.resolveActiveService(
+      tenant.id,
+      body.serviceId,
+      target.barbershop.id,
+    );
 
     const requestHash = hashRequest(body);
 

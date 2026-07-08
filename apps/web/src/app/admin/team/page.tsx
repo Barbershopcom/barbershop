@@ -31,6 +31,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { api, ApiError } from '@/lib/api';
 import { useActiveTenant } from '@/lib/active-tenant';
+import { useActiveUnit } from '@/lib/active-unit';
 
 const roleLabel: Record<(typeof employeeRoles)[number], string> = {
   admin: 'Admin',
@@ -40,6 +41,7 @@ const roleLabel: Record<(typeof employeeRoles)[number], string> = {
 
 export default function TeamPage() {
   const { tenant } = useActiveTenant();
+  const { activeUnit } = useActiveUnit();
   const [employees, setEmployees] = useState<EmployeeDto[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -55,9 +57,10 @@ export default function TeamPage() {
   async function refresh() {
     setLoadError(null);
     try {
-      const data = await api.get<EmployeeDto[]>('/employees?includeInactive=true', {
-        tenantId: tenant.id,
-      });
+      const data = await api.get<EmployeeDto[]>(
+        `/employees?includeInactive=true&barbershopId=${activeUnit.id}`,
+        { tenantId: tenant.id },
+      );
       setEmployees(data);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Erro ao listar funcionários');
@@ -67,7 +70,7 @@ export default function TeamPage() {
   useEffect(() => {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenant.id]);
+  }, [tenant.id, activeUnit.id]);
 
   function startCreate() {
     setEditingId(null);
@@ -101,7 +104,9 @@ export default function TeamPage() {
       if (editingId) {
         await api.patch(`/admin/employees/${editingId}`, values, { tenantId: tenant.id });
       } else {
-        await api.post('/admin/employees', values, { tenantId: tenant.id });
+        await api.post(`/admin/employees?barbershopId=${activeUnit.id}`, values, {
+          tenantId: tenant.id,
+        });
       }
       await refresh();
       cancel();

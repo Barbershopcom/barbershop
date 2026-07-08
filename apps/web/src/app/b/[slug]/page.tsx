@@ -51,6 +51,46 @@ export default async function PublicTenantLanding({ params }: PageProps) {
       getPublicServices(slug),
     ]);
 
+    // Modo seletor: slug do tenant com várias unidades — cliente escolhe uma.
+    if (tenant.unit === null && tenant.units.length > 0) {
+      return (
+        <main className="mx-auto max-w-3xl px-4 py-10 md:px-6 md:py-16">
+          <header className="mb-8 text-center md:mb-10">
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+              {tenant.name}
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Escolha a unidade mais perto de você.
+            </p>
+          </header>
+          <ul className="space-y-3">
+            {tenant.units.map((u) => (
+              <li
+                key={u.slug}
+                className="rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40 md:p-5"
+              >
+                <Link href={`/b/${u.slug}`} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-base font-medium md:text-lg">{u.name}</h2>
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <MapPin className="h-4 w-4 shrink-0" />
+                      {u.addressLine1} · {u.city}
+                    </p>
+                  </div>
+                  <span className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
+                    Ver horários
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <footer className="mt-12 text-center text-xs text-muted-foreground">
+            Powered by Barbearia
+          </footer>
+        </main>
+      );
+    }
+
     const hasContact =
       tenant.phoneE164 || tenant.addressLine || tenant.instagramHandle;
 

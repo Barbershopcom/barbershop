@@ -16,6 +16,8 @@ export const adminAppointmentsQuerySchema = z
     from: isoDateSchema,
     to: isoDateSchema,
     barberId: uuidSchema.optional(),
+    /** Filtra pela unidade (multi-unidade). Sem ele: tenant inteiro (retrocompat). */
+    barbershopId: uuidSchema.optional(),
     includeAllStatuses: z.coerce.boolean().optional().default(false),
   })
   .refine((q) => q.from <= q.to, {

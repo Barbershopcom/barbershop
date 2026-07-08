@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api, ApiError } from '@/lib/api';
 import { useActiveTenant } from '@/lib/active-tenant';
+import { useActiveUnit } from '@/lib/active-unit';
 
 /**
  * Calendar view do admin. ADR-008.
@@ -33,6 +34,7 @@ import { useActiveTenant } from '@/lib/active-tenant';
  */
 export default function AdminAgendaPage() {
   const { tenant } = useActiveTenant();
+  const { activeUnit } = useActiveUnit();
   const calendarRef = useRef<FullCalendar | null>(null);
 
   const [employees, setEmployees] = useState<EmployeeDto[]>([]);
@@ -60,13 +62,13 @@ export default function AdminAgendaPage() {
   useEffect(() => {
     void Promise.all([
       api
-        .get<EmployeeDto[]>('/employees?includeInactive=false', { tenantId: tenant.id })
+        .get<EmployeeDto[]>(`/employees?includeInactive=false&barbershopId=${activeUnit.id}`, { tenantId: tenant.id })
         .then((data) => setEmployees(data.filter((e) => e.role !== 'admin'))),
       api
-        .get<ServiceDto[]>('/admin/services', { tenantId: tenant.id })
+        .get<ServiceDto[]>(`/admin/services?barbershopId=${activeUnit.id}`, { tenantId: tenant.id })
         .then(setServices),
     ]).catch(() => undefined);
-  }, [tenant.id]);
+  }, [tenant.id, activeUnit.id]);
 
   const load = useCallback(async () => {
     if (!visibleRange) return;
@@ -77,6 +79,7 @@ export default function AdminAgendaPage() {
         to: visibleRange.to,
       });
       if (barberFilter) params.set('barberId', barberFilter);
+      params.set('barbershopId', activeUnit.id);
       if (includeAllStatuses) params.set('includeAllStatuses', 'true');
       const data = await api.get<AdminAppointmentItem[]>(
         `/admin/appointments?${params.toString()}`,
@@ -85,7 +88,7 @@ export default function AdminAgendaPage() {
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Erro ao carregar agenda');
     }
-  }, [visibleRange, barberFilter, includeAllStatuses]);
+  }, [visibleRange, barberFilter, includeAllStatuses, activeUnit.id]);
 
   useEffect(() => {
     void load();

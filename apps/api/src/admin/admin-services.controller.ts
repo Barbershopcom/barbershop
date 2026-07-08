@@ -37,6 +37,7 @@ import {
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { assertTenantAdmin } from '../tenancy/require-admin';
+import { resolveBarbershopId } from '../tenancy/resolve-barbershop';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -65,6 +66,7 @@ export class AdminServicesController {
     type: Boolean,
     description: 'true/1 inclui serviços inativos. Default: só ativos.',
   })
+  @ApiQuery({ name: 'barbershopId', required: false, description: 'Filtra pela unidade.' })
   @ApiOkResponse({ description: 'Lista de serviços do tenant.' })
   @ApiUnauthorizedResponse({ description: 'Token inválido ou expirado' })
   @ApiForbiddenResponse({ description: 'Usuário sem permissão (role: admin)' })
@@ -72,11 +74,16 @@ export class AdminServicesController {
     @Tx() ctx: TenantContextValue,
     @CurrentUser() user: AuthenticatedUser,
     @Query('includeInactive') includeInactive?: string,
+    @Query('barbershopId') barbershopId?: string,
   ): Promise<ServiceDto[]> {
     await this.requireAdmin(ctx, user);
     const showInactive = includeInactive === 'true' || includeInactive === '1';
+    const shopId = await resolveBarbershopId(ctx, barbershopId);
     const services = await ctx.tx.service.findMany({
-      where: showInactive ? {} : { isActive: true },
+      where: {
+        barbershopId: shopId,
+        ...(showInactive ? {} : { isActive: true }),
+      },
       orderBy: [{ isActive: 'desc' }, { basePriceCents: 'asc' }, { name: 'asc' }],
     });
     return services.map(toDto);
@@ -105,16 +112,15 @@ export class AdminServicesController {
     @Tx() ctx: TenantContextValue,
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(createServiceSchema)) body: CreateServiceInput,
+    @Query('barbershopId') barbershopId?: string,
   ): Promise<ServiceDto> {
     const admin = await this.requireAdmin(ctx, user);
-
-    const barbershop = await ctx.tx.barbershop.findFirst({ select: { id: true } });
-    if (!barbershop) throw new NotFoundException('Barbearia não encontrada.');
+    const shopId = await resolveBarbershopId(ctx, barbershopId);
 
     const service = await ctx.tx.service.create({
       data: {
         tenantId: admin.tenantId,
-        barbershopId: barbershop.id,
+        barbershopId: shopId,
         name: body.name,
         description: body.description ?? null,
         durationMin: body.durationMin,

@@ -224,7 +224,10 @@ export class MercadoPagoProvider implements PaymentProvider {
         frequency_type: input.frequencyType,
         transaction_amount: input.amountCents / 100,
         currency_id: 'BRL',
-        free_trial: { frequency: input.trialDays, frequency_type: 'days' },
+        // Sem free_trial quando trialDays=0 (upgrade free→pago não ganha trial).
+        ...(input.trialDays > 0
+          ? { free_trial: { frequency: input.trialDays, frequency_type: 'days' } }
+          : {}),
       },
     };
     const res = await fetch(`${this.baseUrl}/preapproval`, {
@@ -252,6 +255,18 @@ export class MercadoPagoProvider implements PaymentProvider {
     };
     if (!res.ok) throw new Error(`MP getPreapproval ${id} → ${res.status}`);
     return json;
+  }
+
+  async updatePreapprovalAmount(id: string, amountCents: number): Promise<void> {
+    const res = await fetch(`${this.baseUrl}/preapproval/${id}`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${this.platformToken()}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        auto_recurring: { transaction_amount: amountCents / 100, currency_id: 'BRL' },
+      }),
+    });
+    await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`MP updatePreapprovalAmount ${id} → ${res.status}`);
   }
 
   async updatePreapprovalCard(id: string, cardTokenId: string): Promise<void> {

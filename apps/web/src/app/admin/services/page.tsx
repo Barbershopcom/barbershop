@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { api, ApiError } from '@/lib/api';
 import { useActiveTenant } from '@/lib/active-tenant';
+import { useActiveUnit } from '@/lib/active-unit';
 
 function brl(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -42,6 +43,7 @@ function duration(min: number): string {
 
 export default function ServicesPage() {
   const { tenant } = useActiveTenant();
+  const { activeUnit } = useActiveUnit();
   const [services, setServices] = useState<ServiceDto[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -60,9 +62,10 @@ export default function ServicesPage() {
   async function refresh() {
     setLoadError(null);
     try {
-      const data = await api.get<ServiceDto[]>('/admin/services?includeInactive=true', {
-        tenantId: tenant.id,
-      });
+      const data = await api.get<ServiceDto[]>(
+        `/admin/services?includeInactive=true&barbershopId=${activeUnit.id}`,
+        { tenantId: tenant.id },
+      );
       setServices(data);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Erro ao listar serviços');
@@ -72,7 +75,7 @@ export default function ServicesPage() {
   useEffect(() => {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenant.id]);
+  }, [tenant.id, activeUnit.id]);
 
   function startCreate() {
     setEditingId(null);
@@ -107,7 +110,9 @@ export default function ServicesPage() {
       if (editingId) {
         await api.patch(`/admin/services/${editingId}`, values, { tenantId: tenant.id });
       } else {
-        await api.post('/admin/services', values, { tenantId: tenant.id });
+        await api.post(`/admin/services?barbershopId=${activeUnit.id}`, values, {
+          tenantId: tenant.id,
+        });
       }
       await refresh();
       cancel();

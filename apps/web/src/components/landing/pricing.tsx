@@ -1,5 +1,6 @@
 'use client';
 
+import { PLAN_LIMITS } from '@barbearia/schemas';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
@@ -23,7 +24,9 @@ const PLANS: Plan[] = [
     monthly: 0,
     yearly: 0,
     feats: [
-      { label: '1 barbeiro' },
+      {
+        label: `${PLAN_LIMITS.free.maxUnits} unidade · até ${PLAN_LIMITS.free.maxEmployeesPerUnit} barbeiros`,
+      },
       { label: 'Agenda online + página pública' },
       { label: 'Pagamento no Pix' },
       { label: 'Lembretes automáticos', off: true },
@@ -38,7 +41,9 @@ const PLANS: Plan[] = [
     yearly: 39,
     popular: true,
     feats: [
-      { label: 'Até 5 barbeiros' },
+      {
+        label: `${PLAN_LIMITS.basic.maxUnits} unidades · até ${PLAN_LIMITS.basic.maxEmployeesPerUnit} barbeiros por unidade`,
+      },
       { label: 'Tudo do Free' },
       { label: 'Lembretes que derrubam o no-show' },
       { label: 'Promoções e cupons' },
@@ -52,7 +57,9 @@ const PLANS: Plan[] = [
     monthly: 99,
     yearly: 79,
     feats: [
-      { label: 'Barbeiros ilimitados' },
+      {
+        label: `${PLAN_LIMITS.pro.maxUnits} unidades · até ${PLAN_LIMITS.pro.maxEmployeesPerUnit} barbeiros por unidade`,
+      },
       { label: 'Tudo do Basic' },
       { label: 'Relatórios e repasse completos' },
       { label: 'Avaliações e reputação' },

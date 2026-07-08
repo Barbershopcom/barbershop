@@ -13,6 +13,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -31,9 +32,11 @@ import {
 import { z } from 'zod';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
+import { PlanLimitsService } from '../billing/plan-limits.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { EmailService } from '../email/email.service';
 import { assertTenantAdmin } from '../tenancy/require-admin';
+import { resolveBarbershopId } from '../tenancy/resolve-barbershop';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -78,6 +81,7 @@ export class AdminEmployeesController {
   constructor(
     private readonly email: EmailService,
     private readonly config: ConfigService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   private requireAdmin(
@@ -145,6 +149,7 @@ export class AdminEmployeesController {
     @Tx() ctx: TenantContextValue,
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(CreateEmployeeSchema)) body: CreateEmployeeInput,
+    @Query('barbershopId') barbershopId?: string,
   ): Promise<EmployeeResponseDto> {
     const admin = await this.requireAdmin(ctx, user);
 
@@ -156,13 +161,13 @@ export class AdminEmployeesController {
       if (dup) throw new ForbiddenException('Já existe um funcionário com esse email.');
     }
 
-    const barbershop = await ctx.tx.barbershop.findFirst({ select: { id: true } });
-    if (!barbershop) throw new NotFoundException('Barbearia não encontrada.');
+    const shopId = await resolveBarbershopId(ctx, barbershopId);
+    await this.planLimits.assertCanAddEmployee(ctx.tx, admin.tenantId, shopId);
 
     const employee = await ctx.tx.employee.create({
       data: {
         tenantId: admin.tenantId,
-        barbershopId: barbershop.id,
+        barbershopId: shopId,
         appUserId: null,
         isActive: true,
         displayName: body.displayName,
@@ -201,8 +206,16 @@ export class AdminEmployeesController {
   ): Promise<EmployeeResponseDto> {
     await this.requireAdmin(ctx, user);
 
-    const existing = await ctx.tx.employee.findFirst({ where: { id }, select: { id: true } });
+    const existing = await ctx.tx.employee.findFirst({
+      where: { id },
+      select: { id: true, isActive: true, tenantId: true, barbershopId: true },
+    });
     if (!existing) throw new NotFoundException('Funcionário não encontrado.');
+
+    // Reativar conta contra o teto do plano — senão desativa/reativa fura o limite.
+    if (body.isActive === true && !existing.isActive) {
+      await this.planLimits.assertCanAddEmployee(ctx.tx, existing.tenantId, existing.barbershopId);
+    }
 
     const employee = await ctx.tx.employee.update({
       where: { id },

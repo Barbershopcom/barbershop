@@ -23,7 +23,9 @@ import {
 } from '@barbearia/schemas';
 import { Prisma } from '@prisma/client';
 
+import { PlanLimitsService } from '../billing/plan-limits.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { resolveBarbershopId } from '../tenancy/resolve-barbershop';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -31,35 +33,13 @@ import { Tx } from '../tenancy/tenancy.decorators';
 @ApiBearerAuth()
 @Controller('employees')
 export class EmployeesController {
+  constructor(private readonly planLimits: PlanLimitsService) {}
+
   private async requireTenant(ctx: TenantContextValue): Promise<string> {
     if (!ctx.tenantId) {
       throw new BadRequestException('Header X-Tenant-Id obrigatório.');
     }
     return ctx.tenantId;
-  }
-
-  private async resolveBarbershopId(
-    ctx: TenantContextValue,
-    explicit?: string,
-  ): Promise<string> {
-    if (explicit) {
-      const found = await ctx.tx.barbershop.findUnique({
-        where: { id: explicit },
-        select: { id: true },
-      });
-      if (!found) throw new NotFoundException('Barbershop não encontrado.');
-      return found.id;
-    }
-    const first = await ctx.tx.barbershop.findFirst({
-      select: { id: true },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (!first) {
-      throw new BadRequestException(
-        'Nenhuma barbershop nesse tenant. Complete o onboarding primeiro.',
-      );
-    }
-    return first.id;
   }
 
   @Get()
@@ -71,7 +51,7 @@ export class EmployeesController {
     @Query('includeInactive') includeInactive?: string,
   ) {
     await this.requireTenant(ctx);
-    const shopId = await this.resolveBarbershopId(ctx, barbershopId);
+    const shopId = await resolveBarbershopId(ctx, barbershopId);
     const showInactive = includeInactive === 'true' || includeInactive === '1';
     return ctx.tx.employee.findMany({
       where: {
@@ -98,7 +78,8 @@ export class EmployeesController {
     @Query('barbershopId') barbershopId?: string,
   ) {
     const tenantId = await this.requireTenant(ctx);
-    const shopId = await this.resolveBarbershopId(ctx, barbershopId);
+    const shopId = await resolveBarbershopId(ctx, barbershopId);
+    await this.planLimits.assertCanAddEmployee(ctx.tx, tenantId, shopId);
 
     return ctx.tx.employee.create({
       data: {
@@ -122,9 +103,14 @@ export class EmployeesController {
 
     const existing = await ctx.tx.employee.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, isActive: true, tenantId: true, barbershopId: true },
     });
     if (!existing) throw new NotFoundException('Funcionário não encontrado.');
+
+    // Reativar conta contra o teto do plano — senão desativa/reativa fura o limite.
+    if (body.isActive === true && !existing.isActive) {
+      await this.planLimits.assertCanAddEmployee(ctx.tx, existing.tenantId, existing.barbershopId);
+    }
 
     try {
       return await ctx.tx.employee.update({

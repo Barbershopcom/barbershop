@@ -81,6 +81,7 @@ describe('PaymentService.refund com multa', () => {
           tenantId: ids.tenant,
           locationId: ids.loc,
           name: 'S',
+          slug: `shop-${randomUUID().slice(0, 8)}`,
           lateCancelFeePct: 50,
         },
       })
@@ -217,6 +218,7 @@ describe('MeCustomerAppointmentsController — cancel e list com multa', () => {
           tenantId: ids.tenant,
           locationId: ids.loc,
           name: 'S2',
+          slug: `shop-${randomUUID().slice(0, 8)}`,
           lateCancelFeePct: 50,
         },
       })
@@ -393,6 +395,7 @@ describe('MeCustomerAppointmentsController — multa com cupom (priceCents != ba
           tenantId: ids.tenant,
           locationId: ids.loc,
           name: 'S3',
+          slug: `shop-${randomUUID().slice(0, 8)}`,
           lateCancelFeePct: 50,
         },
       })

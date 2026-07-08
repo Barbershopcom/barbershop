@@ -35,6 +35,10 @@ interface PublicTenantDto {
   slug: string;
   name: string;
   ratingAvg: number | null;
+  /** Unidade resolvida — null quando o slug é de tenant multi-unidade (seletor). */
+  unit: { slug: string; name: string } | null;
+  /** Unidades ativas quando em modo seletor. */
+  units: Array<{ slug: string; name: string; addressLine1: string; city: string }>;
 }
 
 const TenantContext = createContext<TenantState | null>(null);
@@ -60,9 +64,19 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const dto = await api.get<PublicTenantDto>(
+      let dto = await api.get<PublicTenantDto>(
         `/public/tenants/${encodeURIComponent(tenantSlug)}`,
       );
+      // Slug de tenant multi-unidade (modo seletor): o app é single-tenant,
+      // então resolve pra 1ª unidade e persiste o slug DELA. Deep links de
+      // unidade específica já chegam resolvidos e não passam por aqui.
+      if (dto.unit === null && dto.units.length > 0) {
+        const firstUnit = dto.units[0]!;
+        dto = await api.get<PublicTenantDto>(
+          `/public/tenants/${encodeURIComponent(firstUnit.slug)}`,
+        );
+        await persistSlug(firstUnit.slug);
+      }
       setState({
         status: 'ready',
         tenant: {

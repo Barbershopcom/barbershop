@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Param, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Header, Param, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { type SlotsQuery, slotsQuerySchema, type SlotsResponse } from '@barbearia/schemas';
@@ -55,8 +55,16 @@ export class SlotsController {
     @Param('slug') slug: string,
     @Query(new ZodValidationPipe(slotsQuerySchema)) query: SlotsQuery,
   ): Promise<SlotsResponse> {
-    const tenant = await this.repo.resolveTenant(slug);
-    const service = await this.repo.resolveActiveService(tenant.id, query.serviceId);
+    const target = await this.repo.resolvePublicTarget(slug);
+    if (!target.barbershop) {
+      throw new BadRequestException('Escolha uma unidade para ver os horários.');
+    }
+    const tenant = target.tenant;
+    const service = await this.repo.resolveActiveService(
+      tenant.id,
+      query.serviceId,
+      target.barbershop.id,
+    );
 
     const fromDateUtc = dateStartUtc(query.from, tenant.timezone);
     const toDateUtcExclusive = dateEndExclusiveUtc(query.to, tenant.timezone);

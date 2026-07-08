@@ -22,6 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { api, ApiError } from '@/lib/api';
 import { useActiveTenant } from '@/lib/active-tenant';
+import { useActiveUnit } from '@/lib/active-unit';
 
 interface DayState {
   weekday: Weekday;
@@ -47,6 +48,7 @@ function groupByDay(rows: BarbershopHoursDto[]): DayState[] {
 
 export default function HoursPage() {
   const { tenant } = useActiveTenant();
+  const { activeUnit } = useActiveUnit();
   const [week, setWeek] = useState<DayState[]>(emptyWeek());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -56,9 +58,10 @@ export default function HoursPage() {
   async function refresh() {
     setLoadError(null);
     try {
-      const rows = await api.get<BarbershopHoursDto[]>('/barbershop-hours', {
-        tenantId: tenant.id,
-      });
+      const rows = await api.get<BarbershopHoursDto[]>(
+        `/barbershop-hours?barbershopId=${activeUnit.id}`,
+        { tenantId: tenant.id },
+      );
       setWeek(groupByDay(rows));
       setLoaded(true);
     } catch (err) {
@@ -69,7 +72,7 @@ export default function HoursPage() {
   useEffect(() => {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenant.id]);
+  }, [tenant.id, activeUnit.id]);
 
   function addRange(weekday: Weekday) {
     setWeek((prev) =>
@@ -123,7 +126,9 @@ export default function HoursPage() {
           );
         }
       }
-      await api.put('/barbershop-hours', { ranges }, { tenantId: tenant.id });
+      await api.put(`/barbershop-hours?barbershopId=${activeUnit.id}`, { ranges }, {
+        tenantId: tenant.id,
+      });
       await refresh();
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : (err as Error).message);

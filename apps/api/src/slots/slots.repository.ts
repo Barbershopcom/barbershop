@@ -17,48 +17,120 @@ import type { BarberInput, HourRange } from './slots.service';
  * resolvedTenant.id`. Não confie no Postgres pra isolar — é
  * responsabilidade desta camada.
  */
+export interface PublicTenantInfo {
+  id: string;
+  slug: string;
+  name: string;
+  timezone: string;
+  status: string;
+  phoneE164: string | null;
+  addressLine: string | null;
+  instagramHandle: string | null;
+}
+
+export interface PublicTarget {
+  tenant: PublicTenantInfo;
+  /** Unidade resolvida — null quando o slug do tenant tem várias unidades (modo seletor). */
+  barbershop: { id: string; slug: string; name: string } | null;
+  /** Unidades ativas pro seletor — vazio quando uma unidade foi resolvida. */
+  units: Array<{ slug: string; name: string; addressLine1: string; city: string }>;
+}
+
+const tenantSelect = {
+  id: true,
+  slug: true,
+  name: true,
+  timezone: true,
+  status: true,
+  phoneE164: true,
+  addressLine: true,
+  instagramHandle: true,
+} as const;
+
 @Injectable()
 export class SlotsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Resolve tenant pelo slug. Retorna 404 se não existir.
-   * Não exige auth — slug é público.
+   * Resolução pública dual (multi-unidade, spec 2026-07-07):
+   * 1. slug bate numa BARBERSHOP ativa → tenant dono + essa unidade;
+   * 2. senão, slug de TENANT → 1 unidade ativa: resolve direto;
+   *    várias: modo seletor (barbershop null + units);
+   * 3. nada → 404. Links antigos (slug do tenant) seguem funcionando.
    */
-  async resolveTenant(slug: string): Promise<{
-    id: string;
-    slug: string;
-    name: string;
-    timezone: string;
-    status: string;
-    phoneE164: string | null;
-    addressLine: string | null;
-    instagramHandle: string | null;
-  }> {
+  async resolvePublicTarget(slug: string): Promise<PublicTarget> {
+    const shop = await this.prisma.barbershop.findUnique({
+      where: { slug },
+      select: { id: true, slug: true, name: true, isActive: true, tenantId: true },
+    });
+    if (shop) {
+      if (!shop.isActive) throw new NotFoundException(`Tenant '${slug}' não encontrado.`);
+      const owner = await this.prisma.tenant.findUnique({
+        where: { id: shop.tenantId },
+        select: tenantSelect,
+      });
+      if (!owner) throw new NotFoundException(`Tenant '${slug}' não encontrado.`);
+      return {
+        tenant: owner,
+        barbershop: { id: shop.id, slug: shop.slug, name: shop.name },
+        units: [],
+      };
+    }
+
     const tenant = await this.prisma.tenant.findUnique({
       where: { slug },
+      select: tenantSelect,
+    });
+    if (!tenant) throw new NotFoundException(`Tenant '${slug}' não encontrado.`);
+
+    const shops = await this.prisma.barbershop.findMany({
+      where: { tenantId: tenant.id, isActive: true },
       select: {
         id: true,
         slug: true,
         name: true,
-        timezone: true,
-        status: true,
-        phoneE164: true,
-        addressLine: true,
-        instagramHandle: true,
+        location: { select: { addressLine1: true, city: true } },
       },
+      orderBy: { createdAt: 'asc' },
     });
-    if (!tenant) throw new NotFoundException(`Tenant '${slug}' não encontrado.`);
-    return tenant;
+    if (shops.length === 1) {
+      const only = shops[0]!;
+      return {
+        tenant,
+        barbershop: { id: only.id, slug: only.slug, name: only.name },
+        units: [],
+      };
+    }
+    return {
+      tenant,
+      barbershop: null,
+      units: shops.map((s) => ({
+        slug: s.slug,
+        name: s.name,
+        addressLine1: s.location.addressLine1,
+        city: s.location.city,
+      })),
+    };
   }
 
   /**
-   * Resolve service ativo pelo id E garante que pertence ao tenant.
-   * Retorna 404 se inexistente, inativo, ou de outro tenant.
+   * Resolve tenant pelo slug (tenant OU unidade). Retorna 404 se não existir.
+   * Wrapper de compat sobre resolvePublicTarget — consumidores que só precisam
+   * do tenant (cupons, gating) seguem usando este.
+   */
+  async resolveTenant(slug: string): Promise<PublicTenantInfo> {
+    return (await this.resolvePublicTarget(slug)).tenant;
+  }
+
+  /**
+   * Resolve service ativo pelo id E garante que pertence ao tenant (e à
+   * unidade, quando informada — evita agendar serviço de outra unidade pelo
+   * slug errado). Retorna 404 se inexistente, inativo, ou fora do escopo.
    */
   async resolveActiveService(
     tenantId: string,
     serviceId: string,
+    barbershopId?: string,
   ): Promise<{
     id: string;
     barbershopId: string;
@@ -68,7 +140,12 @@ export class SlotsRepository {
     basePriceCents: number;
   }> {
     const service = await this.prisma.service.findFirst({
-      where: { id: serviceId, tenantId, isActive: true },
+      where: {
+        id: serviceId,
+        tenantId,
+        isActive: true,
+        ...(barbershopId ? { barbershopId } : {}),
+      },
       select: {
         id: true,
         barbershopId: true,

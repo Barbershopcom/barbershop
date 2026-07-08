@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Put,
   Query,
 } from '@nestjs/common';
@@ -13,6 +12,7 @@ import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { type ReplaceHoursInput, replaceHoursSchema } from '@barbearia/schemas';
 
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { resolveBarbershopId } from '../tenancy/resolve-barbershop';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -32,30 +32,6 @@ export class BarbershopHoursController {
     return ctx.tenantId;
   }
 
-  private async resolveBarbershopId(
-    ctx: TenantContextValue,
-    explicit?: string,
-  ): Promise<string> {
-    if (explicit) {
-      const found = await ctx.tx.barbershop.findUnique({
-        where: { id: explicit },
-        select: { id: true },
-      });
-      if (!found) throw new NotFoundException('Barbershop não encontrado.');
-      return found.id;
-    }
-    const first = await ctx.tx.barbershop.findFirst({
-      select: { id: true },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (!first) {
-      throw new BadRequestException(
-        'Nenhuma barbershop nesse tenant. Complete o onboarding primeiro.',
-      );
-    }
-    return first.id;
-  }
-
   @Get()
   @ApiQuery({ name: 'barbershopId', required: false })
   async list(
@@ -63,7 +39,7 @@ export class BarbershopHoursController {
     @Query('barbershopId') barbershopId?: string,
   ) {
     await this.requireTenant(ctx);
-    const shopId = await this.resolveBarbershopId(ctx, barbershopId);
+    const shopId = await resolveBarbershopId(ctx, barbershopId);
     return ctx.tx.barbershopHours.findMany({
       where: { barbershopId: shopId },
       orderBy: [{ weekday: 'asc' }, { opensAt: 'asc' }],
@@ -79,7 +55,7 @@ export class BarbershopHoursController {
     @Query('barbershopId') barbershopId?: string,
   ) {
     const tenantId = await this.requireTenant(ctx);
-    const shopId = await this.resolveBarbershopId(ctx, barbershopId);
+    const shopId = await resolveBarbershopId(ctx, barbershopId);
 
     // Atomicidade já está no $transaction do TenantInterceptor.
     await ctx.tx.barbershopHours.deleteMany({ where: { barbershopId: shopId } });

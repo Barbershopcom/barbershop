@@ -29,3 +29,4 @@ export * from './review';
 export * from './schedule';
 export * from './services';
 export * from './slots';
+export * from './units';

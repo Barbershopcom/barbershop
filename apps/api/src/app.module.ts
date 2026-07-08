@@ -23,6 +23,7 @@ import { PushModule } from './push/push.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { SlotsModule } from './slots/slots.module';
 import { TenancyModule } from './tenancy/tenancy.module';
+import { UnitsModule } from './units/units.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     ReviewsModule,
     DiscoverModule,
     CouponsModule,
+    UnitsModule,
   ],
   providers: [
     {

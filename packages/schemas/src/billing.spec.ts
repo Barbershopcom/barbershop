@@ -2,10 +2,13 @@ import {
   BILLING_TIERS,
   TRIAL_DAYS,
   BILLING_GRACE_DAYS,
+  limitsForTier,
+  PLAN_LIMITS,
   planForTier,
   priceForTier,
   subscriptionAllowsWrite,
   subscriptionAllowsPublicBooking,
+  usageFitsTier,
 } from './billing';
 
 describe('billing tiers/helpers', () => {
@@ -57,5 +60,26 @@ describe('billing tiers/helpers', () => {
       expect(subscriptionAllowsWrite(s)).toBe(false);
       expect(subscriptionAllowsPublicBooking(s)).toBe(false);
     }
+  });
+});
+
+describe('PLAN_LIMITS', () => {
+  it('define os tetos por tier', () => {
+    expect(PLAN_LIMITS.free).toEqual({ maxUnits: 1, maxEmployeesPerUnit: 2 });
+    expect(PLAN_LIMITS.basic).toEqual({ maxUnits: 2, maxEmployeesPerUnit: 5 });
+    expect(PLAN_LIMITS.pro).toEqual({ maxUnits: 5, maxEmployeesPerUnit: 15 });
+    expect(limitsForTier('basic')).toEqual({ maxUnits: 2, maxEmployeesPerUnit: 5 });
+  });
+});
+
+describe('usageFitsTier', () => {
+  it('cabe quando uso <= teto', () => {
+    expect(usageFitsTier('basic', { units: 2, maxEmployeesInAnyUnit: 5 })).toBe(true);
+    expect(usageFitsTier('free', { units: 1, maxEmployeesInAnyUnit: 2 })).toBe(true);
+  });
+
+  it('não cabe quando unidades ou funcionários excedem', () => {
+    expect(usageFitsTier('free', { units: 2, maxEmployeesInAnyUnit: 1 })).toBe(false);
+    expect(usageFitsTier('basic', { units: 1, maxEmployeesInAnyUnit: 6 })).toBe(false);
   });
 });

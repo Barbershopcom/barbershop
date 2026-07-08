@@ -40,6 +40,26 @@ export function planForTier(
   };
 }
 
+/** Tetos por tier (spec 2026-07-07): unidades por tenant e funcionários POR unidade. */
+export const PLAN_LIMITS = {
+  free:  { maxUnits: 1, maxEmployeesPerUnit: 2 },
+  basic: { maxUnits: 2, maxEmployeesPerUnit: 5 },
+  pro:   { maxUnits: 5, maxEmployeesPerUnit: 15 },
+} as const satisfies Record<PlanTier, { maxUnits: number; maxEmployeesPerUnit: number }>;
+
+export function limitsForTier(tier: PlanTier): { maxUnits: number; maxEmployeesPerUnit: number } {
+  return PLAN_LIMITS[tier];
+}
+
+/** true se o uso atual cabe no tier (validação de downgrade). */
+export function usageFitsTier(
+  tier: PlanTier,
+  usage: { units: number; maxEmployeesInAnyUnit: number },
+): boolean {
+  const l = PLAN_LIMITS[tier];
+  return usage.units <= l.maxUnits && usage.maxEmployeesInAnyUnit <= l.maxEmployeesPerUnit;
+}
+
 const ALLOWED = new Set<SubscriptionStatus>(['trialing', 'active', 'past_due']);
 export function subscriptionAllowsWrite(status: SubscriptionStatus): boolean {
   return ALLOWED.has(status);

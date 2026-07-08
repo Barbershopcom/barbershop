@@ -178,6 +178,10 @@ model Barbershop {
   tenantId    String   @map("tenant_id") @db.Uuid
   locationId  String   @map("location_id") @db.Uuid
   name        String
+  /// Slug público da unidade (multi-unidade, spec 2026-07-07). Backfill: slug do tenant.
+  slug        String   @unique
+  /// Unidade desativada não conta no limite do plano nem aparece no público.
+  isActive    Boolean  @default(true) @map("is_active")
   description String?
   /// Rating agregado (cache; fonte = tabela reviews). ADR-019 §2.
   ratingAvg   Float?   @map("rating_avg")

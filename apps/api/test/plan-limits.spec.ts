@@ -45,7 +45,7 @@ beforeAll(async () => {
     },
   });
   const shop = await prisma.barbershop.create({
-    data: { tenantId, locationId: loc.id, name: 'Shop 1' },
+    data: { tenantId, locationId: loc.id, name: 'Shop 1', slug: `shop-${randomUUID().slice(0, 8)}` },
   });
   barbershopId = shop.id;
   await prisma.subscription.create({
@@ -171,6 +171,19 @@ describe('EmployeesController — trava do plano', () => {
     ).resolves.toBeDefined();
     // restaura
     await prisma.employee.update({ where: { id: active!.id }, data: { isActive: true } });
+  });
+
+  it('unidade desativada não conta no teto de unidades', async () => {
+    await prisma.subscription.update({
+      where: { tenantId },
+      data: { tier: 'free', priceCents: 0 },
+    });
+    await prisma.barbershop.update({ where: { id: barbershopId }, data: { isActive: false } });
+    await expect(svc.assertCanAddUnit(prisma, tenantId)).resolves.toBeUndefined();
+    const usage = await svc.tenantUsage(prisma, tenantId);
+    expect(usage.units).toBe(0);
+    expect(usage.maxEmployeesInAnyUnit).toBe(0);
+    await prisma.barbershop.update({ where: { id: barbershopId }, data: { isActive: true } });
   });
 
   it('abaixo do teto, create passa', async () => {

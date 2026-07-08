@@ -57,7 +57,12 @@ async function seedTenant(label: string, adminUser: string) {
     },
   });
   const shop = await prisma.barbershop.create({
-    data: { tenantId: tenant.id, locationId: loc.id, name: `Shop ${label}` },
+    data: {
+      tenantId: tenant.id,
+      locationId: loc.id,
+      name: `Shop ${label}`,
+      slug: `shop-${randomUUID().slice(0, 8)}`,
+    },
   });
   await prisma.tenantMembership.create({
     data: { userId: adminUser, tenantId: tenant.id, roles: ['admin'] },

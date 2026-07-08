@@ -52,7 +52,7 @@ beforeAll(async () => {
     },
   })).id;
   shopA = (await prisma.barbershop.create({
-    data: { tenantId: tenantA, locationId: locA, name: 'Shop A' },
+    data: { tenantId: tenantA, locationId: locA, name: 'Shop A', slug: `shop-a-${userA.slice(0, 8)}` },
   })).id;
   await prisma.service.createMany({
     data: [
@@ -79,7 +79,7 @@ beforeAll(async () => {
     },
   })).id;
   shopB = (await prisma.barbershop.create({
-    data: { tenantId: tenantB, locationId: locB, name: 'Shop B' },
+    data: { tenantId: tenantB, locationId: locB, name: 'Shop B', slug: `shop-b-${userB.slice(0, 8)}` },
   })).id;
   await prisma.service.createMany({
     data: [

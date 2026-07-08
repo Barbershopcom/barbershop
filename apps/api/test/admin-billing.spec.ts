@@ -174,7 +174,7 @@ describe('AdminBillingController — POST /admin/subscription/change-plan', () =
       },
     });
     const shop = await prisma.barbershop.create({
-      data: { tenantId, locationId: loc.id, name: 'Shop' },
+      data: { tenantId, locationId: loc.id, name: 'Shop', slug: `shop-${randomUUID().slice(0, 8)}` },
     });
     await prisma.employee.createMany({
       data: [1, 2, 3].map((n) => ({

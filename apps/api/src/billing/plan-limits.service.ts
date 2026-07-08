@@ -23,10 +23,10 @@ export class PlanLimitsService {
     tx: Db,
     tenantId: string,
   ): Promise<{ units: number; maxEmployeesInAnyUnit: number }> {
-    const units = await tx.barbershop.count({ where: { tenantId } });
+    const units = await tx.barbershop.count({ where: { tenantId, isActive: true } });
     const grouped = await tx.employee.groupBy({
       by: ['barbershopId'],
-      where: { tenantId, isActive: true },
+      where: { tenantId, isActive: true, barbershop: { isActive: true } },
       _count: { _all: true },
     });
     const maxEmployeesInAnyUnit = grouped.reduce((m, g) => Math.max(m, g._count._all), 0);
@@ -53,7 +53,7 @@ export class PlanLimitsService {
   async assertCanAddUnit(tx: Db, tenantId: string): Promise<void> {
     const tier = await this.tierOf(tx, tenantId);
     const { maxUnits } = limitsForTier(tier);
-    const current = await tx.barbershop.count({ where: { tenantId } });
+    const current = await tx.barbershop.count({ where: { tenantId, isActive: true } });
     if (current >= maxUnits) throw this.limitError('unit', maxUnits, current, tier);
   }
 

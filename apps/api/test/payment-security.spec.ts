@@ -71,7 +71,13 @@ async function seedAppointment(opts: {
   ).id;
   const shop = (
     await prisma.barbershop.create({
-      data: { tenantId: tenant, locationId: loc, name: 'S', lateCancelFeePct: 50 },
+      data: {
+        tenantId: tenant,
+        locationId: loc,
+        name: 'S',
+        slug: `shop-${randomUUID().slice(0, 8)}`,
+        lateCancelFeePct: 50,
+      },
     })
   ).id;
   const svc = (

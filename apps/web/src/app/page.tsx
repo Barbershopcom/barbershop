@@ -28,7 +28,7 @@ import { Seal } from '@/components/ui/seal';
 export const metadata: Metadata = {
   title: 'NAVALHA — Software para barbearias',
   description:
-    'Agenda online, pagamento no Pix, lembretes automáticos e controle de toda a equipe — sob medida pra barbearia brasileira.',
+    'Agenda online, pagamento no Pix, lembretes automáticos e controle de toda a equipe, sob medida pra barbearia brasileira.',
 };
 
 const STRIPE =
@@ -42,12 +42,12 @@ const TRUST = [
 ];
 
 const FEATURES = [
-  { icon: CalendarClock, title: 'Agenda online 24h', desc: 'O cliente marca sozinho, direto do celular, a qualquer hora — sem você parar o corte pra atender o telefone.' },
+  { icon: CalendarClock, title: 'Agenda online 24h', desc: 'O cliente marca sozinho, direto do celular, a qualquer hora, sem você parar o corte pra atender o telefone.' },
   { icon: QrCode, title: 'Pix sem taxa', desc: 'Pagamento com confirmação na hora e dinheiro caindo na conta. Cartão com parcelamento quando o cliente preferir.' },
   { icon: BellRing, title: 'Lembretes automáticos', desc: 'Avisos automáticos antes do horário derrubam o no-show e enchem de novo a cadeira que ficaria vazia.' },
   { icon: Users, title: 'Equipe sob controle', desc: 'Cada barbeiro com a própria agenda, serviços, disponibilidade e folgas. Você vê tudo num lugar só.' },
   { icon: Tag, title: 'Promoções e cupons', desc: 'Crie códigos de desconto e promoções pra encher os horários parados e fidelizar a clientela.' },
-  { icon: BarChart3, title: 'Relatórios e repasse', desc: 'Faturamento, comissão de cada barbeiro e quem mais produziu no mês — sem caderninho, sem planilha.' },
+  { icon: BarChart3, title: 'Relatórios e repasse', desc: 'Faturamento, comissão de cada barbeiro e quem mais produziu no mês, sem caderninho, sem planilha.' },
 ];
 
 const QUOTES = [
@@ -115,7 +115,7 @@ export default function HomePage() {
               Sua barbearia no <span className="text-destructive">piloto</span> automático.
             </h1>
             <p className="mt-5 max-w-md font-serif text-xl italic text-muted-foreground">
-              Agenda online, pagamento no Pix, lembretes automáticos e controle de toda a equipe — num
+              Agenda online, pagamento no Pix, lembretes automáticos e controle de toda a equipe, num
               sistema feito sob medida pra barbearia brasileira.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3.5">
@@ -172,7 +172,7 @@ export default function HomePage() {
               Tudo que a cadeira precisa
             </h2>
             <p className="mt-3 font-serif text-lg italic text-muted-foreground">
-              Da primeira mensagem do cliente ao repasse no fim do mês — sem papel, sem caderninho,
+              Da primeira mensagem do cliente ao repasse no fim do mês, sem papel, sem caderninho,
               sem dor de cabeça.
             </p>
           </div>

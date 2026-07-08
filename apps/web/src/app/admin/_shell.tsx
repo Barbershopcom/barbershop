@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useActiveTenant } from '@/lib/active-tenant';
+import { useActiveUnit } from '@/lib/active-unit';
 import { api } from '@/lib/api';
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { href: '/admin/services', label: 'Serviços' },
   { href: '/admin/team', label: 'Equipe' },
   { href: '/admin/hours', label: 'Horários' },
+  { href: '/admin/unidades', label: 'Unidades' },
   { href: '/admin/pagamentos', label: 'Pagamentos' },
   { href: '/admin/assinatura', label: 'Assinatura' },
   { href: '/admin/perfil', label: 'Perfil' },
@@ -108,6 +110,7 @@ function EmailVerifyBanner() {
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const { tenant } = useActiveTenant();
+  const { units, activeUnit, setActiveUnitId } = useActiveUnit();
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -134,6 +137,22 @@ export function AdminShell({ children }: { children: ReactNode }) {
               Painel admin
             </div>
             <div className="text-base font-semibold">{tenant.name}</div>
+            {units.filter((u) => u.isActive).length > 1 && (
+              <select
+                value={activeUnit.id}
+                onChange={(e) => setActiveUnitId(e.target.value)}
+                className="mt-1 rounded-md border bg-background px-2 py-1 text-sm"
+                aria-label="Unidade ativa"
+              >
+                {units
+                  .filter((u) => u.isActive)
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+              </select>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <nav className="flex gap-1">

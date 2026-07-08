@@ -13,6 +13,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -35,6 +36,7 @@ import { PlanLimitsService } from '../billing/plan-limits.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { EmailService } from '../email/email.service';
 import { assertTenantAdmin } from '../tenancy/require-admin';
+import { resolveBarbershopId } from '../tenancy/resolve-barbershop';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -147,6 +149,7 @@ export class AdminEmployeesController {
     @Tx() ctx: TenantContextValue,
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(CreateEmployeeSchema)) body: CreateEmployeeInput,
+    @Query('barbershopId') barbershopId?: string,
   ): Promise<EmployeeResponseDto> {
     const admin = await this.requireAdmin(ctx, user);
 
@@ -158,14 +161,13 @@ export class AdminEmployeesController {
       if (dup) throw new ForbiddenException('Já existe um funcionário com esse email.');
     }
 
-    const barbershop = await ctx.tx.barbershop.findFirst({ select: { id: true } });
-    if (!barbershop) throw new NotFoundException('Barbearia não encontrada.');
-    await this.planLimits.assertCanAddEmployee(ctx.tx, admin.tenantId, barbershop.id);
+    const shopId = await resolveBarbershopId(ctx, barbershopId);
+    await this.planLimits.assertCanAddEmployee(ctx.tx, admin.tenantId, shopId);
 
     const employee = await ctx.tx.employee.create({
       data: {
         tenantId: admin.tenantId,
-        barbershopId: barbershop.id,
+        barbershopId: shopId,
         appUserId: null,
         isActive: true,
         displayName: body.displayName,

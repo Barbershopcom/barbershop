@@ -25,6 +25,7 @@ import { Prisma } from '@prisma/client';
 
 import { PlanLimitsService } from '../billing/plan-limits.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { resolveBarbershopId } from '../tenancy/resolve-barbershop';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
 
@@ -41,30 +42,6 @@ export class EmployeesController {
     return ctx.tenantId;
   }
 
-  private async resolveBarbershopId(
-    ctx: TenantContextValue,
-    explicit?: string,
-  ): Promise<string> {
-    if (explicit) {
-      const found = await ctx.tx.barbershop.findUnique({
-        where: { id: explicit },
-        select: { id: true },
-      });
-      if (!found) throw new NotFoundException('Barbershop não encontrado.');
-      return found.id;
-    }
-    const first = await ctx.tx.barbershop.findFirst({
-      select: { id: true },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (!first) {
-      throw new BadRequestException(
-        'Nenhuma barbershop nesse tenant. Complete o onboarding primeiro.',
-      );
-    }
-    return first.id;
-  }
-
   @Get()
   @ApiQuery({ name: 'barbershopId', required: false })
   @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
@@ -74,7 +51,7 @@ export class EmployeesController {
     @Query('includeInactive') includeInactive?: string,
   ) {
     await this.requireTenant(ctx);
-    const shopId = await this.resolveBarbershopId(ctx, barbershopId);
+    const shopId = await resolveBarbershopId(ctx, barbershopId);
     const showInactive = includeInactive === 'true' || includeInactive === '1';
     return ctx.tx.employee.findMany({
       where: {
@@ -101,7 +78,7 @@ export class EmployeesController {
     @Query('barbershopId') barbershopId?: string,
   ) {
     const tenantId = await this.requireTenant(ctx);
-    const shopId = await this.resolveBarbershopId(ctx, barbershopId);
+    const shopId = await resolveBarbershopId(ctx, barbershopId);
     await this.planLimits.assertCanAddEmployee(ctx.tx, tenantId, shopId);
 
     return ctx.tx.employee.create({

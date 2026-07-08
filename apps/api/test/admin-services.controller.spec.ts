@@ -249,3 +249,69 @@ describe('AdminServicesController — isolamento entre tenants (#2)', () => {
     expect(bList.find((s) => s.id === serviceB)?.isActive).toBe(true);
   });
 });
+
+describe('AdminServicesController — escopo por unidade (multi-unidade)', () => {
+  it('list/create com ?barbershopId separa serviços por unidade', async () => {
+    // 2ª unidade no tenant A
+    const loc2 = await prisma.location.create({
+      data: {
+        tenantId: tenantA,
+        organizationId: (await prisma.organization.findFirstOrThrow({
+          where: { tenantId: tenantA },
+          select: { id: true },
+        })).id,
+        name: 'Loc A2',
+        addressLine1: 'Rua A2, 2',
+        city: 'São Paulo',
+        state: 'SP',
+        postalCode: '01000-000',
+      },
+    });
+    const shopA2 = (
+      await prisma.barbershop.create({
+        data: {
+          tenantId: tenantA,
+          locationId: loc2.id,
+          name: 'Shop A2',
+          slug: `shop-${randomUUID().slice(0, 8)}`,
+        },
+      })
+    ).id;
+
+    // cria um serviço em cada unidade via controller
+    await withCtx(adminA, tenantA, (ctx, user) =>
+      controller.create(
+        ctx,
+        user,
+        { name: 'Corte A1', durationMin: 30, bufferMin: 0, basePriceCents: 5000, isActive: true },
+        shopA,
+      ),
+    );
+    await withCtx(adminA, tenantA, (ctx, user) =>
+      controller.create(
+        ctx,
+        user,
+        { name: 'Corte A2', durationMin: 30, bufferMin: 0, basePriceCents: 6000, isActive: true },
+        shopA2,
+      ),
+    );
+
+    const listA1 = await withCtx(adminA, tenantA, (ctx, user) =>
+      controller.list(ctx, user, 'true', shopA),
+    );
+    const listA2 = await withCtx(adminA, tenantA, (ctx, user) =>
+      controller.list(ctx, user, 'true', shopA2),
+    );
+    expect(listA1.some((s) => s.name === 'Corte A1')).toBe(true);
+    expect(listA1.some((s) => s.name === 'Corte A2')).toBe(false);
+    expect(listA2.some((s) => s.name === 'Corte A2')).toBe(true);
+    expect(listA2.some((s) => s.name === 'Corte A1')).toBe(false);
+
+    // sem barbershopId cai na 1ª unidade ativa (shopA)
+    const listDefault = await withCtx(adminA, tenantA, (ctx, user) =>
+      controller.list(ctx, user, 'true'),
+    );
+    expect(listDefault.some((s) => s.name === 'Corte A1')).toBe(true);
+    expect(listDefault.some((s) => s.name === 'Corte A2')).toBe(false);
+  });
+});

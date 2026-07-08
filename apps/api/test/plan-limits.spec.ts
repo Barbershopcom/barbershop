@@ -10,6 +10,7 @@ import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 
 import { PlanLimitsService } from '../src/billing/plan-limits.service';
+import { EmployeesController } from '../src/employees/employees.controller';
 import type { TenantContextValue } from '../src/tenancy/tenant-context';
 
 const prisma = new PrismaClient();
@@ -115,5 +116,76 @@ describe('PlanLimitsService', () => {
     await expect(svc.assertCanAddUnit(prisma, tenantId)).resolves.toBeUndefined();
     const usage = await svc.tenantUsage(prisma, tenantId);
     expect(usage).toEqual({ units: 1, maxEmployeesInAnyUnit: 2 });
+  });
+});
+
+describe('EmployeesController — trava do plano', () => {
+  const employeesController = new EmployeesController(svc);
+
+  beforeAll(async () => {
+    // Volta o tenant pro free: os 2 ativos (B1, B2) já ocupam o teto.
+    await prisma.subscription.update({
+      where: { tenantId },
+      data: { tier: 'free', priceCents: 0 },
+    });
+  });
+
+  it('create estoura no teto do tier', async () => {
+    await expect(
+      withCtx(adminId, tenantId, (ctx) =>
+        employeesController.create(
+          ctx,
+          { displayName: 'B3', role: 'barber', isActive: true },
+          undefined,
+        ),
+      ),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('reativar no teto estoura; editar nome e desativar não', async () => {
+    const inactive = await prisma.employee.create({
+      data: { tenantId, barbershopId, displayName: 'B4', role: 'barber', isActive: false },
+    });
+
+    await expect(
+      withCtx(adminId, tenantId, (ctx) =>
+        employeesController.update(ctx, inactive.id, { isActive: true }),
+      ),
+    ).rejects.toThrow(ConflictException);
+
+    await expect(
+      withCtx(adminId, tenantId, (ctx) =>
+        employeesController.update(ctx, inactive.id, { displayName: 'B4x' }),
+      ),
+    ).resolves.toBeDefined();
+
+    // Desativar um ativo nunca passa pela trava.
+    const active = await prisma.employee.findFirst({
+      where: { tenantId, isActive: true },
+      select: { id: true },
+    });
+    await expect(
+      withCtx(adminId, tenantId, (ctx) =>
+        employeesController.update(ctx, active!.id, { isActive: false }),
+      ),
+    ).resolves.toBeDefined();
+    // restaura
+    await prisma.employee.update({ where: { id: active!.id }, data: { isActive: true } });
+  });
+
+  it('abaixo do teto, create passa', async () => {
+    await prisma.subscription.update({
+      where: { tenantId },
+      data: { tier: 'basic', priceCents: 4900 },
+    });
+    await expect(
+      withCtx(adminId, tenantId, (ctx) =>
+        employeesController.create(
+          ctx,
+          { displayName: 'B5', role: 'barber', isActive: true },
+          undefined,
+        ),
+      ),
+    ).resolves.toBeDefined();
   });
 });

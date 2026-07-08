@@ -31,6 +31,7 @@ import {
 import { z } from 'zod';
 
 import { CurrentUser, type AuthenticatedUser } from '../auth/auth.decorators';
+import { PlanLimitsService } from '../billing/plan-limits.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { EmailService } from '../email/email.service';
 import { assertTenantAdmin } from '../tenancy/require-admin';
@@ -78,6 +79,7 @@ export class AdminEmployeesController {
   constructor(
     private readonly email: EmailService,
     private readonly config: ConfigService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   private requireAdmin(
@@ -158,6 +160,7 @@ export class AdminEmployeesController {
 
     const barbershop = await ctx.tx.barbershop.findFirst({ select: { id: true } });
     if (!barbershop) throw new NotFoundException('Barbearia não encontrada.');
+    await this.planLimits.assertCanAddEmployee(ctx.tx, admin.tenantId, barbershop.id);
 
     const employee = await ctx.tx.employee.create({
       data: {
@@ -201,8 +204,16 @@ export class AdminEmployeesController {
   ): Promise<EmployeeResponseDto> {
     await this.requireAdmin(ctx, user);
 
-    const existing = await ctx.tx.employee.findFirst({ where: { id }, select: { id: true } });
+    const existing = await ctx.tx.employee.findFirst({
+      where: { id },
+      select: { id: true, isActive: true, tenantId: true, barbershopId: true },
+    });
     if (!existing) throw new NotFoundException('Funcionário não encontrado.');
+
+    // Reativar conta contra o teto do plano — senão desativa/reativa fura o limite.
+    if (body.isActive === true && !existing.isActive) {
+      await this.planLimits.assertCanAddEmployee(ctx.tx, existing.tenantId, existing.barbershopId);
+    }
 
     const employee = await ctx.tx.employee.update({
       where: { id },

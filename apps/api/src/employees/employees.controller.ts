@@ -23,6 +23,7 @@ import {
 } from '@barbearia/schemas';
 import { Prisma } from '@prisma/client';
 
+import { PlanLimitsService } from '../billing/plan-limits.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { type TenantContextValue } from '../tenancy/tenant-context';
 import { Tx } from '../tenancy/tenancy.decorators';
@@ -31,6 +32,8 @@ import { Tx } from '../tenancy/tenancy.decorators';
 @ApiBearerAuth()
 @Controller('employees')
 export class EmployeesController {
+  constructor(private readonly planLimits: PlanLimitsService) {}
+
   private async requireTenant(ctx: TenantContextValue): Promise<string> {
     if (!ctx.tenantId) {
       throw new BadRequestException('Header X-Tenant-Id obrigatório.');
@@ -99,6 +102,7 @@ export class EmployeesController {
   ) {
     const tenantId = await this.requireTenant(ctx);
     const shopId = await this.resolveBarbershopId(ctx, barbershopId);
+    await this.planLimits.assertCanAddEmployee(ctx.tx, tenantId, shopId);
 
     return ctx.tx.employee.create({
       data: {
@@ -122,9 +126,14 @@ export class EmployeesController {
 
     const existing = await ctx.tx.employee.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, isActive: true, tenantId: true, barbershopId: true },
     });
     if (!existing) throw new NotFoundException('Funcionário não encontrado.');
+
+    // Reativar conta contra o teto do plano — senão desativa/reativa fura o limite.
+    if (body.isActive === true && !existing.isActive) {
+      await this.planLimits.assertCanAddEmployee(ctx.tx, existing.tenantId, existing.barbershopId);
+    }
 
     try {
       return await ctx.tx.employee.update({
